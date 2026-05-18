@@ -322,32 +322,50 @@ export default function Home() {
           <div className="max-w-5xl mx-auto">
             <h2 className={cn("text-3xl md:text-5xl font-bold tracking-tight text-center mb-16", isDarkMode ? "text-white" : "text-black")}>¿Por qué Nextape?</h2>
             
-            <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-apple-lg text-slate-900">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[600px]">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="p-6 md:p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Característica</th>
-                      <th className="p-6 md:p-8 font-bold uppercase tracking-widest text-[10px] text-brand-blue bg-brand-blue/5">Nextape</th>
-                      <th className="p-6 md:p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Reclutamiento Tradicional</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {[
-                      { feature: "Validación de Habilidades", next: "Simulación de Incidentes Real-Time", trad: "Filtros por Palabras Clave en CV" },
-                      { feature: "Tiempo de Respuesta", next: "Instantáneo (Score Certificado)", trad: "2-3 Semanas de Entrevistas" },
-                      { feature: "Precisión del Match", next: "92% Basado en Performance", trad: "30% Basado en Intuición" },
-                      { feature: "Calidad del Candidato", next: "Elite Verified (The LINE)", trad: "Incierta hasta el Mes 1" }
-                    ].map((row, i) => (
-                      <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="p-6 md:p-8 font-bold text-sm md:text-base text-slate-900">{row.feature}</td>
-                        <td className="p-6 md:p-8 text-brand-blue font-bold text-sm md:text-base bg-brand-blue/5">{row.next}</td>
-                        <td className="p-6 md:p-8 text-gray-400 text-sm md:text-base">{row.trad}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="space-y-6 md:space-y-0 md:rounded-[2.5rem] md:border md:border-gray-100 md:bg-white md:shadow-apple-lg md:overflow-hidden">
+              {/* Desktop Header */}
+              <div className="hidden md:grid grid-cols-3 bg-gray-50 border-b border-gray-100">
+                <div className="p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Característica</div>
+                <div className="p-8 font-bold uppercase tracking-widest text-[10px] text-brand-blue bg-brand-blue/5">Nextape</div>
+                <div className="p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Reclutamiento Tradicional</div>
               </div>
+
+              {/* Rows */}
+              {[
+                { feature: "Validación de Habilidades", next: "Simulación de Incidentes Real-Time", trad: "Filtros por Palabras Clave en CV" },
+                { feature: "Tiempo de Respuesta", next: "Instantáneo (Score Certificado)", trad: "2-3 Semanas de Entrevistas" },
+                { feature: "Precisión del Match", next: "92% Basado en Performance", trad: "30% Basado en Intuición" },
+                { feature: "Calidad del Candidato", next: "Elite Verified (The LINE)", trad: "Incierta hasta el Mes 1" }
+              ].map((row, i) => (
+                <div key={i} className="group">
+                  {/* Mobile Layout (Cards) */}
+                  <div className={cn(
+                    "md:hidden p-8 rounded-[2rem] border space-y-4 transition-all",
+                    isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-gray-100 shadow-apple"
+                  )}>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">Característica</div>
+                    <div className={cn("text-xl font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>{row.feature}</div>
+                    
+                    <div className="grid grid-cols-1 gap-4 pt-4">
+                      <div className="p-4 rounded-2xl bg-brand-blue/5 space-y-1">
+                        <div className="text-[8px] font-bold uppercase tracking-widest text-brand-blue">Nextape</div>
+                        <div className="text-sm font-bold text-brand-blue">{row.next}</div>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-gray-50 space-y-1">
+                        <div className="text-[8px] font-bold uppercase tracking-widest text-gray-400">Tradicional</div>
+                        <div className="text-sm font-medium text-gray-500">{row.trad}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout (Table Row) */}
+                  <div className="hidden md:grid grid-cols-3 divide-x divide-gray-50 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                    <div className="p-8 font-bold text-base text-slate-900 flex items-center">{row.feature}</div>
+                    <div className="p-8 text-brand-blue font-bold text-base bg-brand-blue/5 flex items-center">{row.next}</div>
+                    <div className="p-8 text-gray-400 text-sm flex items-center">{row.trad}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
