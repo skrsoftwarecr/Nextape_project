@@ -5,7 +5,7 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, X, AlertTriangle, Monitor, ArrowRight, Award, Loader2 } from "lucide-react";
+import { ChevronRight, X, AlertTriangle, Monitor, Award, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Stage, Float, Center } from "@react-three/drei";
@@ -20,7 +20,7 @@ function LaptopModel() {
 
   useFrame((state) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2;
+      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.15;
     }
   });
 
@@ -37,7 +37,6 @@ export default function TheLinePage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const questions = [
@@ -71,15 +70,14 @@ export default function TheLinePage() {
     setIsConfirmOpen(false);
     setViewState("immersive");
     setNarrativeStep("briefing");
-    localStorage.setItem("line_active", "true");
   };
 
   const handleExit = () => {
     setViewState("selector");
-    localStorage.removeItem("line_active");
   };
 
   const nextStep = () => {
+    if (isTransitioning) return;
     setIsTransitioning(true);
     setTimeout(() => {
       if (narrativeStep === "briefing") setNarrativeStep("problem");
@@ -98,7 +96,6 @@ export default function TheLinePage() {
         setNarrativeStep("briefing");
       } else {
         setViewState("results");
-        localStorage.removeItem("line_active");
       }
       setIsTransitioning(false);
     }, 600);
@@ -109,7 +106,7 @@ export default function TheLinePage() {
       <div className="space-y-12 max-w-6xl mx-auto">
         <header>
           <h1 className="text-4xl font-bold tracking-tight">The LINE.</h1>
-          <p className="text-gray-500 font-medium">Evaluación de arquitectura y respuesta sistémica.</p>
+          <p className="text-gray-500 font-medium">Entorno de evaluación de arquitectura y respuesta sistémica.</p>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -129,10 +126,10 @@ export default function TheLinePage() {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 ml-1">Especialidad</label>
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 ml-1">Modalidad de Evaluación</label>
               <div className="grid grid-cols-1 gap-4">
                 {[
-                  { id: "mc", name: "Arquitectura & Sistemas", desc: "Multiple Choice", active: true },
+                  { id: "mc", name: "Arquitectura & Sistemas", desc: "Desafío de Opción Múltiple", active: true },
                   { id: "debug", name: "Live Debugging", desc: "Próximamente", active: false },
                 ].map(spec => (
                   <button 
@@ -163,9 +160,9 @@ export default function TheLinePage() {
               <Monitor className="h-10 w-10 text-white" />
             </div>
             <div className="space-y-6 relative z-10">
-              <h2 className="text-4xl font-bold tracking-tighter leading-[1.1]">Inmersión <br /> de Alto Contraste.</h2>
+              <h2 className="text-4xl font-bold tracking-tighter leading-[1.1]">Sincronización <br /> de Alto Impacto.</h2>
               <p className="text-xl opacity-90 font-medium leading-relaxed">
-                Evaluamos tu precisión, velocidad y capacidad de tomar decisiones críticas bajo presión.
+                El entorno de "The LINE" evalúa tu precisión arquitectónica bajo escenarios de fallo en tiempo real.
               </p>
             </div>
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -180,15 +177,15 @@ export default function TheLinePage() {
               </div>
               <DialogTitle className="text-4xl font-bold tracking-tighter text-center leading-none">¿Estás preparado?</DialogTitle>
               <DialogDescription className="text-lg font-medium text-center text-gray-500 leading-relaxed px-4">
-                Una vez dentro, el entorno no podrá pausarse. Tus resultados se firmarán digitalmente en tu perfil.
+                Una vez iniciada la sincronización, el entorno no podrá pausarse. Tus resultados se firmarán digitalmente en tu identidad Nextape.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex-col sm:flex-row gap-4 mt-10">
               <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="h-16 w-full rounded-2xl font-bold text-gray-400">
-                Retirarse
+                Regresar
               </Button>
               <Button onClick={handleStart} className="bg-gray-950 hover:bg-black text-white h-16 w-full rounded-2xl font-bold shadow-apple-lg">
-                Entrar
+                Iniciar Sync
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -202,10 +199,10 @@ export default function TheLinePage() {
     
     return (
       <div className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden select-none">
-        {/* Header Cinematic */}
+        {/* Header Cinemático */}
         <header className="p-8 flex justify-between items-center relative z-20">
           <button onClick={handleExit} className="flex items-center gap-2 font-bold uppercase tracking-[0.2em] text-[10px] text-white/30 hover:text-white transition-opacity">
-            <X className="h-4 w-4" /> Terminar Sesión
+            <X className="h-4 w-4" /> Finalizar Sesión
           </button>
           <div className="text-xs font-bold tracking-widest text-brand-blue animate-pulse">
             NEURAL_SYNC_ACTIVE
@@ -217,7 +214,7 @@ export default function TheLinePage() {
 
         <div className="flex-grow flex flex-col md:flex-row items-center justify-center relative p-8 md:p-24">
           
-          {/* Laptop 3D Centrada */}
+          {/* Laptop 3D de fondo */}
           <div className="absolute inset-0 z-0 opacity-40">
             <Canvas shadows camera={{ position: [0, 0, 15], fov: 35 }}>
               <Suspense fallback={null}>
@@ -232,39 +229,39 @@ export default function TheLinePage() {
             </Canvas>
           </div>
 
-          {/* Narrative Content */}
-          <div className={`max-w-3xl w-full relative z-10 transition-all duration-500 ${isTransitioning ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'}`}>
+          {/* Narrativa Fragmentada */}
+          <div className={`max-w-4xl w-full relative z-10 transition-all duration-700 ease-out ${isTransitioning ? 'opacity-0 translate-y-8 blur-sm' : 'opacity-100 translate-y-0 blur-0'}`}>
              
              {narrativeStep === "briefing" && (
-                <div className="space-y-8 text-center" onClick={nextStep}>
-                   <div className="space-y-4">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto del Sistema</span>
-                      <h2 className="text-4xl md:text-6xl font-bold text-white tracking-tighter italic leading-tight">
+                <div className="space-y-12 text-center cursor-pointer" onClick={nextStep}>
+                   <div className="space-y-6">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto de Arquitectura</span>
+                      <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tighter italic leading-[1.1]">
                          {q.briefing}
                       </h2>
                    </div>
-                   <p className="text-white/40 text-sm font-bold animate-pulse tracking-widest">TAP_TO_PROCEED</p>
+                   <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Click_to_receive_briefing</p>
                 </div>
              )}
 
              {narrativeStep === "problem" && (
-                <div className="space-y-8 text-center" onClick={nextStep}>
-                   <div className="space-y-4">
+                <div className="space-y-12 text-center cursor-pointer" onClick={nextStep}>
+                   <div className="space-y-6">
                       <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Detección de Anomalía</span>
-                      <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight">
+                      <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight px-4 md:px-12">
                          "{q.text}"
                       </h2>
                    </div>
-                   <p className="text-white/40 text-sm font-bold animate-pulse tracking-widest uppercase">ANALYZING_VARIABLES...</p>
+                   <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Inyectar_soluciones</p>
                 </div>
              )}
 
              {narrativeStep === "analysis" && (
                 <div className="space-y-12">
                    <div className="space-y-4 text-center md:text-left">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Análisis de Resolución</span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Vectores de Resolución</span>
                       <h2 className="text-2xl md:text-4xl font-bold text-white leading-snug">
-                         Selecciona el vector de solución óptimo para restaurar la integridad del sistema:
+                         Selecciona el vector óptimo para restaurar la integridad del sistema:
                       </h2>
                    </div>
 
@@ -288,11 +285,11 @@ export default function TheLinePage() {
           </div>
         </div>
 
-        {/* Footer Progress */}
+        {/* Footer de Progreso */}
         <footer className="p-10 flex justify-center items-center relative z-20">
-           <div className="flex gap-2">
+           <div className="flex gap-3">
               {questions.map((_, i) => (
-                <div key={i} className={`h-1 rounded-full transition-all duration-700 ${i <= currentQuestion ? 'w-12 bg-brand-blue shadow-[0_0_15px_rgba(0,172,238,0.6)]' : 'w-6 bg-white/10'}`}></div>
+                <div key={i} className={`h-1.5 rounded-full transition-all duration-1000 ${i <= currentQuestion ? 'w-16 bg-brand-blue shadow-[0_0_20px_rgba(0,172,238,0.7)]' : 'w-8 bg-white/10'}`}></div>
               ))}
            </div>
         </footer>
@@ -304,7 +301,7 @@ export default function TheLinePage() {
     const score = Math.round((Object.values(answers).filter((a, i) => a === questions[i].correct).length / questions.length) * 100);
 
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center text-center space-y-12 py-24">
+      <div className="min-h-[80vh] flex flex-col items-center justify-center text-center space-y-12 py-24 animate-in fade-in duration-1000">
         <header className="space-y-6">
           <div className="bg-brand-blue p-8 rounded-[2.5rem] shadow-apple-lg inline-flex">
             <Award className="h-20 w-20 text-white" />
@@ -314,13 +311,13 @@ export default function TheLinePage() {
 
         <div className="flex flex-col items-center">
           <div className="text-[12rem] md:text-[15rem] font-black leading-none italic text-brand-blue tracking-tighter">{score}</div>
-          <div className="text-xl font-bold uppercase tracking-[0.3em] -mt-8 text-gray-400">Neural Integrity</div>
+          <div className="text-xl font-bold uppercase tracking-[0.3em] -mt-8 text-gray-400">Integridad Neural</div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg pt-12">
           <Link href="/dashboard" className="w-full">
             <Button className="w-full h-16 bg-gray-950 hover:bg-black text-white rounded-2xl font-bold uppercase tracking-widest shadow-apple-lg transition-all">
-              Ver Perfil Actualizado
+              Actualizar Perfil
             </Button>
           </Link>
           <Button 
