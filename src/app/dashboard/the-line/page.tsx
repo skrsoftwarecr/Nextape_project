@@ -44,8 +44,8 @@ function LaptopModel({
       const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.08);
       groupRef.current.scale.setScalar(newScale);
       
-      // Rotación sutil de balanceo constante sin apuntar a las opciones
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, 0.05) + Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
+      // Rotación sutil de balanceo constante - Ahora mucho más sutil
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, 0.03) + Math.sin(state.clock.elapsedTime * 0.3) * 0.04;
     }
 
     if (feedbackLightRef.current) {
