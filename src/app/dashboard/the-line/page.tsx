@@ -29,14 +29,14 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posicionamiento dinámico agresivo:
-      // En modo narrativo (centro): x=0, y=0, scale=1.1, rot=0
-      // En modo análisis (extremo izquierdo y arriba): x=-36, y=-2, scale=0.6, rot hacia la derecha
+      // Posicionamiento dinámico:
+      // En modo narrativo (centro): x=0, y=0, scale=1.1
+      // En modo análisis (extremo izquierdo): x=-36, y=-2, scale=0.6
       const targetX = isAnalysisMode ? -36 : 0;
       const targetY = isAnalysisMode ? -2 : 0;
       const targetScale = isAnalysisMode ? 0.6 : 1.1;
-      const targetRotationY = isAnalysisMode ? -0.8 : 0; // Rotación hacia la derecha (opciones)
       
+      // Interpolación suave para posición y escala
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
       
@@ -44,9 +44,8 @@ function LaptopModel({
       const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.08);
       groupRef.current.scale.setScalar(newScale);
       
-      // Aplicamos la rotación base suavemente + el ligero balanceo
-      const baseRotation = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, 0.05);
-      groupRef.current.rotation.y = baseRotation + Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
+      // Rotación sutil de balanceo constante sin apuntar a las opciones
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, 0.05) + Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
     }
 
     if (feedbackLightRef.current) {
@@ -272,7 +271,10 @@ export default function TheLinePage() {
 
         <div className="flex-grow relative flex flex-col items-center justify-center p-6 md:p-12">
           
-          <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className={cn(
+            "absolute inset-0 z-0 overflow-hidden transition-all duration-1000",
+            isTransitioning && "blur-2xl brightness-150 scale-110 opacity-40 grayscale"
+          )}>
             <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
               <Suspense fallback={null}>
                 <Stage environment="studio" intensity={0.6} contactShadow={{ opacity: 0.2 }}>
