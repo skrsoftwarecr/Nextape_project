@@ -31,10 +31,10 @@ function LaptopModel({
     if (groupRef.current) {
       // Posicionamiento dinámico:
       // En modo narrativo (centro): x=0, y=0, scale=1.1
-      // En modo análisis (columna izquierda): x=-8, y=-2, scale=0.6
-      const targetX = isAnalysisMode ? -6 : 0;
-      const targetY = isAnalysisMode ? -2 : 0;
-      const targetScale = isAnalysisMode ? 0.7 : 1.1;
+      // En modo análisis (mucho más a la izquierda): x=-18, y=-5, scale=0.6
+      const targetX = isAnalysisMode ? -18 : 0;
+      const targetY = isAnalysisMode ? -5 : 0;
+      const targetScale = isAnalysisMode ? 0.6 : 1.1;
       
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
@@ -47,7 +47,7 @@ function LaptopModel({
     }
 
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 20 : 0;
+      feedbackLightRef.current.intensity = feedback !== "none" ? 30 : 0;
     }
   });
 
@@ -60,16 +60,17 @@ function LaptopModel({
         ref={feedbackLightRef} 
         position={[0, 2, 1]} 
         color={feedbackColor} 
-        distance={10}
+        distance={15}
       />
       {feedback !== "none" && (
         <Float speed={3} rotationIntensity={0.2} floatIntensity={0.5}>
           <Text
-            position={[0, 3.5, 0]}
-            fontSize={0.3}
+            position={[0, 4, 0]}
+            fontSize={0.4}
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
+            font="/fonts/GeistMono-Bold.woff"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
@@ -269,7 +270,7 @@ export default function TheLinePage() {
 
         <div className="flex-grow relative flex flex-col items-center justify-center p-6 md:p-12">
           
-          <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 z-0 overflow-hidden">
             <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
               <Suspense fallback={null}>
                 <Stage environment="studio" intensity={0.6} contactShadow={{ opacity: 0.2 }}>
@@ -320,12 +321,11 @@ export default function TheLinePage() {
                 <div className="space-y-6 max-w-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-brand-blue rounded-full animate-ping" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Evaluando desempeño</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">EVALUANDO DESEMPEÑO</span>
                   </div>
                   <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tighter">
                     Análisis de integridad en curso.
                   </h2>
-                  {/* El modelo 3D se posiciona visualmente debajo de este bloque mediante LaptopModel targetX/targetY */}
                 </div>
               )}
             </div>
