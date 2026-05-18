@@ -1,32 +1,79 @@
 
 "use client";
 
-import { useState, useEffect, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, X, AlertTriangle, Monitor, Award, Loader2 } from "lucide-react";
+import { ChevronRight, X, AlertTriangle, Monitor, Award, CheckCircle2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Stage, Float, Center } from "@react-three/drei";
+import { useGLTF, Stage, Float, Center, Text } from "@react-three/drei";
 import * as THREE from "three";
+import { cn } from "@/lib/utils";
 
 type AssessmentState = "selector" | "immersive" | "results";
 type NarrativeStep = "briefing" | "problem" | "analysis";
+type FeedbackStatus = "none" | "correct" | "incorrect";
 
-function LaptopModel() {
+function LaptopModel({ 
+  isAnalysisMode, 
+  feedback 
+}: { 
+  isAnalysisMode: boolean; 
+  feedback: FeedbackStatus 
+}) {
   const { scene } = useGLTF("/models/laptop.glb");
-  const meshRef = useRef<THREE.Group>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const feedbackLightRef = useRef<THREE.PointLight>(null);
 
   useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.15;
+    if (groupRef.current) {
+      // Posición dinámica: Centro en narrativa, Izquierda en análisis
+      const targetX = isAnalysisMode ? -3 : 0;
+      const targetScale = isAnalysisMode ? 0.7 : 1;
+      
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.05);
+      groupRef.current.scale.setScalar(THREE.MathUtils.lerp(groupRef.current.scale.x, targetScale, 0.05));
+      
+      // Rotación suave
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
+    }
+
+    if (feedbackLightRef.current) {
+      feedbackLightRef.current.intensity = feedback !== "none" ? 5 : 0;
     }
   });
 
+  const feedbackColor = feedback === "correct" ? "#00A44E" : "#E52521";
+
   return (
-    <group ref={meshRef}>
+    <group ref={groupRef}>
       <primitive object={scene} />
+      
+      {/* Luz de feedback que ilumina el modelo desde la pantalla */}
+      <pointLight 
+        ref={feedbackLightRef} 
+        position={[0, 1.5, 0.5]} 
+        color={feedbackColor} 
+        distance={5}
+      />
+
+      {/* Texto holográfico de feedback sobre la laptop */}
+      {feedback !== "none" && (
+        <Float speed={5} rotationIntensity={0.5} floatIntensity={0.5}>
+          <Text
+            position={[0, 2, 0.5]}
+            fontSize={0.4}
+            color={feedbackColor}
+            font="/fonts/Geist-Bold.ttf"
+            anchorX="center"
+            anchorY="middle"
+          >
+            {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
+          </Text>
+        </Float>
+      )}
     </group>
   );
 }
@@ -34,6 +81,7 @@ function LaptopModel() {
 export default function TheLinePage() {
   const [viewState, setViewState] = useState<AssessmentState>("selector");
   const [narrativeStep, setNarrativeStep] = useState<NarrativeStep>("briefing");
+  const [feedback, setFeedback] = useState<FeedbackStatus>("none");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
@@ -70,6 +118,7 @@ export default function TheLinePage() {
     setIsConfirmOpen(false);
     setViewState("immersive");
     setNarrativeStep("briefing");
+    setFeedback("none");
   };
 
   const handleExit = () => {
@@ -77,7 +126,7 @@ export default function TheLinePage() {
   };
 
   const nextStep = () => {
-    if (isTransitioning) return;
+    if (isTransitioning || feedback !== "none") return;
     setIsTransitioning(true);
     setTimeout(() => {
       if (narrativeStep === "briefing") setNarrativeStep("problem");
@@ -87,18 +136,24 @@ export default function TheLinePage() {
   };
 
   const handleAnswer = (index: number) => {
+    const isCorrect = index === questions[currentQuestion].correct;
+    setFeedback(isCorrect ? "correct" : "incorrect");
     setAnswers({ ...answers, [currentQuestion]: index });
     
-    setIsTransitioning(true);
+    // Pausa cinematográfica para ver el feedback antes de pasar
     setTimeout(() => {
-      if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion(currentQuestion + 1);
-        setNarrativeStep("briefing");
-      } else {
-        setViewState("results");
-      }
-      setIsTransitioning(false);
-    }, 600);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        if (currentQuestion < questions.length - 1) {
+          setCurrentQuestion(currentQuestion + 1);
+          setNarrativeStep("briefing");
+          setFeedback("none");
+        } else {
+          setViewState("results");
+        }
+        setIsTransitioning(false);
+      }, 600);
+    }, 1500);
   };
 
   if (viewState === "selector") {
@@ -196,6 +251,7 @@ export default function TheLinePage() {
 
   if (viewState === "immersive") {
     const q = questions[currentQuestion];
+    const isAnalysis = narrativeStep === "analysis";
     
     return (
       <div className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden select-none">
@@ -212,76 +268,105 @@ export default function TheLinePage() {
           </div>
         </header>
 
-        <div className="flex-grow flex flex-col md:flex-row items-center justify-center relative p-8 md:p-24">
+        <div className="flex-grow flex flex-col items-center justify-center relative p-8 md:p-24 overflow-hidden">
           
-          {/* Laptop 3D de fondo */}
-          <div className="absolute inset-0 z-0 opacity-40">
-            <Canvas shadows camera={{ position: [0, 0, 15], fov: 35 }}>
+          {/* Capa 3D: Se ajusta según el modo */}
+          <div className="absolute inset-0 z-0">
+            <Canvas shadows camera={{ position: [0, 0, 10], fov: 35 }}>
               <Suspense fallback={null}>
                 <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.4 }}>
-                  <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
-                    <Center>
-                      <LaptopModel />
-                    </Center>
-                  </Float>
+                  <Center>
+                    <LaptopModel 
+                      isAnalysisMode={isAnalysis} 
+                      feedback={feedback} 
+                    />
+                  </Center>
                 </Stage>
               </Suspense>
             </Canvas>
           </div>
 
-          {/* Narrativa Fragmentada */}
-          <div className={`max-w-4xl w-full relative z-10 transition-all duration-700 ease-out ${isTransitioning ? 'opacity-0 translate-y-8 blur-sm' : 'opacity-100 translate-y-0 blur-0'}`}>
-             
-             {narrativeStep === "briefing" && (
-                <div className="space-y-12 text-center cursor-pointer" onClick={nextStep}>
-                   <div className="space-y-6">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto de Arquitectura</span>
-                      <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tighter italic leading-[1.1]">
-                         {q.briefing}
-                      </h2>
-                   </div>
-                   <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Click_to_receive_briefing</p>
+          {/* Contenedor de Texto / UI */}
+          <div className={cn(
+            "max-w-7xl w-full relative z-10 transition-all duration-700 grid gap-12",
+            isAnalysis ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+          )}>
+            
+            {/* Columna Izquierda / Central: Narrativa */}
+            <div className={cn(
+              "flex flex-col justify-center transition-all duration-700",
+              isAnalysis ? "opacity-100 items-start text-left" : "opacity-100 items-center text-center",
+              isTransitioning && "opacity-0 translate-y-4 blur-sm"
+            )}>
+              {narrativeStep === "briefing" && (
+                <div className="space-y-12 cursor-pointer w-full" onClick={nextStep}>
+                  <div className="space-y-6">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto de Arquitectura</span>
+                    <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tighter italic leading-[1.1]">
+                      {q.briefing}
+                    </h2>
+                  </div>
+                  <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Click_to_receive_briefing</p>
                 </div>
-             )}
+              )}
 
-             {narrativeStep === "problem" && (
-                <div className="space-y-12 text-center cursor-pointer" onClick={nextStep}>
-                   <div className="space-y-6">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Detección de Anomalía</span>
-                      <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight px-4 md:px-12">
-                         "{q.text}"
-                      </h2>
-                   </div>
-                   <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Inyectar_soluciones</p>
+              {narrativeStep === "problem" && (
+                <div className="space-y-12 cursor-pointer w-full" onClick={nextStep}>
+                  <div className="space-y-6">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Detección de Anomalía</span>
+                    <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight">
+                      "{q.text}"
+                    </h2>
+                  </div>
+                  <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Inyectar_soluciones</p>
                 </div>
-             )}
+              )}
 
-             {narrativeStep === "analysis" && (
-                <div className="space-y-12">
-                   <div className="space-y-4 text-center md:text-left">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Vectores de Resolución</span>
-                      <h2 className="text-2xl md:text-4xl font-bold text-white leading-snug">
-                         Selecciona el vector óptimo para restaurar la integridad del sistema:
-                      </h2>
-                   </div>
-
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {q.options.map((opt, idx) => (
-                        <button 
-                          key={idx}
-                          onClick={() => handleAnswer(idx)}
-                          className="p-8 rounded-[1.5rem] border border-white/5 bg-white/5 text-left font-bold text-white/60 hover:border-brand-blue/40 hover:bg-brand-blue/5 hover:text-white transition-all group relative overflow-hidden"
-                        >
-                          <div className="flex items-center justify-between relative z-10">
-                             <span className="text-sm md:text-base pr-4">{opt}</span>
-                             <span className="text-[10px] font-mono text-white/10 group-hover:text-brand-blue">0{idx + 1}</span>
-                          </div>
-                        </button>
-                      ))}
-                   </div>
+              {isAnalysis && (
+                <div className="space-y-6 max-w-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Vector de Resolución</span>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white leading-snug">
+                    Selecciona el vector óptimo para restaurar la integridad del sistema:
+                  </h2>
+                  <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
+                    <p className="text-white/40 text-xs font-medium leading-relaxed italic">
+                      "{q.text}"
+                    </p>
+                  </div>
                 </div>
-             )}
+              )}
+            </div>
 
+            {/* Columna Derecha: Opciones (Solo en Análisis) */}
+            {isAnalysis && (
+              <div className={cn(
+                "flex flex-col justify-center space-y-4 transition-all duration-700 delay-300",
+                isTransitioning ? "opacity-0 translate-x-8 blur-sm" : "opacity-100 translate-x-0"
+              )}>
+                {q.options.map((opt, idx) => (
+                  <button 
+                    key={idx}
+                    disabled={feedback !== "none"}
+                    onClick={() => handleAnswer(idx)}
+                    className={cn(
+                      "p-8 rounded-[1.5rem] border text-left font-bold transition-all group relative overflow-hidden",
+                      feedback === "none" 
+                        ? "bg-white/5 border-white/5 text-white/60 hover:border-brand-blue/40 hover:bg-brand-blue/5 hover:text-white"
+                        : idx === q.correct 
+                          ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
+                          : answers[currentQuestion] === idx 
+                            ? "bg-brand-red/20 border-brand-red/50 text-brand-red"
+                            : "bg-white/5 border-white/5 text-white/20"
+                    )}
+                  >
+                    <div className="flex items-center justify-between relative z-10">
+                       <span className="text-sm md:text-base pr-4">{opt}</span>
+                       <span className="text-[10px] font-mono opacity-20 group-hover:opacity-100 transition-opacity">0{idx + 1}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -289,7 +374,11 @@ export default function TheLinePage() {
         <footer className="p-10 flex justify-center items-center relative z-20">
            <div className="flex gap-3">
               {questions.map((_, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-1000 ${i <= currentQuestion ? 'w-16 bg-brand-blue shadow-[0_0_20px_rgba(0,172,238,0.7)]' : 'w-8 bg-white/10'}`}></div>
+                <div key={i} className={cn(
+                  "h-1.5 rounded-full transition-all duration-1000",
+                  i === currentQuestion ? 'w-16 bg-brand-blue shadow-[0_0_20px_rgba(0,172,238,0.7)]' : 
+                  i < currentQuestion ? 'w-8 bg-brand-green' : 'w-8 bg-white/10'
+                )}></div>
               ))}
            </div>
         </footer>
