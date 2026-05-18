@@ -1,4 +1,3 @@
-
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -11,99 +10,62 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['DM Sans', 'sans-serif'],
+        body: ['SF Pro Display', 'Inter', 'DM Sans', 'sans-serif'],
         headline: ['Playfair Display', 'serif'],
-        code: ['monospace'],
+        code: ['SF Mono', 'monospace'],
       },
       colors: {
-        background: '#FDFFFC',
-        foreground: '#020100',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         card: {
-          DEFAULT: '#FDFFFC',
-          foreground: '#020100',
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
         popover: {
-          DEFAULT: '#FDFFFC',
-          foreground: '#020100',
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
         },
         primary: {
-          DEFAULT: '#235789',
-          foreground: '#FDFFFC',
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: '#C1292E',
-          foreground: '#FDFFFC',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         muted: {
-          DEFAULT: '#F1F1F1',
-          foreground: '#666666',
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: '#F1D302',
-          foreground: '#020100',
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
         destructive: {
-          DEFAULT: '#C1292E',
-          foreground: '#FDFFFC',
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
         },
-        border: '#020100',
-        input: '#020100',
-        ring: '#235789',
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
         chart: {
-          '1': '#235789',
-          '2': '#C1292E',
-          '3': '#F1D302',
-          '4': '#020100',
-          '5': '#666666',
-        },
-        sidebar: {
-          DEFAULT: '#FDFFFC',
-          foreground: '#020100',
-          primary: '#235789',
-          'primary-foreground': '#FDFFFC',
-          accent: '#F1D302',
-          'accent-foreground': '#020100',
-          border: '#020100',
-          ring: '#235789',
+          '1': 'hsl(var(--primary))',
+          '2': '#32D74B',
+          '3': '#FF9F0A',
+          '4': '#FF375F',
+          '5': '#BF5AF2',
         },
       },
       borderRadius: {
-        lg: '0px',
-        md: '0px',
-        sm: '0px',
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+        '2xl': '1.25rem',
+        '3xl': '1.75rem',
       },
-      keyframes: {
-        'accordion-down': {
-          from: {
-            height: '0',
-          },
-          to: {
-            height: 'var(--radix-accordion-content-height)',
-          },
-        },
-        'accordion-up': {
-          from: {
-            height: 'var(--radix-accordion-content-height)',
-          },
-          to: {
-            height: '0',
-          },
-        },
-        'typewriter': {
-          from: { width: '0' },
-          to: { width: '100%' }
-        }
-      },
-      animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up': 'accordion-up 0.2s ease-out',
-        'typewriter': 'typewriter 2s steps(40, end)'
-      },
-      borderWidth: {
-        DEFAULT: '1px',
-        '2': '2px',
-        '3': '3px',
-        '4': '4px',
+      boxShadow: {
+        'apple': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+        'apple-lg': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
       }
     },
   },

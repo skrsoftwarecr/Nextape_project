@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -18,7 +17,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Don't show regular layout for "The LINE" assessment (immersive mode)
   const isLineAssessment = pathname === "/dashboard/the-line" && typeof window !== "undefined" && localStorage.getItem("line_active") === "true";
 
   if (isLineAssessment) {
@@ -26,29 +24,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 fixed top-0 bottom-0 border-r-4 border-black">
-        <div className="p-8 border-b-4 border-black">
-          <Link href="/" className="text-3xl font-headline font-black tracking-tighter uppercase italic block">
-            NEXTAPE<span className="text-secondary">.</span>
+    <div className="flex min-h-screen bg-[#F5F5F7] font-body">
+      {/* Sidebar - Apple Style */}
+      <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200">
+        <div className="p-8">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full" />
+            </div>
+            <span className="text-xl font-bold tracking-tight">Nextape</span>
           </Link>
         </div>
-        <nav className="flex-grow p-4 space-y-2">
+        
+        <nav className="flex-grow px-4 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link key={item.name} href={item.href}>
-                <div className={`flex items-center gap-4 px-4 py-4 font-bold uppercase tracking-widest text-sm transition-all border-2 ${isActive ? "bg-primary text-white border-black translate-x-1 -translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]" : "border-transparent hover:border-black/10"}`}>
-                  <item.icon className="h-5 w-5" />
+                <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? "bg-primary text-white shadow-md shadow-primary/20" : "text-gray-500 hover:bg-gray-100"}`}>
+                  <item.icon className={`h-5 w-5 ${isActive ? "text-white" : "text-gray-400"}`} />
                   {item.name}
                 </div>
               </Link>
             );
           })}
         </nav>
-        <div className="p-4 border-t-4 border-black">
-          <Button variant="ghost" className="w-full flex justify-start gap-4 font-bold uppercase tracking-widest text-sm p-4 h-auto hover:bg-secondary hover:text-white rounded-none">
+
+        <div className="p-6">
+          <Button variant="ghost" className="w-full justify-start gap-3 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-2xl py-6">
             <LogOut className="h-5 w-5" />
             Sign Out
           </Button>
@@ -56,51 +59,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Mobile Header */}
-      <header className="md:hidden fixed top-0 w-full bg-background border-b-2 border-black z-40 p-4 flex justify-between items-center">
-        <Link href="/" className="text-2xl font-headline font-black tracking-tighter uppercase italic">
-          NEXTAPE<span className="text-secondary">.</span>
-        </Link>
-        <button onClick={() => setIsMobileMenuOpen(true)}>
-          <Menu className="h-8 w-8" />
+      <header className="md:hidden fixed top-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-40 p-4 flex justify-between items-center">
+        <Link href="/" className="text-xl font-bold tracking-tight">Nextape</Link>
+        <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-gray-100 rounded-full">
+          <Menu className="h-6 w-6" />
         </button>
       </header>
 
-      {/* Mobile Drawer */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)}></div>
-          <div className="absolute top-0 right-0 bottom-0 w-4/5 bg-background border-l-4 border-black p-6 flex flex-col">
-            <div className="flex justify-end mb-8">
-              <button onClick={() => setIsMobileMenuOpen(false)}>
-                <X className="h-8 w-8" />
-              </button>
-            </div>
-            <nav className="space-y-4">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
-                    <div className={`flex items-center gap-4 p-4 font-bold uppercase tracking-widest text-lg border-2 ${isActive ? "bg-primary text-white border-black" : "border-black"}`}>
-                      <item.icon className="h-6 w-6" />
-                      {item.name}
-                    </div>
-                  </Link>
-                );
-              })}
-            </nav>
-            <div className="mt-auto">
-              <Button className="w-full bg-secondary text-white font-bold uppercase tracking-widest p-4 h-auto rounded-none">
-                <LogOut className="h-5 w-5 mr-4" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main Content Area */}
-      <main className="flex-1 md:ml-64 pt-24 md:pt-0">
-        <div className="p-8 md:p-12 max-w-[1200px] mx-auto">
+      <main className="flex-1 md:ml-72 pt-20 md:pt-0">
+        <div className="p-6 md:p-10 max-w-7xl mx-auto">
           {children}
         </div>
       </main>

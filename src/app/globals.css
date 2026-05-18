@@ -1,30 +1,51 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 100 20% 99%;
-    --foreground: 0 0% 0%;
-    --card: 100 20% 99%;
-    --card-foreground: 0 0% 0%;
-    --popover: 100 20% 99%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 210 59% 34%;
-    --primary-foreground: 100 20% 99%;
-    --secondary: 358 63% 46%;
-    --secondary-foreground: 100 20% 99%;
-    --muted: 0 0% 94%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 52 98% 48%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 358 63% 46%;
-    --destructive-foreground: 100 20% 99%;
-    --border: 0 0% 0%;
-    --input: 0 0% 0%;
-    --ring: 210 59% 34%;
-    --radius: 0rem;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 212 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 212 100% 96%;
+    --accent-foreground: 212 100% 45%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 212 100% 45%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 0 0% 3%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 212 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 212 100% 50%;
   }
 }
 
@@ -33,23 +54,21 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body;
+    @apply bg-[#F5F5F7] text-foreground font-body;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-headline;
+    @apply font-body font-semibold tracking-tight;
   }
 }
 
-.typewriter-text {
-  overflow: hidden;
-  white-space: pre-wrap;
+.font-headline {
+  font-family: 'Playfair Display', serif;
 }
 
-.line-assessment-bg {
-  background-color: #020100;
-  color: #FDFFFC;
+.glass-card {
+  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
 }
 
-.hero-number {
-  @apply font-headline text-8xl md:text-[12rem] leading-none opacity-10 select-none;
+.apple-button {
+  @apply rounded-full font-medium transition-all active:scale-95;
 }
