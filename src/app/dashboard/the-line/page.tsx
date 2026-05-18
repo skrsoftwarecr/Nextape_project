@@ -29,19 +29,26 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posición dinámica: Centro en narrativa, Izquierda en análisis
+      // Posicionamiento interpolado suave
+      // En análisis se mueve a la izquierda (-3), en narrativa se queda al centro (0)
       const targetX = isAnalysisMode ? -3 : 0;
-      const targetScale = isAnalysisMode ? 0.7 : 1;
+      const targetScale = isAnalysisMode ? 0.7 : 1.1;
+      const targetZ = isAnalysisMode ? 0 : -2; // Se aleja un poco cuando es fondo de narrativa
       
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.05);
-      groupRef.current.scale.setScalar(THREE.MathUtils.lerp(groupRef.current.scale.x, targetScale, 0.05));
+      groupRef.current.position.z = THREE.MathUtils.lerp(groupRef.current.position.z, targetZ, 0.05);
       
-      // Rotación suave
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
+      const currentScale = groupRef.current.scale.x;
+      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.05);
+      groupRef.current.scale.setScalar(newScale);
+      
+      // Rotación constante sutil
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.15;
     }
 
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 5 : 0;
+      // La intensidad de la luz de feedback solo sube cuando hay respuesta
+      feedbackLightRef.current.intensity = feedback !== "none" ? 15 : 0;
     }
   });
 
@@ -51,20 +58,21 @@ function LaptopModel({
     <group ref={groupRef}>
       <primitive object={scene} />
       
-      {/* Luz de feedback que ilumina el modelo desde la pantalla */}
+      {/* Luz puntual que emana desde la pantalla al responder */}
       <pointLight 
         ref={feedbackLightRef} 
-        position={[0, 1.5, 0.5]} 
+        position={[0, 1, 1]} 
         color={feedbackColor} 
-        distance={5}
+        distance={8}
+        decay={2}
       />
 
-      {/* Texto holográfico de feedback sobre la laptop */}
+      {/* Texto holográfico flotante sobre la laptop */}
       {feedback !== "none" && (
-        <Float speed={5} rotationIntensity={0.5} floatIntensity={0.5}>
+        <Float speed={5} rotationIntensity={0.2} floatIntensity={0.5}>
           <Text
-            position={[0, 2, 0.5]}
-            fontSize={0.4}
+            position={[0, 2.5, 0]}
+            fontSize={0.35}
             color={feedbackColor}
             font="/fonts/Geist-Bold.ttf"
             anchorX="center"
@@ -98,7 +106,6 @@ export default function TheLinePage() {
         "Use React Context with a high-frequency polling interval of 50ms."
       ],
       correct: 1,
-      context: "El desacoplamiento de la ingesta de datos y el renderizado es vital para el rendimiento."
     },
     {
        briefing: "SISTEMA: Arquitectura distribuida bajo partición de red.",
@@ -110,7 +117,6 @@ export default function TheLinePage() {
          "Durabilidad"
        ],
        correct: 1,
-       context: "En sistemas AP, la consistencia eventual es el precio de la disponibilidad continua."
     }
   ];
 
@@ -123,6 +129,8 @@ export default function TheLinePage() {
 
   const handleExit = () => {
     setViewState("selector");
+    setCurrentQuestion(0);
+    setAnswers({});
   };
 
   const nextStep = () => {
@@ -140,7 +148,7 @@ export default function TheLinePage() {
     setFeedback(isCorrect ? "correct" : "incorrect");
     setAnswers({ ...answers, [currentQuestion]: index });
     
-    // Pausa cinematográfica para ver el feedback antes de pasar
+    // Pausa para que el usuario vea el feedback en la laptop
     setTimeout(() => {
       setIsTransitioning(true);
       setTimeout(() => {
@@ -153,7 +161,7 @@ export default function TheLinePage() {
         }
         setIsTransitioning(false);
       }, 600);
-    }, 1500);
+    }, 2000);
   };
 
   if (viewState === "selector") {
@@ -161,7 +169,7 @@ export default function TheLinePage() {
       <div className="space-y-12 max-w-6xl mx-auto">
         <header>
           <h1 className="text-4xl font-bold tracking-tight">The LINE.</h1>
-          <p className="text-gray-500 font-medium">Entorno de evaluación de arquitectura y respuesta sistémica.</p>
+          <p className="text-gray-500 font-medium">Evaluación de arquitectura y respuesta sistémica.</p>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -220,7 +228,6 @@ export default function TheLinePage() {
                 El entorno de "The LINE" evalúa tu precisión arquitectónica bajo escenarios de fallo en tiempo real.
               </p>
             </div>
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           </div>
         </div>
 
@@ -232,16 +239,12 @@ export default function TheLinePage() {
               </div>
               <DialogTitle className="text-4xl font-bold tracking-tighter text-center leading-none">¿Estás preparado?</DialogTitle>
               <DialogDescription className="text-lg font-medium text-center text-gray-500 leading-relaxed px-4">
-                Una vez iniciada la sincronización, el entorno no podrá pausarse. Tus resultados se firmarán digitalmente en tu identidad Nextape.
+                Tus resultados se firmarán digitalmente en tu identidad Nextape.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="flex-col sm:flex-row gap-4 mt-10">
-              <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="h-16 w-full rounded-2xl font-bold text-gray-400">
-                Regresar
-              </Button>
-              <Button onClick={handleStart} className="bg-gray-950 hover:bg-black text-white h-16 w-full rounded-2xl font-bold shadow-apple-lg">
-                Iniciar Sync
-              </Button>
+              <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="h-16 w-full rounded-2xl font-bold text-gray-400">Regresar</Button>
+              <Button onClick={handleStart} className="bg-gray-950 hover:bg-black text-white h-16 w-full rounded-2xl font-bold">Iniciar Sync</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -256,92 +259,89 @@ export default function TheLinePage() {
     return (
       <div className="fixed inset-0 z-[100] bg-black flex flex-col overflow-hidden select-none">
         {/* Header Cinemático */}
-        <header className="p-8 flex justify-between items-center relative z-20">
-          <button onClick={handleExit} className="flex items-center gap-2 font-bold uppercase tracking-[0.2em] text-[10px] text-white/30 hover:text-white transition-opacity">
+        <header className="p-8 flex justify-between items-center relative z-50">
+          <button onClick={handleExit} className="flex items-center gap-2 font-bold uppercase tracking-[0.2em] text-[10px] text-white/30 hover:text-white">
             <X className="h-4 w-4" /> Finalizar Sesión
           </button>
-          <div className="text-xs font-bold tracking-widest text-brand-blue animate-pulse">
-            NEURAL_SYNC_ACTIVE
-          </div>
+          <div className="text-xs font-bold tracking-widest text-brand-blue animate-pulse">NEURAL_SYNC_ACTIVE</div>
           <div className="text-[10px] font-bold uppercase text-white/20 tracking-[0.3em]">
             Q0{currentQuestion + 1} / 0{questions.length}
           </div>
         </header>
 
-        <div className="flex-grow flex flex-col items-center justify-center relative p-8 md:p-24 overflow-hidden">
+        <div className="flex-grow relative flex flex-col items-center justify-center p-6 md:p-24 overflow-hidden">
           
-          {/* Capa 3D: Se ajusta según el modo */}
+          {/* Capa 3D: Ocupa el fondo, se posiciona según el estado */}
           <div className="absolute inset-0 z-0">
-            <Canvas shadows camera={{ position: [0, 0, 10], fov: 35 }}>
+            <Canvas camera={{ position: [0, 0, 10], fov: 35 }}>
               <Suspense fallback={null}>
-                <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.4 }}>
-                  <Center>
-                    <LaptopModel 
-                      isAnalysisMode={isAnalysis} 
-                      feedback={feedback} 
-                    />
-                  </Center>
+                {/* Stage maneja la iluminación base. La laptopModel maneja su posición local */}
+                <Stage environment="studio" intensity={0.6} contactShadow={{ opacity: 0.2 }}>
+                  <LaptopModel 
+                    isAnalysisMode={isAnalysis} 
+                    feedback={feedback} 
+                  />
                 </Stage>
               </Suspense>
             </Canvas>
+            {/* Overlay sutil para "desvanecer" la laptop cuando es fondo */}
+            {!isAnalysis && <div className="absolute inset-0 bg-black/40 pointer-events-none" />}
           </div>
 
-          {/* Contenedor de Texto / UI */}
+          {/* Contenedor de Interfaz: Z-20 para estar sobre el Canvas */}
           <div className={cn(
-            "max-w-7xl w-full relative z-10 transition-all duration-700 grid gap-12",
+            "max-w-7xl w-full relative z-20 transition-all duration-700 grid gap-12 h-full",
             isAnalysis ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
           )}>
             
-            {/* Columna Izquierda / Central: Narrativa */}
+            {/* Columna Texto: Siempre presente */}
             <div className={cn(
               "flex flex-col justify-center transition-all duration-700",
-              isAnalysis ? "opacity-100 items-start text-left" : "opacity-100 items-center text-center",
+              isAnalysis ? "items-start text-left" : "items-center text-center",
               isTransitioning && "opacity-0 translate-y-4 blur-sm"
             )}>
               {narrativeStep === "briefing" && (
-                <div className="space-y-12 cursor-pointer w-full" onClick={nextStep}>
+                <div className="space-y-12 cursor-pointer w-full group" onClick={nextStep}>
                   <div className="space-y-6">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto de Arquitectura</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto del Sistema</span>
                     <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tighter italic leading-[1.1]">
                       {q.briefing}
                     </h2>
                   </div>
-                  <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Click_to_receive_briefing</p>
+                  <p className="text-white/20 text-[9px] font-bold tracking-[0.4em] uppercase group-hover:text-white/50 transition-colors">Recibir_datos (Click)</p>
                 </div>
               )}
 
               {narrativeStep === "problem" && (
-                <div className="space-y-12 cursor-pointer w-full" onClick={nextStep}>
+                <div className="space-y-12 cursor-pointer w-full group" onClick={nextStep}>
                   <div className="space-y-6">
                     <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Detección de Anomalía</span>
                     <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight">
                       "{q.text}"
                     </h2>
                   </div>
-                  <p className="text-white/30 text-xs font-bold animate-pulse tracking-[0.4em] uppercase">Inyectar_soluciones</p>
+                  <p className="text-white/20 text-[9px] font-bold tracking-[0.4em] uppercase group-hover:text-white/50 transition-colors">Analizar_vectores (Click)</p>
                 </div>
               )}
 
               {isAnalysis && (
-                <div className="space-y-6 max-w-lg">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Vector de Resolución</span>
+                <div className="space-y-8 max-w-lg">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Procedimiento de Análisis</span>
                   <h2 className="text-2xl md:text-3xl font-bold text-white leading-snug">
-                    Selecciona el vector óptimo para restaurar la integridad del sistema:
+                    Selecciona el vector de resolución óptimo:
                   </h2>
                   <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
-                    <p className="text-white/40 text-xs font-medium leading-relaxed italic">
-                      "{q.text}"
-                    </p>
+                    <p className="text-white/40 text-[11px] font-medium leading-relaxed italic">"{q.text}"</p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Columna Derecha: Opciones (Solo en Análisis) */}
+            {/* Columna Opciones: Solo en fase de análisis */}
             {isAnalysis && (
               <div className={cn(
-                "flex flex-col justify-center space-y-4 transition-all duration-700 delay-300",
-                isTransitioning ? "opacity-0 translate-x-8 blur-sm" : "opacity-100 translate-x-0"
+                "flex flex-col justify-center space-y-4 transition-all duration-700",
+                isTransitioning ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0"
               )}>
                 {q.options.map((opt, idx) => (
                   <button 
@@ -349,19 +349,19 @@ export default function TheLinePage() {
                     disabled={feedback !== "none"}
                     onClick={() => handleAnswer(idx)}
                     className={cn(
-                      "p-8 rounded-[1.5rem] border text-left font-bold transition-all group relative overflow-hidden",
+                      "p-6 md:p-8 rounded-[1.5rem] border text-left font-bold transition-all relative overflow-hidden",
                       feedback === "none" 
-                        ? "bg-white/5 border-white/5 text-white/60 hover:border-brand-blue/40 hover:bg-brand-blue/5 hover:text-white"
+                        ? "bg-white/5 border-white/10 text-white/50 hover:border-brand-blue/40 hover:bg-brand-blue/5 hover:text-white"
                         : idx === q.correct 
                           ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
                           : answers[currentQuestion] === idx 
                             ? "bg-brand-red/20 border-brand-red/50 text-brand-red"
-                            : "bg-white/5 border-white/5 text-white/20"
+                            : "bg-white/5 border-white/5 text-white/10"
                     )}
                   >
-                    <div className="flex items-center justify-between relative z-10">
-                       <span className="text-sm md:text-base pr-4">{opt}</span>
-                       <span className="text-[10px] font-mono opacity-20 group-hover:opacity-100 transition-opacity">0{idx + 1}</span>
+                    <div className="flex items-center justify-between">
+                       <span className="text-sm md:text-base">{opt}</span>
+                       <span className="text-[9px] font-mono opacity-20">V-0{idx + 1}</span>
                     </div>
                   </button>
                 ))}
@@ -370,14 +370,13 @@ export default function TheLinePage() {
           </div>
         </div>
 
-        {/* Footer de Progreso */}
-        <footer className="p-10 flex justify-center items-center relative z-20">
+        <footer className="p-10 flex justify-center items-center relative z-50">
            <div className="flex gap-3">
               {questions.map((_, i) => (
                 <div key={i} className={cn(
-                  "h-1.5 rounded-full transition-all duration-1000",
-                  i === currentQuestion ? 'w-16 bg-brand-blue shadow-[0_0_20px_rgba(0,172,238,0.7)]' : 
-                  i < currentQuestion ? 'w-8 bg-brand-green' : 'w-8 bg-white/10'
+                  "h-1 rounded-full transition-all duration-700",
+                  i === currentQuestion ? 'w-12 bg-brand-blue' : 
+                  i < currentQuestion ? 'w-6 bg-brand-green' : 'w-6 bg-white/10'
                 )}></div>
               ))}
            </div>
@@ -390,31 +389,19 @@ export default function TheLinePage() {
     const score = Math.round((Object.values(answers).filter((a, i) => a === questions[i].correct).length / questions.length) * 100);
 
     return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center text-center space-y-12 py-24 animate-in fade-in duration-1000">
-        <header className="space-y-6">
-          <div className="bg-brand-blue p-8 rounded-[2.5rem] shadow-apple-lg inline-flex">
-            <Award className="h-20 w-20 text-white" />
-          </div>
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-none italic">Sync <br /> Completado.</h1>
-        </header>
-
-        <div className="flex flex-col items-center">
-          <div className="text-[12rem] md:text-[15rem] font-black leading-none italic text-brand-blue tracking-tighter">{score}</div>
-          <div className="text-xl font-bold uppercase tracking-[0.3em] -mt-8 text-gray-400">Integridad Neural</div>
+      <div className="min-h-screen flex flex-col items-center justify-center text-center space-y-12 p-6 animate-in fade-in zoom-in duration-700">
+        <div className="bg-brand-blue/10 p-8 rounded-[3rem] inline-flex mb-4">
+           <Award className="h-16 w-16 text-brand-blue" />
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg pt-12">
-          <Link href="/dashboard" className="w-full">
-            <Button className="w-full h-16 bg-gray-950 hover:bg-black text-white rounded-2xl font-bold uppercase tracking-widest shadow-apple-lg transition-all">
-              Actualizar Perfil
-            </Button>
-          </Link>
-          <Button 
-            onClick={() => setViewState("selector")} 
-            className="w-full h-16 bg-white hover:bg-gray-50 text-gray-900 rounded-2xl font-bold uppercase tracking-widest border border-gray-100 shadow-apple transition-all"
-          >
-            Reintentar
-          </Button>
+        <div className="space-y-4">
+          <h1 className="text-6xl md:text-8xl font-black italic tracking-tighter text-brand-blue leading-none">{score}%</h1>
+          <p className="text-sm font-bold uppercase tracking-[0.4em] text-gray-400">Integridad Neural Certificada</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm pt-8">
+           <Link href="/dashboard" className="w-full">
+             <Button className="w-full h-14 bg-black text-white rounded-2xl font-bold uppercase tracking-widest text-xs">Actualizar Perfil</Button>
+           </Link>
+           <Button onClick={handleExit} variant="outline" className="h-14 w-full rounded-2xl border-gray-200 font-bold uppercase tracking-widest text-xs">Reintentar</Button>
         </div>
       </div>
     );
