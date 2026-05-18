@@ -17,6 +17,14 @@ export default {
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        brand: {
+          red: 'hsl(var(--brand-red))',
+          orange: 'hsl(var(--brand-orange))',
+          yellow: 'hsl(var(--brand-yellow))',
+          green: 'hsl(var(--brand-green))',
+          blue: 'hsl(var(--brand-blue))',
+          purple: 'hsl(var(--brand-purple))',
+        },
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
@@ -49,11 +57,11 @@ export default {
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         chart: {
-          '1': 'hsl(var(--primary))',
-          '2': '#32D74B',
-          '3': '#FF9F0A',
-          '4': '#FF375F',
-          '5': '#BF5AF2',
+          '1': 'hsl(var(--brand-blue))',
+          '2': 'hsl(var(--brand-green))',
+          '3': 'hsl(var(--brand-orange))',
+          '4': 'hsl(var(--brand-red))',
+          '5': 'hsl(var(--brand-purple))',
         },
       },
       borderRadius: {

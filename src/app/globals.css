@@ -11,7 +11,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
     
-    /* Usamos el #00ACEE (Cyan) como primario principal */
+    /* Primario basado en el Azul de la marca #00ACEE */
     --primary: 197 88% 47%;
     --primary-foreground: 0 0% 100%;
     
@@ -28,7 +28,7 @@
     --ring: 197 88% 47%;
     --radius: 1.5rem;
 
-    /* Brand Colors */
+    /* Brand Colors (HSL components only for Tailwind opacity support) */
     --brand-red: 1 79% 51%;      /* #E52521 */
     --brand-orange: 31 91% 54%;   /* #F48E1F */
     --brand-yellow: 52 95% 51%;   /* #FADD1A */
@@ -66,9 +66,6 @@
   }
   body {
     @apply bg-[#F5F5F7] text-foreground font-body;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-body font-semibold tracking-tight;
   }
 }
 
