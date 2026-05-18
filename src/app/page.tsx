@@ -16,14 +16,12 @@ function LaptopModel({ progress }: { progress: number }) {
 
   useFrame(() => {
     if (scrollGroupRef.current) {
-      // Rotación más controlada basada en el progreso
       const targetRotationY = (progress * Math.PI * 0.5) - (Math.PI / 4);
       scrollGroupRef.current.rotation.y = THREE.MathUtils.lerp(
         scrollGroupRef.current.rotation.y,
         targetRotationY,
         0.08
       );
-      // Sutil inclinación inicial
       scrollGroupRef.current.rotation.x = THREE.MathUtils.lerp(
         scrollGroupRef.current.rotation.x,
         Math.max(0, (0.1 - progress) * 0.1),
@@ -61,8 +59,6 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        
-        // Calculamos el progreso basado en la posición de la sección relativa al viewport
         const totalHeight = rect.height - windowHeight;
         const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
         setLineProgress(progress);
@@ -75,20 +71,20 @@ export default function Home() {
 
   const features = [
     {
-      title: "Validación de Intuición",
-      description: "No solo evaluamos sintaxis, sino la capacidad de tomar decisiones arquitectónicas bajo presión.",
+      title: "Confianza Verificada",
+      description: "Tus habilidades son auditadas por IA, eliminando dudas en el proceso de contratación.",
       color: "bg-brand-blue",
       hoverBg: "hover:bg-brand-blue/5"
     },
     {
-      title: "Feedback en Tiempo Real",
-      description: "Recibe un desglose detallado de tu DNA técnico inmediatamente después de cada prueba.",
+      title: "Impacto Inmediato",
+      description: "Accede a vacantes que requieren tu nivel exacto de maestría, sin filtros innecesarios.",
       color: "bg-brand-orange",
       hoverBg: "hover:bg-brand-orange/5"
     },
     {
-      title: "Identidad Verificada",
-      description: "Un perfil de Nextape es una prueba irrefutable de maestría técnica para las mejores empresas del mundo.",
+      title: "Estatus de Élite",
+      description: "Un perfil de Nextape es una insignia de calidad técnica reconocida por las mejores empresas.",
       color: "bg-brand-green",
       hoverBg: "hover:bg-brand-green/5"
     }
@@ -147,13 +143,13 @@ export default function Home() {
         <section className="px-6 pt-32 md:pt-48 pb-20 md:pb-32 max-w-7xl mx-auto text-center">
           <div className="space-y-4 md:space-y-6">
             <h1 className="text-4xl sm:text-6xl md:text-8xl font-headline font-black leading-[1.1] md:leading-[1] tracking-tighter italic">
-              Eleva tu <br />
-              <span className="text-brand-blue">nivel de código.</span> <br />
-              Impulsa tu <br />
-              <span className="text-brand-red">maestría técnica.</span>
+              Valida tu <br />
+              <span className="text-brand-blue">maestría técnica.</span> <br />
+              Conecta con las <br />
+              <span className="text-brand-red">mejores empresas.</span>
             </h1>
             <p className="text-base md:text-xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed pt-4 md:pt-8 px-4">
-              La plataforma de evaluación para desarrolladores que ven el código como un arte. Verificado por IA. Diseñado para maestros.
+              La plataforma donde la evaluación por IA genera confianza real. Demuestra tu nivel en THE LINE y accede a oportunidades exclusivas para desarrolladores de élite.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 md:pt-12 px-6">
               <Button 
@@ -176,9 +172,9 @@ export default function Home() {
         <section className="py-20 md:py-32 px-6">
           <div className="max-w-7xl mx-auto">
             <div className="text-center space-y-4 mb-16 md:mb-20">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-black">¿Qué es Nextape?</h2>
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-black">Hiring de Alto Nivel</h2>
               <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto font-medium">
-                Nextape no es una bolsa de trabajo común. Es un ecosistema de validación técnica donde tu talento se cuantifica objetivamente.
+                Eliminamos el ruido en el reclutamiento técnico. Validamos habilidades reales para conectar a los mejores con los mejores.
               </p>
             </div>
 
@@ -208,8 +204,8 @@ export default function Home() {
 
             <div className="mt-16 md:mt-20 p-8 md:p-12 bg-gray-950 rounded-[2rem] md:rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative group shadow-apple-lg">
                <div className="space-y-4 relative z-10 text-center md:text-left">
-                 <h4 className="text-2xl md:text-3xl font-bold group-hover:text-brand-blue transition-colors">Lleva tu carrera al siguiente nivel.</h4>
-                 <p className="text-gray-400 font-medium text-sm md:text-base">Únete a la élite de desarrolladores que ya están usando Nextape para certificar sus habilidades.</p>
+                 <h4 className="text-2xl md:text-3xl font-bold group-hover:text-brand-blue transition-colors">Impulsa tu carrera técnica.</h4>
+                 <p className="text-gray-400 font-medium text-sm md:text-base">Únete a la élite de desarrolladores que ya están usando Nextape para certificar sus habilidades ante empresas globales.</p>
                  <div className="pt-4 flex justify-center md:justify-start">
                     <Button className="bg-brand-blue hover:bg-brand-blue/90 text-white rounded-full px-8 h-12 font-bold flex items-center gap-2 transition-transform hover:scale-105 uppercase text-[10px] tracking-widest">
                        Crear Perfil <ArrowRight className="h-4 w-4" />
@@ -224,12 +220,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Sección: The LINE - Scrollytelling 3D */}
+        {/* Sección: THE LINE - Scrollytelling 3D */}
         <section ref={lineSectionRef} className="relative h-[500vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-4 md:gap-12 w-full h-full">
               
-              {/* Contenedor de Texto Dinámico */}
               <div className="relative h-[300px] md:h-[450px] flex items-center z-20 order-2 lg:order-1">
                 {lineStages.map((stage, i) => {
                   const threshold = 1 / lineStages.length;
@@ -263,7 +258,6 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual 3D Container */}
               <div className={cn(
                 "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10 pointer-events-none order-1 lg:order-2",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
@@ -299,13 +293,13 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
             <div className="space-y-4">
               <div className="text-2xl font-bold tracking-tighter">Nextape</div>
-              <p className="text-gray-400 max-w-xs font-medium">Diseñado para los maestros del código. Tokio y el mundo entero.</p>
+              <p className="text-gray-400 max-w-xs font-medium">Diseñado para los maestros del código que buscan su próximo gran desafío profesional.</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 md:gap-12 w-full md:w-auto">
               <div className="space-y-4">
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Plataforma</p>
                 <ul className="space-y-2 text-sm font-semibold text-gray-400">
-                  <li><Link href="#" className="hover:text-brand-blue">Panel</Link></li>
+                  <li><Link href="#" className="hover:text-brand-blue">Dashboard</Link></li>
                   <li><Link href="#" className="hover:text-brand-blue">Evaluaciones</Link></li>
                   <li><Link href="#" className="hover:text-brand-blue">Empleos</Link></li>
                 </ul>
@@ -314,7 +308,7 @@ export default function Home() {
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Compañía</p>
                 <ul className="space-y-2 text-sm font-semibold text-gray-400">
                   <li><Link href="#" className="hover:text-brand-blue">Manifiesto</Link></li>
-                  <li><Link href="#" className="hover:text-brand-blue">Carreras</Link></li>
+                  <li><Link href="#" className="hover:text-brand-blue">Para Empresas</Link></li>
                   <li><Link href="#" className="hover:text-brand-blue">Blog</Link></li>
                 </ul>
               </div>
@@ -328,7 +322,7 @@ export default function Home() {
             </div>
           </div>
           <div className="max-w-7xl mx-auto pt-12 mt-12 border-t border-gray-100/10 text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-            © 2024 NEXTAPE INC. IDENTIDAD VERIFICADA.
+            © 2024 NEXTAPE INC. VALIDACIÓN TÉCNICA GARANTIZADA.
           </div>
         </footer>
       </main>
