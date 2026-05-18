@@ -9,7 +9,7 @@ import { ChevronRight, X, AlertTriangle, Monitor, Award, Terminal } from "lucide
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Stage, Float, Text } from "@react-three/drei";
-import * as THREE from "three";
+import * as THREE from "this";
 import { cn } from "@/lib/utils";
 
 type AssessmentState = "selector" | "immersive" | "results";
@@ -29,23 +29,25 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posicionamiento dinámico: -4.5 a la izquierda y abajo en análisis, 0 al centro en narrativa
-      const targetX = isAnalysisMode ? -4.5 : 0;
-      const targetScale = isAnalysisMode ? 0.45 : 1.1;
-      const targetY = isAnalysisMode ? -2.2 : 0;
+      // Posicionamiento agresivo para modo análisis (Izquierda y Abajo)
+      // En modo normal (centro): x=0, y=0, scale=1.1
+      // En modo análisis (columna izquierda inferior): x=-7, y=-4.5, scale=0.4
+      const targetX = isAnalysisMode ? -7 : 0;
+      const targetY = isAnalysisMode ? -4.5 : 0;
+      const targetScale = isAnalysisMode ? 0.4 : 1.1;
       
-      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.05);
-      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.05);
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
       
       const currentScale = groupRef.current.scale.x;
-      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.05);
+      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.08);
       groupRef.current.scale.setScalar(newScale);
       
       groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
     }
 
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 20 : 0;
+      feedbackLightRef.current.intensity = feedback !== "none" ? 30 : 0;
     }
   });
 
@@ -56,18 +58,19 @@ function LaptopModel({
       <primitive object={scene} />
       <pointLight 
         ref={feedbackLightRef} 
-        position={[0, 1, 1]} 
+        position={[0, 2, 2]} 
         color={feedbackColor} 
-        distance={8}
+        distance={10}
       />
       {feedback !== "none" && (
         <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
           <Text
-            position={[0, 2.8, 0]}
-            fontSize={0.3}
+            position={[0, 4, 0]}
+            fontSize={0.4}
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
+            font="/fonts/GeistMono-Bold.woff"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
@@ -91,21 +94,21 @@ export default function TheLinePage() {
       briefing: "SISTEMA: Dashboard en tiempo real de alta frecuencia.",
       text: "Se detecta una congestión crítica en el hilo principal durante picos de volatilidad en el stream de datos de trading.",
       options: [
-        "Direct DOM updates per event received via WebSockets.",
-        "Buffer events in a Web Worker, batch updates using requestAnimationFrame.",
-        "Throttle data at the API Gateway level to 10 events per second.",
-        "Use React Context with a high-frequency polling interval of 50ms."
+        "Direct DOM updates per event received.",
+        "Buffer events in Worker + requestAnimationFrame.",
+        "Throttle data at API level to 10 events/sec.",
+        "High-frequency polling interval of 50ms."
       ],
       correct: 1,
     },
     {
-       briefing: "SISTEMA: Arquitectura distribuida bajo partición de red.",
-       text: "Según el teorema CAP, si tu prioridad absoluta es la Disponibilidad y la Tolerancia a Particiones (AP), ¿qué compromiso debes aceptar?",
+       briefing: "SISTEMA: Arquitectura distribuida bajo partición.",
+       text: "Según el teorema CAP, si priorizas Disponibilidad y Partición (AP), ¿qué compromiso aceptas?",
        options: [
-         "Latencia",
+         "Latencia de red",
          "Consistencia Fuerte",
          "Rendimiento de Escritura",
-         "Durabilidad"
+         "Durabilidad de datos"
        ],
        correct: 1,
     }
@@ -158,7 +161,7 @@ export default function TheLinePage() {
     return (
       <div className="space-y-12 max-w-6xl mx-auto">
         <header>
-          <h1 className="text-4xl font-bold tracking-tight">The LINE.</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-black">The LINE.</h1>
           <p className="text-gray-500 font-medium">Evaluación de arquitectura y respuesta sistémica.</p>
         </header>
 
@@ -261,7 +264,7 @@ export default function TheLinePage() {
         <div className="flex-grow relative flex flex-col items-center justify-center p-6 md:p-12">
           
           <div className="absolute inset-0 z-0">
-            <Canvas camera={{ position: [0, 0, 10], fov: 35 }}>
+            <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
               <Suspense fallback={null}>
                 <Stage environment="studio" intensity={0.6} contactShadow={{ opacity: 0.2 }}>
                   <LaptopModel 
@@ -271,17 +274,17 @@ export default function TheLinePage() {
                 </Stage>
               </Suspense>
             </Canvas>
-            {!isAnalysis && <div className="absolute inset-0 bg-black/50 pointer-events-none transition-opacity duration-1000" />}
           </div>
 
           <div className={cn(
-            "max-w-7xl w-full relative z-20 transition-all duration-700 grid h-full",
-            isAnalysis ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+            "max-w-7xl w-full h-full relative z-20 transition-all duration-700 grid",
+            isAnalysis ? "grid-cols-1 md:grid-cols-2 gap-12" : "grid-cols-1"
           )}>
             
+            {/* Columna Izquierda: Estatus y Laptop (3D Renderizada detrás) */}
             <div className={cn(
-              "flex flex-col justify-center transition-all duration-700",
-              isAnalysis ? "items-start text-left" : "items-center text-center",
+              "flex flex-col transition-all duration-700 h-full",
+              isAnalysis ? "justify-start pt-20 text-left" : "justify-center items-center text-center",
               isTransitioning && "opacity-0 translate-y-4 blur-sm"
             )}>
               {narrativeStep === "briefing" && (
@@ -309,23 +312,30 @@ export default function TheLinePage() {
               )}
 
               {isAnalysis && (
-                <div className="space-y-8 max-w-lg mb-20 md:mb-0">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Evaluando desempeño</span>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white leading-snug">
+                <div className="space-y-6 max-w-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-brand-blue rounded-full animate-ping" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Evaluando desempeño</span>
+                  </div>
+                  <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tighter">
                     Análisis de integridad en curso.
                   </h2>
+                  <p className="text-white/30 text-xs font-medium max-w-xs leading-relaxed">
+                    Monitoreando telemetría del sistema y vectores de resolución neural.
+                  </p>
                 </div>
               )}
             </div>
 
+            {/* Columna Derecha: Problema y Opciones */}
             {isAnalysis && (
               <div className={cn(
-                "flex flex-col justify-center space-y-8 transition-all duration-700",
+                "flex flex-col justify-center space-y-10 transition-all duration-700 h-full",
                 isTransitioning ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0"
               )}>
-                <div className="p-8 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-xl space-y-4">
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-brand-blue/60">Resumen del Problema</span>
-                  <p className="text-white text-sm font-medium leading-relaxed italic">"{q.text}"</p>
+                <div className="p-10 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl space-y-4 shadow-2xl">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-brand-blue">Vector del Incidente</span>
+                  <p className="text-white text-lg md:text-xl font-medium leading-relaxed italic tracking-tight">"{q.text}"</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -335,9 +345,9 @@ export default function TheLinePage() {
                       disabled={feedback !== "none"}
                       onClick={() => handleAnswer(idx)}
                       className={cn(
-                        "p-6 rounded-[1.5rem] border text-left font-bold transition-all relative overflow-hidden h-full flex items-center justify-between",
+                        "p-8 rounded-[2rem] border text-left font-bold transition-all relative overflow-hidden h-full flex items-center justify-between group",
                         feedback === "none" 
-                          ? "bg-white/5 border-white/10 text-white/50 hover:border-brand-blue/40 hover:bg-brand-blue/5 hover:text-white"
+                          ? "bg-white/5 border-white/10 text-white/50 hover:border-brand-blue hover:bg-brand-blue/5 hover:text-white"
                           : idx === q.correct 
                             ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
                             : answers[currentQuestion] === idx 
@@ -345,7 +355,11 @@ export default function TheLinePage() {
                               : "bg-white/5 border-white/5 text-white/10"
                       )}
                     >
-                      <span className="text-xs md:text-sm">{opt}</span>
+                      <span className="text-xs md:text-sm tracking-tight leading-snug">{opt}</span>
+                      <ChevronRight className={cn(
+                        "h-4 w-4 shrink-0 transition-all",
+                        feedback === "none" ? "opacity-0 group-hover:opacity-100 group-hover:translate-x-1" : "opacity-0"
+                      )} />
                     </button>
                   ))}
                 </div>
