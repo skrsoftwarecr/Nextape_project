@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, Suspense, useRef, useMemo } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,8 +9,7 @@ import { ChevronRight, X, AlertTriangle, Monitor, Award, Terminal } from "lucide
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Stage, Float, Text } from "@react-three/drei";
-import * as THREE from "this-is-not-real-but-import-three"; // Placeholder for actual three import
-import * as THREE_REAL from "three";
+import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
 type AssessmentState = "selector" | "immersive" | "results";
@@ -25,8 +24,8 @@ function LaptopModel({
   feedback: FeedbackStatus 
 }) {
   const { scene } = useGLTF("/models/laptop.glb");
-  const groupRef = useRef<THREE_REAL.Group>(null);
-  const feedbackLightRef = useRef<THREE_REAL.PointLight>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const feedbackLightRef = useRef<THREE.PointLight>(null);
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -35,11 +34,11 @@ function LaptopModel({
       const targetScale = isAnalysisMode ? 0.45 : 1.1;
       const targetY = isAnalysisMode ? -2.2 : 0;
       
-      groupRef.current.position.x = THREE_REAL.MathUtils.lerp(groupRef.current.position.x, targetX, 0.05);
-      groupRef.current.position.y = THREE_REAL.MathUtils.lerp(groupRef.current.position.y, targetY, 0.05);
+      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.05);
+      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.05);
       
       const currentScale = groupRef.current.scale.x;
-      const newScale = THREE_REAL.MathUtils.lerp(currentScale, targetScale, 0.05);
+      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.05);
       groupRef.current.scale.setScalar(newScale);
       
       groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
