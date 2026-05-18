@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Briefcase, User, Terminal, LogOut, Menu, X } from "lucide-react";
@@ -16,8 +17,16 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  const isLineAssessment = pathname === "/dashboard/the-line" && typeof window !== "undefined" && localStorage.getItem("line_active") === "true";
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Hydration fix: Only calculate assessment state after mounting on the client
+  const isLineAssessment = mounted && 
+                           pathname === "/dashboard/the-line" && 
+                           localStorage.getItem("line_active") === "true";
 
   if (isLineAssessment) {
     return <>{children}</>;
