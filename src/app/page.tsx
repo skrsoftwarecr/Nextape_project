@@ -5,30 +5,30 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/auth/AuthModal";
 import Link from "next/link";
-import { Layers, Cpu, Zap, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { Layers, Cpu, Zap, ShieldCheck, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, ContactShadows, PresentationControls, Float, Center } from "@react-three/drei";
+import { useGLTF, Environment, ContactShadows, PresentationControls, Float, Center, Stage } from "@react-three/drei";
 import * as THREE from "three";
 
 function LaptopModel({ progress }: { progress: number }) {
-  // useGLTF carga el modelo desde public/models/laptop.glb
+  // Cargamos el modelo desde la carpeta public/models/laptop.glb
   const { scene } = useGLTF("/models/laptop.glb");
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Rotación vinculada al scroll: va de -0.5 a 0.5 radianes aproximadamente
+      // Rotación suave vinculada al scroll
       const targetRotationY = (progress * Math.PI * 0.4) - (Math.PI / 6);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(
         groupRef.current.rotation.y,
         targetRotationY,
         0.05
       );
-      // Inclinación sutil
+      // Inclinación sutil al entrar en la sección
       groupRef.current.rotation.x = THREE.MathUtils.lerp(
         groupRef.current.rotation.x,
-        Math.max(0, (0.15 - progress) * 0.2),
+        Math.max(0, (0.1 - progress) * 0.2),
         0.05
       );
     }
@@ -36,12 +36,7 @@ function LaptopModel({ progress }: { progress: number }) {
 
   return (
     <group ref={groupRef} dispose={null}>
-      <Center top>
-        <primitive 
-          object={scene} 
-          scale={1.5} // Ajuste de escala base dentro del centro
-        />
-      </Center>
+      <primitive object={scene} />
     </group>
   );
 }
@@ -49,7 +44,7 @@ function LaptopModel({ progress }: { progress: number }) {
 function Loader3D() {
   return (
     <mesh>
-      <sphereGeometry args={[0.5, 32, 32]} />
+      <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color="#00ACEE" wireframe />
     </mesh>
   );
@@ -118,7 +113,6 @@ export default function Home() {
     }
   ];
 
-  // El modo oscuro se activa gradualmente cuando el scroll entra en la sección de The LINE
   const isDarkMode = lineProgress > 0.1;
 
   return (
@@ -272,37 +266,32 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual 3D Full Width Container */}
+              {/* Visual 3D Container con Stage */}
               <div className={cn(
                 "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
-                <div className="w-full h-[60vh] lg:h-[70vh] relative">
+                <div className="w-full h-[60vh] lg:h-[80vh] relative">
                   <Canvas 
                     shadows 
                     camera={{ position: [0, 0, 15], fov: 35 }}
                     style={{ background: 'transparent' }}
-                    gl={{ antialias: true }}
                   >
-                    <ambientLight intensity={0.7} />
-                    <spotLight position={[10, 20, 10]} angle={0.2} penumbra={1} intensity={2} castShadow />
-                    <pointLight position={[-10, -10, -10]} intensity={1} color="#00ACEE" />
-                    
                     <Suspense fallback={<Loader3D />}>
-                      <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
-                        <PresentationControls
-                          global
-                          config={{ mass: 1, tension: 170 }}
-                          snap={{ mass: 2, tension: 400 }}
-                          rotation={[0, 0, 0]}
-                          polar={[-Math.PI / 4, Math.PI / 4]}
-                          azimuth={[-Math.PI / 2, Math.PI / 2]}
-                        >
-                          <LaptopModel progress={lineProgress} />
-                        </PresentationControls>
-                      </Float>
-                      <Environment preset="studio" />
-                      <ContactShadows position={[0, -2.5, 0]} opacity={0.5} scale={10} blur={2} far={4} />
+                      <Stage environment="studio" intensity={1} contactShadow={{ opacity: 0.5, blur: 2 }}>
+                        <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
+                          <PresentationControls
+                            global
+                            config={{ mass: 1, tension: 170 }}
+                            snap={{ mass: 2, tension: 400 }}
+                            rotation={[0, 0, 0]}
+                            polar={[-Math.PI / 4, Math.PI / 4]}
+                            azimuth={[-Math.PI / 2, Math.PI / 2]}
+                          >
+                            <LaptopModel progress={lineProgress} />
+                          </PresentationControls>
+                        </Float>
+                      </Stage>
                     </Suspense>
                   </Canvas>
                 </div>
