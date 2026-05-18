@@ -10,30 +10,41 @@
     --card-foreground: 0 0% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-    --primary: 212 100% 45%;
+    
+    /* Usamos el #00ACEE (Cyan) como primario principal */
+    --primary: 197 88% 47%;
     --primary-foreground: 0 0% 100%;
+    
     --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 10%;
     --muted: 0 0% 96%;
     --muted-foreground: 0 0% 45%;
-    --accent: 212 100% 96%;
-    --accent-foreground: 212 100% 45%;
+    --accent: 197 88% 96%;
+    --accent-foreground: 197 88% 47%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 212 100% 45%;
-    --radius: 1rem;
+    --border: 0 0% 92%;
+    --input: 0 0% 92%;
+    --ring: 197 88% 47%;
+    --radius: 1.5rem;
+
+    /* Brand Colors */
+    --brand-red: 1 79% 51%;      /* #E52521 */
+    --brand-orange: 31 91% 54%;   /* #F48E1F */
+    --brand-yellow: 52 95% 51%;   /* #FADD1A */
+    --brand-green: 148 100% 32%;  /* #00A44E */
+    --brand-blue: 197 88% 47%;    /* #00ACEE */
+    --brand-purple: 266 50% 38%;  /* #5C3193 */
   }
 
   .dark {
     --background: 0 0% 3%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 3%;
+    --card: 0 0% 5%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3%;
+    --popover: 0 0% 5%;
     --popover-foreground: 0 0% 98%;
-    --primary: 212 100% 50%;
+    --primary: 197 88% 55%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
@@ -45,7 +56,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 15%;
     --input: 0 0% 15%;
-    --ring: 212 100% 50%;
+    --ring: 197 88% 55%;
   }
 }
 
@@ -65,10 +76,10 @@
   font-family: 'Playfair Display', serif;
 }
 
-.glass-card {
-  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-sm;
+.shadow-apple {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 }
 
-.apple-button {
-  @apply rounded-full font-medium transition-all active:scale-95;
+.shadow-apple-lg {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
 }
