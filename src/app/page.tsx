@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/auth/AuthModal";
 import Link from "next/link";
-import { Layers, Terminal, ArrowRight, MousePointer2 } from "lucide-react";
+import { Layers, Terminal, ArrowRight, MousePointer2, Cpu, Zap, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
@@ -20,8 +20,12 @@ export default function Home() {
 
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
+        const scrollStart = rect.top;
+        const totalHeight = rect.height;
         const windowHeight = window.innerHeight;
-        const progress = Math.max(0, Math.min(1, (windowHeight - rect.top) / windowHeight));
+        
+        // Calculamos el progreso basado en cuánto de la sección ha pasado por la pantalla
+        const progress = Math.max(0, Math.min(1, (windowHeight - scrollStart) / (totalHeight + windowHeight)));
         setLineProgress(progress);
       }
     };
@@ -51,29 +55,47 @@ export default function Home() {
     }
   ];
 
+  const lineStages = [
+    {
+      title: "No es un test. Es un análisis de sinapsis.",
+      description: "The LINE es un entorno de ejecución pura. Evaluamos no solo lo que sabes, sino cómo reaccionas ante el fallo sistémico.",
+      icon: Cpu
+    },
+    {
+      title: "Escenarios de alto impacto.",
+      description: "Desde cuellos de botella en sistemas distribuidos hasta optimización de renderizado en tiempo real. Sin distracciones, solo tú y el código.",
+      icon: Zap
+    },
+    {
+      title: "Tu DNA Técnico, Verificado.",
+      description: "Al finalizar, obtienes una firma digital única que certifica tu nivel de arquitectura y resolución. La prueba definitiva para el 1%.",
+      icon: ShieldCheck
+    }
+  ];
+
   return (
     <div className={cn(
       "flex flex-col min-h-screen transition-colors duration-1000 ease-in-out",
-      lineProgress > 0.5 ? "bg-black text-white" : "bg-white text-foreground"
+      lineProgress > 0.15 ? "bg-black text-white" : "bg-white text-foreground"
     )}>
       {/* Navbar */}
       <nav className={cn(
         "fixed top-0 w-full z-50 transition-all duration-500",
-        scrolled ? "bg-white/70 backdrop-blur-xl border-b border-gray-100 py-4 dark:bg-black/70" : "bg-transparent py-8"
+        scrolled || lineProgress > 0.15 ? "bg-black/70 backdrop-blur-xl border-b border-white/5 py-4" : "bg-transparent py-8"
       )}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="text-2xl font-bold tracking-tighter flex items-center gap-2">
              <div className="w-8 h-8 bg-brand-blue rounded-xl" />
-             <span className={lineProgress > 0.5 ? "text-white" : "text-black"}>Nextape</span>
+             <span className={lineProgress > 0.15 ? "text-white" : "text-black"}>Nextape</span>
           </div>
           <div className="flex items-center gap-8">
-            <button className={cn("hidden md:block text-sm font-semibold transition-colors", lineProgress > 0.5 ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-brand-blue")}>Process</button>
-            <button className={cn("hidden md:block text-sm font-semibold transition-colors", lineProgress > 0.5 ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-brand-blue")}>Pricing</button>
+            <button className={cn("hidden md:block text-sm font-semibold transition-colors", lineProgress > 0.15 ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-brand-blue")}>Process</button>
+            <button className={cn("hidden md:block text-sm font-semibold transition-colors", lineProgress > 0.15 ? "text-gray-400 hover:text-white" : "text-gray-600 hover:text-brand-blue")}>Pricing</button>
             <Button 
               onClick={() => setIsAuthModalOpen(true)}
               className={cn(
                 "px-6 py-5 rounded-full text-sm font-bold tracking-tight shadow-apple transition-all",
-                lineProgress > 0.5 ? "bg-white text-black hover:bg-gray-200" : "bg-gray-950 text-white hover:bg-black"
+                lineProgress > 0.15 ? "bg-white text-black hover:bg-gray-200" : "bg-gray-950 text-white hover:bg-black"
               )}
             >
               Sign In
@@ -146,7 +168,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Banner Estilo Premium / Apple Dark */}
             <div className="mt-20 p-12 bg-gray-950 rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative group shadow-apple-lg">
                <div className="space-y-4 relative z-10">
                  <h4 className="text-3xl font-bold group-hover:text-brand-blue transition-colors">Lleva tu carrera al siguiente nivel.</h4>
@@ -160,63 +181,94 @@ export default function Home() {
                <div className="relative w-full md:w-1/3 aspect-square opacity-20 md:opacity-100 group-hover:scale-110 transition-transform duration-700">
                   <Layers className="absolute inset-0 w-full h-full text-brand-blue" strokeWidth={0.5} />
                </div>
-               {/* Decoración sutil de fondo */}
                <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-brand-blue/10 rounded-full blur-[100px] pointer-events-none" />
             </div>
           </div>
         </section>
 
         {/* Sección: The LINE - Cinematic Scroll Experience */}
-        <section ref={lineSectionRef} className="relative min-h-[150vh] flex flex-col items-center">
+        <section ref={lineSectionRef} className="relative h-[400vh] bg-black">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-16 w-full">
               
-              <div className={cn(
-                "transition-all duration-1000 space-y-8 text-center lg:text-left",
-                lineProgress > 0.3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
-              )}>
-                {/* Badge con estilo Premium Dark */}
-                <div className="inline-flex items-center gap-2 px-6 py-2 bg-gray-900 rounded-full text-brand-red text-xs font-bold uppercase tracking-[0.2em] mb-4 border border-white/10 shadow-lg">
-                  <Terminal className="h-3 w-3" /> Cinematic Assessment
-                </div>
-                <h2 className="text-5xl md:text-7xl font-headline font-black italic text-white leading-tight">
-                  Presentando <br />
-                  <span className="text-brand-red">The LINE.</span>
-                </h2>
-                <p className="text-xl text-gray-400 font-medium leading-relaxed">
-                  Más que una prueba de código. Es un entorno de inmersión total diseñado para separar a los programadores de los arquitectos. 
-                </p>
-                <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                   <div className="flex items-center gap-2 text-sm font-bold text-gray-300 bg-gray-900 px-6 py-3 rounded-full border border-white/10 shadow-apple">
-                      <MousePointer2 className="h-4 w-4 text-brand-blue" /> Sin distracciones
-                   </div>
-                   <div className="flex items-center gap-2 text-sm font-bold text-gray-300 bg-gray-900 px-6 py-3 rounded-full border border-white/10 shadow-apple">
-                      <Terminal className="h-4 w-4 text-brand-yellow" /> Reacción inmediata
-                   </div>
-                </div>
+              {/* Contenedor de Texto Dinámico */}
+              <div className="relative h-[400px] flex items-center">
+                {lineStages.map((stage, i) => {
+                  // Cada etapa tiene un rango de progreso de 0.33
+                  const start = i * 0.3;
+                  const end = (i + 1) * 0.3;
+                  const isActive = lineProgress >= start && lineProgress < end;
+                  const opacity = isActive ? 1 : 0;
+                  const translate = isActive ? "translate-y-0" : (lineProgress > end ? "-translate-y-12" : "translate-y-12");
+
+                  return (
+                    <div 
+                      key={i} 
+                      className={cn(
+                        "absolute inset-0 flex flex-col justify-center space-y-8 transition-all duration-700 ease-in-out text-center lg:text-left",
+                        opacity === 1 ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+                        translate
+                      )}
+                    >
+                      <div className="flex justify-center lg:justify-start">
+                        <stage.icon className="h-12 w-12 text-brand-red mb-4" />
+                      </div>
+                      <h2 className="text-5xl md:text-7xl font-headline font-black italic text-white leading-tight">
+                        {stage.title.split('. ')[0]}. <br />
+                        <span className="text-brand-red">{stage.title.split('. ')[1] || ""}</span>
+                      </h2>
+                      <p className="text-xl text-gray-400 font-medium leading-relaxed max-w-xl">
+                        {stage.description}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
 
+              {/* Visual de Laptop - Siempre Visible en la sección sticky */}
               <div className={cn(
                 "transition-all duration-1000 flex items-center justify-center",
-                lineProgress > 0.4 ? "opacity-100 scale-100" : "opacity-0 scale-90"
+                lineProgress > 0.05 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
                 <div className="relative group w-full max-w-md md:max-w-xl">
-                  {/* Laptop Mockup */}
+                  {/* Laptop Mockup Estilizado */}
                   <div className="bg-neutral-800 rounded-t-[2.5rem] p-4 shadow-2xl relative border border-white/5">
                     <div className="bg-black aspect-[16/10] rounded-2xl overflow-hidden border-2 border-white/5 relative">
-                       <div className="absolute inset-0 bg-gradient-to-tr from-brand-blue/20 to-brand-red/20 animate-pulse" />
+                       {/* Overlay dinámico basado en el progreso */}
+                       <div className={cn(
+                         "absolute inset-0 bg-gradient-to-tr transition-opacity duration-1000",
+                         lineProgress < 0.3 ? "from-brand-blue/20 to-brand-red/10" : 
+                         lineProgress < 0.6 ? "from-brand-orange/20 to-brand-yellow/10" : 
+                         "from-brand-green/20 to-brand-blue/10"
+                       )} />
+                       
                        <div className="absolute inset-0 flex items-center justify-center">
-                          <Terminal className="h-20 w-20 text-brand-red opacity-50 animate-bounce" />
+                          <Terminal className={cn(
+                            "h-20 w-20 transition-all duration-500",
+                            lineProgress > 0.1 ? "text-brand-red opacity-50 scale-110" : "text-white opacity-10 scale-100"
+                          )} />
                        </div>
-                       <div className="absolute bottom-4 left-4 right-4 h-1 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-brand-red w-2/3 animate-[loading_3s_infinite]" />
+
+                       {/* Código falso animado */}
+                       <div className="absolute inset-x-8 top-8 space-y-2 opacity-20 font-mono text-[8px] text-white">
+                          <div className="w-2/3 h-2 bg-white/20 rounded" />
+                          <div className="w-1/2 h-2 bg-white/10 rounded" />
+                          <div className="w-3/4 h-2 bg-white/20 rounded" />
+                       </div>
+
+                       <div className="absolute bottom-8 left-8 right-8 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-brand-red transition-all duration-300" 
+                            style={{ width: `${lineProgress * 100}%` }}
+                          />
                        </div>
                     </div>
                   </div>
                   <div className="bg-neutral-700 h-5 rounded-b-[2.5rem] mx-auto w-[92%] shadow-lg border-t border-white/10" />
-                  <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-brand-red/10 blur-[100px] rounded-full" />
+                  <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-brand-red/5 blur-[120px] rounded-full" />
                 </div>
               </div>
+
             </div>
           </div>
         </section>
@@ -224,7 +276,7 @@ export default function Home() {
         {/* Footer */}
         <footer className={cn(
           "py-24 px-6 border-t transition-colors duration-1000",
-          lineProgress > 0.5 ? "bg-black border-white/10" : "bg-white border-gray-100"
+          lineProgress > 0.8 ? "bg-black border-white/10 text-white" : "bg-white border-gray-100 text-foreground"
         )}>
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
             <div className="space-y-4">
