@@ -133,9 +133,6 @@ export default function Home() {
                     "hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:-translate-y-2"
                   )}
                 >
-                  <div className="absolute top-0 right-0 p-4 opacity-5 text-8xl font-black italic tracking-tighter select-none group-hover:opacity-10 transition-opacity">
-                    0{i + 1}
-                  </div>
                   <div className="relative z-10">
                     <h3 className="text-2xl font-bold mb-6 text-black uppercase tracking-tight group-hover:tracking-wider transition-all">
                       {f.title}
@@ -149,7 +146,8 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-20 p-12 bg-gray-950 rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative group">
+            {/* Banner Estilo Premium / Apple Dark */}
+            <div className="mt-20 p-12 bg-gray-950 rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative group shadow-apple-lg">
                <div className="space-y-4 relative z-10">
                  <h4 className="text-3xl font-bold group-hover:text-brand-blue transition-colors">Lleva tu carrera al siguiente nivel.</h4>
                  <p className="text-gray-400 font-medium">Únete a la élite de desarrolladores que ya están usando Nextape para certificar sus habilidades.</p>
@@ -162,6 +160,8 @@ export default function Home() {
                <div className="relative w-full md:w-1/3 aspect-square opacity-20 md:opacity-100 group-hover:scale-110 transition-transform duration-700">
                   <Layers className="absolute inset-0 w-full h-full text-brand-blue" strokeWidth={0.5} />
                </div>
+               {/* Decoración sutil de fondo */}
+               <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-brand-blue/10 rounded-full blur-[100px] pointer-events-none" />
             </div>
           </div>
         </section>
@@ -175,7 +175,8 @@ export default function Home() {
                 "transition-all duration-1000 space-y-8 text-center lg:text-left",
                 lineProgress > 0.3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
               )}>
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-brand-red/10 rounded-full text-brand-red text-xs font-bold uppercase tracking-widest mb-4 border border-brand-red/20">
+                {/* Badge con estilo Premium Dark */}
+                <div className="inline-flex items-center gap-2 px-6 py-2 bg-gray-900 rounded-full text-brand-red text-xs font-bold uppercase tracking-[0.2em] mb-4 border border-white/10 shadow-lg">
                   <Terminal className="h-3 w-3" /> Cinematic Assessment
                 </div>
                 <h2 className="text-5xl md:text-7xl font-headline font-black italic text-white leading-tight">
@@ -186,10 +187,10 @@ export default function Home() {
                   Más que una prueba de código. Es un entorno de inmersión total diseñado para separar a los programadores de los arquitectos. 
                 </p>
                 <div className="flex flex-wrap gap-4 justify-center lg:justify-start">
-                   <div className="flex items-center gap-2 text-sm font-bold text-gray-500 bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                      <MousePointer2 className="h-4 w-4" /> Sin distracciones
+                   <div className="flex items-center gap-2 text-sm font-bold text-gray-300 bg-gray-900 px-6 py-3 rounded-full border border-white/10 shadow-apple">
+                      <MousePointer2 className="h-4 w-4 text-brand-blue" /> Sin distracciones
                    </div>
-                   <div className="flex items-center gap-2 text-sm font-bold text-gray-500 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                   <div className="flex items-center gap-2 text-sm font-bold text-gray-300 bg-gray-900 px-6 py-3 rounded-full border border-white/10 shadow-apple">
                       <Terminal className="h-4 w-4 text-brand-yellow" /> Reacción inmediata
                    </div>
                 </div>
@@ -201,8 +202,8 @@ export default function Home() {
               )}>
                 <div className="relative group w-full max-w-md md:max-w-xl">
                   {/* Laptop Mockup */}
-                  <div className="bg-neutral-800 rounded-t-[2rem] p-3 shadow-2xl relative">
-                    <div className="bg-black aspect-[16/10] rounded-xl overflow-hidden border-2 border-white/5 relative">
+                  <div className="bg-neutral-800 rounded-t-[2.5rem] p-4 shadow-2xl relative border border-white/5">
+                    <div className="bg-black aspect-[16/10] rounded-2xl overflow-hidden border-2 border-white/5 relative">
                        <div className="absolute inset-0 bg-gradient-to-tr from-brand-blue/20 to-brand-red/20 animate-pulse" />
                        <div className="absolute inset-0 flex items-center justify-center">
                           <Terminal className="h-20 w-20 text-brand-red opacity-50 animate-bounce" />
@@ -212,7 +213,7 @@ export default function Home() {
                        </div>
                     </div>
                   </div>
-                  <div className="bg-neutral-700 h-4 rounded-b-[2rem] mx-auto w-[90%] shadow-lg" />
+                  <div className="bg-neutral-700 h-5 rounded-b-[2.5rem] mx-auto w-[92%] shadow-lg border-t border-white/10" />
                   <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-brand-red/10 blur-[100px] rounded-full" />
                 </div>
               </div>
@@ -266,3 +267,4 @@ export default function Home() {
     </div>
   );
 }
+
