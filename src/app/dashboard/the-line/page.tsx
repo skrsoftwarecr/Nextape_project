@@ -29,12 +29,13 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posicionamiento dinámico:
-      // En modo narrativo (centro): x=0, y=0, scale=1.1
-      // En modo análisis (mucho más a la izquierda): x=-18, y=-5, scale=0.6
-      const targetX = isAnalysisMode ? -18 : 0;
-      const targetY = isAnalysisMode ? -5 : 0;
+      // Posicionamiento dinámico agresivo:
+      // En modo narrativo (centro): x=0, y=0, scale=1.1, rot=0
+      // En modo análisis (extremo izquierdo y arriba): x=-36, y=-2, scale=0.6, rot hacia la derecha
+      const targetX = isAnalysisMode ? -36 : 0;
+      const targetY = isAnalysisMode ? -2 : 0;
       const targetScale = isAnalysisMode ? 0.6 : 1.1;
+      const targetRotationY = isAnalysisMode ? -0.8 : 0; // Rotación hacia la derecha (opciones)
       
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
@@ -43,7 +44,9 @@ function LaptopModel({
       const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.08);
       groupRef.current.scale.setScalar(newScale);
       
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
+      // Aplicamos la rotación base suavemente + el ligero balanceo
+      const baseRotation = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRotationY, 0.05);
+      groupRef.current.rotation.y = baseRotation + Math.sin(state.clock.elapsedTime * 0.4) * 0.1;
     }
 
     if (feedbackLightRef.current) {
@@ -70,7 +73,6 @@ function LaptopModel({
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
-            font="/fonts/GeistMono-Bold.woff"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
