@@ -97,17 +97,14 @@ export default function Home() {
     {
       title: "Análisis de sinapsis técnica.",
       description: "The LINE es un entorno de ejecución pura. Evaluamos no solo lo que sabes, sino cómo reaccionas ante el fallo sistémico.",
-      icon: Cpu
     },
     {
       title: "Escenarios de alto impacto.",
       description: "Desde cuellos de botella en sistemas distribuidos hasta optimización de renderizado en tiempo real. Sin distracciones.",
-      icon: Zap
     },
     {
       title: "Tu DNA, verificado.",
       description: "Al finalizar, obtienes una firma digital única que certifica tu nivel de arquitectura y resolución. La prueba para el 1%.",
-      icon: ShieldCheck
     }
   ];
 
@@ -184,7 +181,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {features.map((f, i) => (
                 <div 
                   key={i} 
@@ -229,10 +226,10 @@ export default function Home() {
         {/* Sección: The LINE - Scrollytelling 3D */}
         <section ref={lineSectionRef} className="relative h-[400vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-8 md:gap-12 w-full h-full">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-4 md:gap-8 w-full h-full">
               
-              {/* Contenedor de Texto Dinámico - Siempre encima en móvil */}
-              <div className="relative h-[300px] md:h-[500px] flex items-center z-20 order-2 lg:order-1">
+              {/* Contenedor de Texto Dinámico */}
+              <div className="relative h-[250px] md:h-[400px] flex items-center z-20 order-2 lg:order-1">
                 {lineStages.map((stage, i) => {
                   const start = i * 0.33;
                   const end = (i + 1) * 0.33;
@@ -244,15 +241,15 @@ export default function Home() {
                     <div 
                       key={i} 
                       className={cn(
-                        "absolute inset-0 flex flex-col justify-center space-y-4 md:space-y-6 transition-all duration-700 ease-in-out text-center lg:text-left",
+                        "absolute inset-0 flex flex-col justify-center space-y-2 md:space-y-4 transition-all duration-700 ease-in-out text-center lg:text-left",
                         opacity === 1 ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
                         translate
                       )}
                     >
-                      <div className="flex justify-center lg:justify-start">
-                        <stage.icon className="h-8 w-8 md:h-10 md:w-10 text-brand-blue mb-2" />
-                      </div>
-                      <h2 className="text-3xl md:text-6xl font-headline font-black italic leading-tight text-white">
+                      <h2 className={cn(
+                        "text-3xl md:text-5xl font-headline font-black italic leading-tight transition-colors duration-500",
+                        isActive ? "text-brand-blue" : "text-white"
+                      )}>
                         {stage.title}
                       </h2>
                       <p className="text-sm md:text-lg text-gray-400 font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
@@ -263,12 +260,12 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual 3D Container - Ajustado para móvil */}
+              {/* Visual 3D Container */}
               <div className={cn(
                 "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10 pointer-events-none order-1 lg:order-2",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
-                <div className="w-full h-[40vh] md:h-[60vh] lg:h-[80vh] relative">
+                <div className="w-full h-[40vh] md:h-[50vh] lg:h-[70vh] relative mt-12">
                   <Canvas 
                     shadows 
                     camera={{ position: [0, 0, 15], fov: 35 }}
@@ -277,7 +274,7 @@ export default function Home() {
                     <Suspense fallback={<Loader3D />}>
                       <Stage environment="studio" intensity={0.8} contactShadow={{ opacity: 0.5, blur: 2 }}>
                         <Float speed={1} rotationIntensity={0.1} floatIntensity={0.2}>
-                          <Center top>
+                          <Center top position={[0, -0.5, 0]}>
                             <LaptopModel progress={lineProgress} />
                           </Center>
                         </Float>
