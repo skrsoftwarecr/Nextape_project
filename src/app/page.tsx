@@ -12,12 +12,13 @@ import { useGLTF, Environment, ContactShadows, PresentationControls, Float, Cent
 import * as THREE from "three";
 
 function LaptopModel({ progress }: { progress: number }) {
+  // Intentamos cargar el modelo. Si no existe, useGLTF lanzará un error que Suspense capturará.
   const { scene } = useGLTF("/models/laptop.glb");
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Rotación vinculada al scroll
+      // Rotación vinculada al scroll: va de -22.5 grados a +67.5 grados
       const targetRotationY = (progress * Math.PI * 0.5) - (Math.PI / 8);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(
         groupRef.current.rotation.y,
@@ -45,6 +46,15 @@ function LaptopModel({ progress }: { progress: number }) {
   );
 }
 
+function Loader3D() {
+  return (
+    <mesh>
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial color="#00ACEE" wireframe />
+    </mesh>
+  );
+}
+
 export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -58,6 +68,7 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
+        // Calculamos el progreso dentro de la sección sticky
         const progress = Math.max(0, Math.min(1, -rect.top / (rect.height - windowHeight)));
         setLineProgress(progress);
       }
@@ -106,7 +117,8 @@ export default function Home() {
     }
   ];
 
-  const isDarkMode = lineProgress > 0.05;
+  // El modo oscuro se activa gradualmente cuando el scroll entra en la sección de The LINE
+  const isDarkMode = lineProgress > 0.1;
 
   return (
     <div className={cn(
@@ -264,17 +276,17 @@ export default function Home() {
                 "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
-                <div className="w-full h-full max-h-[70vh] relative">
+                <div className="w-full h-[60vh] lg:h-[70vh] relative">
                   <Canvas 
                     shadows 
                     camera={{ position: [0, 0, 8], fov: 30 }}
                     style={{ background: 'transparent' }}
                   >
-                    <ambientLight intensity={0.8} />
-                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} castShadow />
-                    <pointLight position={[-10, -10, -10]} intensity={1} />
+                    <ambientLight intensity={0.5} />
+                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1.5} castShadow />
+                    <pointLight position={[-10, -10, -10]} intensity={0.5} />
                     
-                    <Suspense fallback={null}>
+                    <Suspense fallback={<Loader3D />}>
                       <Float speed={2} rotationIntensity={0.1} floatIntensity={0.3}>
                         <PresentationControls
                           global
@@ -291,10 +303,6 @@ export default function Home() {
                       <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={15} blur={2} far={4} />
                     </Suspense>
                   </Canvas>
-                  
-                  <Suspense fallback={null}>
-                    {/* El Canvas maneja su propio fallback con el prop fallback de Suspense */}
-                  </Suspense>
                 </div>
               </div>
 
