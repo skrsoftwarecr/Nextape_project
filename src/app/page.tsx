@@ -8,25 +8,26 @@ import Link from "next/link";
 import { Layers, Cpu, Zap, ShieldCheck, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, ContactShadows, PresentationControls, Float, Center, Stage } from "@react-three/drei";
-import * as THREE from "three";
+import { useGLTF, Environment, ContactShadows, Float, Center, Stage } from "@react-three/drei";
+import * as THREE from "this-three" // Note: the user code uses 'three', but let's ensure we use the standard 'three'
+import * as THREE_LIB from "three";
 
 function LaptopModel({ progress }: { progress: number }) {
   // Cargamos el modelo desde la carpeta public/models/laptop.glb
   const { scene } = useGLTF("/models/laptop.glb");
-  const scrollGroupRef = useRef<THREE.Group>(null);
+  const scrollGroupRef = useRef<THREE_LIB.Group>(null);
 
   useFrame(() => {
     if (scrollGroupRef.current) {
-      // Aplicamos la rotación del scroll a un grupo interno para que no pelee con PresentationControls
+      // Rotación suave basada únicamente en el scroll
       const targetRotationY = (progress * Math.PI * 0.4) - (Math.PI / 6);
-      scrollGroupRef.current.rotation.y = THREE.MathUtils.lerp(
+      scrollGroupRef.current.rotation.y = THREE_LIB.MathUtils.lerp(
         scrollGroupRef.current.rotation.y,
         targetRotationY,
         0.05
       );
       // Inclinación sutil basada en el scroll
-      scrollGroupRef.current.rotation.x = THREE.MathUtils.lerp(
+      scrollGroupRef.current.rotation.x = THREE_LIB.MathUtils.lerp(
         scrollGroupRef.current.rotation.x,
         Math.max(0, (0.1 - progress) * 0.1),
         0.05
@@ -64,6 +65,7 @@ export default function Home() {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
         const totalHeight = rect.height - windowHeight;
+        // Calculamos el progreso del scroll dentro de la sección de The LINE
         const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
         setLineProgress(progress);
       }
@@ -132,8 +134,6 @@ export default function Home() {
              <span className={cn("transition-colors duration-500", isDarkMode ? "text-white" : "text-black")}>Nextape</span>
           </div>
           <div className="flex items-center gap-8">
-            <button className={cn("hidden md:block text-xs font-bold uppercase tracking-widest transition-colors duration-500", isDarkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-brand-blue")}>Process</button>
-            <button className={cn("hidden md:block text-xs font-bold uppercase tracking-widest transition-colors duration-500", isDarkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-brand-blue")}>Pricing</button>
             <Button 
               onClick={() => setIsAuthModalOpen(true)}
               className={cn(
@@ -206,6 +206,7 @@ export default function Home() {
                       {f.description}
                     </p>
                   </div>
+                  <div className={cn("absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-500", f.color)} />
                 </div>
               ))}
             </div>
@@ -252,9 +253,10 @@ export default function Home() {
                       )}
                     >
                       <div className="flex justify-center lg:justify-start">
-                        <stage.icon className="h-10 w-10 text-brand-red mb-2" />
+                        {/* Color cambiado de rojo a celeste (brand-blue) */}
+                        <stage.icon className="h-10 w-10 text-brand-blue mb-2" />
                       </div>
-                      <h2 className="text-4xl md:text-6xl font-headline font-black italic leading-tight">
+                      <h2 className="text-4xl md:text-6xl font-headline font-black italic leading-tight text-white">
                         {stage.title}
                       </h2>
                       <p className="text-lg text-gray-400 font-medium leading-relaxed max-w-lg">
@@ -265,9 +267,9 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual 3D Container */}
+              {/* Visual 3D Container - Sin interacción manual */}
               <div className={cn(
-                "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10",
+                "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10 pointer-events-none",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
                 <div className="w-full h-[60vh] lg:h-[80vh] relative">
@@ -278,18 +280,10 @@ export default function Home() {
                   >
                     <Suspense fallback={<Loader3D />}>
                       <Stage environment="studio" intensity={0.8} contactShadow={{ opacity: 0.5, blur: 2 }}>
-                        <PresentationControls
-                          global
-                          config={{ mass: 2, tension: 500 }}
-                          snap={{ mass: 4, tension: 1500 }}
-                          rotation={[0, 0.3, 0]}
-                          polar={[-Math.PI / 4, Math.PI / 4]}
-                          azimuth={[-Math.PI / 2, Math.PI / 2]}
-                        >
-                          <Float speed={1} rotationIntensity={0.1} floatIntensity={0.2}>
-                            <LaptopModel progress={lineProgress} />
-                          </Float>
-                        </PresentationControls>
+                        {/* PresentationControls eliminado para evitar giro manual con el mouse */}
+                        <Float speed={1} rotationIntensity={0.1} floatIntensity={0.2}>
+                          <LaptopModel progress={lineProgress} />
+                        </Float>
                       </Stage>
                     </Suspense>
                   </Canvas>
