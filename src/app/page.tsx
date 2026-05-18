@@ -11,17 +11,24 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment, ContactShadows, PresentationControls, Float } from "@react-three/drei";
 import * as THREE from "three";
 
-// Componente para cargar el modelo 3D
 function LaptopModel({ progress }: { progress: number }) {
-  // Intentamos cargar el modelo. Debes poner el archivo en /public/models/laptop.glb
   const { scene } = useGLTF("/models/laptop.glb");
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Rotación sutil basada en el scroll
-      groupRef.current.rotation.y = (progress * Math.PI) / 4;
-      groupRef.current.rotation.x = Math.max(0, (0.5 - progress) * 0.2);
+      // Rotación suave vinculada al scroll
+      groupRef.current.rotation.y = THREE.MathUtils.lerp(
+        groupRef.current.rotation.y,
+        (progress * Math.PI * 0.8) - (Math.PI / 4),
+        0.1
+      );
+      // Inclinación sutil
+      groupRef.current.rotation.x = THREE.MathUtils.lerp(
+        groupRef.current.rotation.x,
+        Math.max(0, (0.3 - progress) * 0.5),
+        0.1
+      );
     }
   });
 
@@ -29,20 +36,9 @@ function LaptopModel({ progress }: { progress: number }) {
     <primitive 
       ref={groupRef}
       object={scene} 
-      scale={1.5} 
-      position={[0, -1, 0]} 
-      rotation={[0, -Math.PI / 4, 0]}
+      scale={0.8} 
+      position={[0, -0.8, 0]} 
     />
-  );
-}
-
-// Fallback mientras carga el modelo o si no existe
-function ModelFallback() {
-  return (
-    <mesh rotation={[0, 45, 0]}>
-      <boxGeometry args={[2, 1.2, 0.1]} />
-      <meshStandardMaterial color="#444" />
-    </mesh>
   );
 }
 
@@ -59,9 +55,11 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        const startVisible = rect.top - windowHeight;
-        const totalDist = rect.height + windowHeight;
-        const progress = Math.max(0, Math.min(1, -startVisible / totalDist));
+        
+        // Calculamos el progreso basado en cuánto de la sección ha pasado por el viewport
+        const start = rect.top;
+        const height = rect.height;
+        const progress = Math.max(0, Math.min(1, -start / (height - windowHeight)));
         setLineProgress(progress);
       }
     };
@@ -74,19 +72,19 @@ export default function Home() {
     {
       title: "Validación de Intuición",
       description: "No solo evaluamos sintaxis, sino la capacidad de tomar decisiones arquitectónicas bajo presión.",
-      color: "border-brand-blue",
+      color: "bg-brand-blue",
       hoverBg: "hover:bg-brand-blue/5"
     },
     {
       title: "Feedback en Tiempo Real",
       description: "Recibe un desglose detallado de tu DNA técnico inmediatamente después de cada prueba.",
-      color: "border-brand-orange",
+      color: "bg-brand-orange",
       hoverBg: "hover:bg-brand-orange/5"
     },
     {
       title: "Identidad Verificada",
       description: "Un perfil de Nextape es una prueba irrefutable de maestría técnica para las mejores empresas del mundo.",
-      color: "border-brand-green",
+      color: "bg-brand-green",
       hoverBg: "hover:bg-brand-green/5"
     }
   ];
@@ -109,7 +107,8 @@ export default function Home() {
     }
   ];
 
-  const isDarkMode = lineProgress > 0.15;
+  // El fondo negro comienza a desvanecerse cuando el scroll llega a la sección
+  const isDarkMode = lineProgress > 0.05;
 
   return (
     <div className={cn(
@@ -195,7 +194,7 @@ export default function Home() {
                   )}
                 >
                   <div className="relative z-10">
-                    <div className={cn("w-full h-1 mb-8 transition-colors duration-500", f.color.replace('border', 'bg'))} />
+                    <div className={cn("w-full h-1 mb-8 transition-colors duration-500", f.color)} />
                     <h3 className="text-2xl font-bold mb-6 text-black uppercase tracking-tight group-hover:tracking-wider transition-all">
                       {f.title}
                     </h3>
@@ -226,12 +225,12 @@ export default function Home() {
         </section>
 
         {/* Sección: The LINE - Scrollytelling 3D */}
-        <section ref={lineSectionRef} className="relative h-[400vh]">
+        <section ref={lineSectionRef} className="relative h-[500vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-16 w-full">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-16 w-full h-full">
               
               {/* Contenedor de Texto Dinámico */}
-              <div className="relative h-[400px] flex items-center">
+              <div className="relative h-[400px] flex items-center z-20">
                 {lineStages.map((stage, i) => {
                   const start = i * 0.3;
                   const end = (i + 1) * 0.3;
@@ -264,38 +263,37 @@ export default function Home() {
 
               {/* Visual 3D */}
               <div className={cn(
-                "transition-all duration-1000 h-[60vh] w-full flex items-center justify-center",
-                lineProgress > 0.05 ? "opacity-100 scale-100" : "opacity-0 scale-90"
+                "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10",
+                lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
-                <div className="w-full h-full relative">
+                <div className="w-full h-[80vh] relative">
                   <Canvas 
                     shadows 
-                    camera={{ position: [0, 0, 5], fov: 35 }}
+                    camera={{ position: [0, 0, 6], fov: 35 }}
                     style={{ background: 'transparent' }}
                   >
                     <ambientLight intensity={0.5} />
-                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
+                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1.5} castShadow />
                     <pointLight position={[-10, -10, -10]} intensity={0.5} />
                     
                     <Suspense fallback={null}>
-                      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+                      <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
                         <PresentationControls
                           global
                           config={{ mass: 2, tension: 500 }}
                           snap={{ mass: 4, tension: 1500 }}
-                          rotation={[0, -0.3, 0]}
-                          polar={[-Math.PI / 3, Math.PI / 3]}
-                          azimuth={[-Math.PI / 1.4, Math.PI / 1.4]}
+                          rotation={[0, 0, 0]}
+                          polar={[-Math.PI / 4, Math.PI / 4]}
+                          azimuth={[-Math.PI / 2, Math.PI / 2]}
                         >
                           <LaptopModel progress={lineProgress} />
                         </PresentationControls>
                       </Float>
                       <Environment preset="city" />
-                      <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={10} blur={2} far={4.5} />
+                      <ContactShadows position={[0, -1.2, 0]} opacity={0.6} scale={10} blur={2.5} far={4} />
                     </Suspense>
                   </Canvas>
                   
-                  {/* Overlay de carga sutil */}
                   <Suspense fallback={
                     <div className="absolute inset-0 flex items-center justify-center text-brand-blue">
                       <Loader2 className="h-12 w-12 animate-spin opacity-20" />
