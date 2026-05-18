@@ -95,8 +95,8 @@ export default function Home() {
 
   const lineStages = [
     {
-      title: "Análisis de sinapsis técnica.",
-      description: "The LINE es un entorno de ejecución pura. Evaluamos no solo lo que sabes, sino cómo reaccionas ante el fallo sistémico.",
+      title: "Neural Dynamic Testing.",
+      description: "Cada prueba en THE LINE es generada por IA según el perfil que busca el reclutador. Simulamos desafíos reales para medir cómo los candidatos piensan, resuelven y responden ante fallos e incidentes específicos para el puesto.",
     },
     {
       title: "Escenarios de alto impacto.",
