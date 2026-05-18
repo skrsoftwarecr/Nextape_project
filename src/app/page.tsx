@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -64,7 +63,6 @@ export default function Home() {
         const windowHeight = window.innerHeight;
         
         // Calculamos el progreso basado en la posición de la sección relativa al viewport
-        // Usamos una altura total que dé más margen para el scroll controlado
         const totalHeight = rect.height - windowHeight;
         const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
         setLineProgress(progress);
@@ -151,8 +149,8 @@ export default function Home() {
             <h1 className="text-4xl sm:text-6xl md:text-8xl font-headline font-black leading-[1.1] md:leading-[1] tracking-tighter italic">
               Eleva tu <br />
               <span className="text-brand-blue">nivel de código.</span> <br />
-              Encuentra tu <br />
-              <span className="text-brand-red">próximo tape.</span>
+              Impulsa tu <br />
+              <span className="text-brand-red">maestría técnica.</span>
             </h1>
             <p className="text-base md:text-xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed pt-4 md:pt-8 px-4">
               La plataforma de evaluación para desarrolladores que ven el código como un arte. Verificado por IA. Diseñado para maestros.
@@ -234,15 +232,12 @@ export default function Home() {
               {/* Contenedor de Texto Dinámico */}
               <div className="relative h-[300px] md:h-[450px] flex items-center z-20 order-2 lg:order-1">
                 {lineStages.map((stage, i) => {
-                  // Ajustamos los umbrales para que haya más espacio entre transiciones
                   const threshold = 1 / lineStages.length;
                   const start = i * threshold;
                   const end = (i + 1) * threshold;
                   
-                  // Agregamos un buffer para suavizar la activación
                   const isActive = lineProgress >= start && lineProgress < end;
                   const isPast = lineProgress >= end;
-                  const isFuture = lineProgress < start;
 
                   return (
                     <div 
