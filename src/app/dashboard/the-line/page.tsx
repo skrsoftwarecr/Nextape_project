@@ -9,7 +9,7 @@ import { ChevronRight, X, AlertTriangle, Monitor, Award, Terminal } from "lucide
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Stage, Float, Text } from "@react-three/drei";
-import * as THREE from "this";
+import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
 type AssessmentState = "selector" | "immersive" | "results";
@@ -29,12 +29,12 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posicionamiento agresivo para modo análisis (Izquierda y Abajo)
-      // En modo normal (centro): x=0, y=0, scale=1.1
-      // En modo análisis (columna izquierda inferior): x=-7, y=-4.5, scale=0.4
-      const targetX = isAnalysisMode ? -7 : 0;
-      const targetY = isAnalysisMode ? -4.5 : 0;
-      const targetScale = isAnalysisMode ? 0.4 : 1.1;
+      // Posicionamiento dinámico:
+      // En modo narrativo (centro): x=0, y=0, scale=1.1
+      // En modo análisis (columna izquierda): x=-8, y=-2, scale=0.6
+      const targetX = isAnalysisMode ? -6 : 0;
+      const targetY = isAnalysisMode ? -2 : 0;
+      const targetScale = isAnalysisMode ? 0.7 : 1.1;
       
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
@@ -47,7 +47,7 @@ function LaptopModel({
     }
 
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 30 : 0;
+      feedbackLightRef.current.intensity = feedback !== "none" ? 20 : 0;
     }
   });
 
@@ -58,19 +58,18 @@ function LaptopModel({
       <primitive object={scene} />
       <pointLight 
         ref={feedbackLightRef} 
-        position={[0, 2, 2]} 
+        position={[0, 2, 1]} 
         color={feedbackColor} 
         distance={10}
       />
       {feedback !== "none" && (
-        <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+        <Float speed={3} rotationIntensity={0.2} floatIntensity={0.5}>
           <Text
-            position={[0, 4, 0]}
-            fontSize={0.4}
+            position={[0, 3.5, 0]}
+            fontSize={0.3}
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
-            font="/fonts/GeistMono-Bold.woff"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
@@ -88,6 +87,11 @@ export default function TheLinePage() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const questions = [
     {
@@ -156,6 +160,8 @@ export default function TheLinePage() {
       }, 800);
     }, 2500);
   };
+
+  if (!isMounted) return null;
 
   if (viewState === "selector") {
     return (
@@ -281,7 +287,6 @@ export default function TheLinePage() {
             isAnalysis ? "grid-cols-1 md:grid-cols-2 gap-12" : "grid-cols-1"
           )}>
             
-            {/* Columna Izquierda: Estatus y Laptop (3D Renderizada detrás) */}
             <div className={cn(
               "flex flex-col transition-all duration-700 h-full",
               isAnalysis ? "justify-start pt-20 text-left" : "justify-center items-center text-center",
@@ -320,14 +325,11 @@ export default function TheLinePage() {
                   <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tighter">
                     Análisis de integridad en curso.
                   </h2>
-                  <p className="text-white/30 text-xs font-medium max-w-xs leading-relaxed">
-                    Monitoreando telemetría del sistema y vectores de resolución neural.
-                  </p>
+                  {/* El modelo 3D se posiciona visualmente debajo de este bloque mediante LaptopModel targetX/targetY */}
                 </div>
               )}
             </div>
 
-            {/* Columna Derecha: Problema y Opciones */}
             {isAnalysis && (
               <div className={cn(
                 "flex flex-col justify-center space-y-10 transition-all duration-700 h-full",
