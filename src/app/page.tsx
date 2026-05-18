@@ -5,14 +5,13 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/auth/AuthModal";
 import Link from "next/link";
-import Image from "next/image";
-import { Cpu, Zap, ShieldCheck, Layers, Terminal, ArrowRight, MousePointer2 } from "lucide-react";
+import { Layers, Terminal, ArrowRight, MousePointer2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [lineProgress, setLineProgress] = useState(0); // 0 to 1
+  const [lineProgress, setLineProgress] = useState(0); 
   const lineSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -22,8 +21,6 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        
-        // Calculate progress based on how much of the section is visible
         const progress = Math.max(0, Math.min(1, (windowHeight - rect.top) / windowHeight));
         setLineProgress(progress);
       }
@@ -37,27 +34,33 @@ export default function Home() {
     {
       title: "Validación de Intuición",
       description: "No solo evaluamos sintaxis, sino la capacidad de tomar decisiones arquitectónicas bajo presión.",
-      color: "bg-brand-blue"
+      color: "border-brand-blue",
+      hoverBg: "hover:bg-brand-blue/5"
     },
     {
       title: "Feedback en Tiempo Real",
       description: "Recibe un desglose detallado de tu DNA técnico inmediatamente después de cada prueba.",
-      color: "bg-brand-orange"
+      color: "border-brand-orange",
+      hoverBg: "hover:bg-brand-orange/5"
     },
     {
       title: "Identidad Verificada",
       description: "Un perfil de Nextape es una prueba irrefutable de maestría técnica para las mejores empresas del mundo.",
-      color: "bg-brand-green"
+      color: "border-brand-green",
+      hoverBg: "hover:bg-brand-green/5"
     }
   ];
 
   return (
     <div className={cn(
-      "flex flex-col min-h-screen transition-colors duration-700",
+      "flex flex-col min-h-screen transition-colors duration-1000 ease-in-out",
       lineProgress > 0.5 ? "bg-black text-white" : "bg-white text-foreground"
     )}>
       {/* Navbar */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${scrolled ? "bg-white/70 backdrop-blur-xl border-b border-gray-100 py-4 dark:bg-black/70" : "bg-transparent py-8"}`}>
+      <nav className={cn(
+        "fixed top-0 w-full z-50 transition-all duration-500",
+        scrolled ? "bg-white/70 backdrop-blur-xl border-b border-gray-100 py-4 dark:bg-black/70" : "bg-transparent py-8"
+      )}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="text-2xl font-bold tracking-tighter flex items-center gap-2">
              <div className="w-8 h-8 bg-brand-blue rounded-xl" />
@@ -121,26 +124,42 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {features.map((f, i) => (
-                <div key={i} className="bg-white p-12 rounded-none shadow-apple hover:shadow-apple-lg transition-all border border-gray-100">
-                  <h3 className="text-2xl font-bold mb-6 text-black uppercase tracking-tight">{f.title}</h3>
-                  <p className="text-gray-500 font-medium leading-relaxed">
-                    {f.description}
-                  </p>
+                <div 
+                  key={i} 
+                  className={cn(
+                    "relative bg-white p-12 rounded-none border-t-4 transition-all duration-500 cursor-default group overflow-hidden",
+                    f.color,
+                    f.hoverBg,
+                    "hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:-translate-y-2"
+                  )}
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-5 text-8xl font-black italic tracking-tighter select-none group-hover:opacity-10 transition-opacity">
+                    0{i + 1}
+                  </div>
+                  <div className="relative z-10">
+                    <h3 className="text-2xl font-bold mb-6 text-black uppercase tracking-tight group-hover:tracking-wider transition-all">
+                      {f.title}
+                    </h3>
+                    <p className="text-gray-500 font-medium leading-relaxed text-lg">
+                      {f.description}
+                    </p>
+                  </div>
+                  <div className="absolute bottom-0 left-0 w-0 h-1 bg-current transition-all duration-500 group-hover:w-full opacity-30"></div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-20 p-12 bg-gray-950 rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative">
+            <div className="mt-20 p-12 bg-gray-950 rounded-[3rem] text-white flex flex-col md:flex-row items-center justify-between gap-8 overflow-hidden relative group">
                <div className="space-y-4 relative z-10">
-                 <h4 className="text-3xl font-bold">Lleva tu carrera al siguiente nivel.</h4>
+                 <h4 className="text-3xl font-bold group-hover:text-brand-blue transition-colors">Lleva tu carrera al siguiente nivel.</h4>
                  <p className="text-gray-400 font-medium">Únete a la élite de desarrolladores que ya están usando Nextape para certificar sus habilidades.</p>
                  <div className="pt-4">
-                    <Button className="bg-brand-blue hover:bg-brand-blue/90 text-white rounded-full px-8 h-12 font-bold flex items-center gap-2">
+                    <Button className="bg-brand-blue hover:bg-brand-blue/90 text-white rounded-full px-8 h-12 font-bold flex items-center gap-2 transition-transform hover:scale-105">
                        Crear Perfil <ArrowRight className="h-4 w-4" />
                     </Button>
                  </div>
                </div>
-               <div className="relative w-full md:w-1/3 aspect-square opacity-20 md:opacity-100">
+               <div className="relative w-full md:w-1/3 aspect-square opacity-20 md:opacity-100 group-hover:scale-110 transition-transform duration-700">
                   <Layers className="absolute inset-0 w-full h-full text-brand-blue" strokeWidth={0.5} />
                </div>
             </div>
@@ -171,7 +190,7 @@ export default function Home() {
                       <MousePointer2 className="h-4 w-4" /> Sin distracciones
                    </div>
                    <div className="flex items-center gap-2 text-sm font-bold text-gray-500 bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                      <Zap className="h-4 w-4 text-brand-yellow" /> Reacción inmediata
+                      <Terminal className="h-4 w-4 text-brand-yellow" /> Reacción inmediata
                    </div>
                 </div>
               </div>
@@ -184,7 +203,6 @@ export default function Home() {
                   {/* Laptop Mockup */}
                   <div className="bg-neutral-800 rounded-t-[2rem] p-3 shadow-2xl relative">
                     <div className="bg-black aspect-[16/10] rounded-xl overflow-hidden border-2 border-white/5 relative">
-                       {/* Animated Glow on Screen */}
                        <div className="absolute inset-0 bg-gradient-to-tr from-brand-blue/20 to-brand-red/20 animate-pulse" />
                        <div className="absolute inset-0 flex items-center justify-center">
                           <Terminal className="h-20 w-20 text-brand-red opacity-50 animate-bounce" />
@@ -195,8 +213,6 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="bg-neutral-700 h-4 rounded-b-[2rem] mx-auto w-[90%] shadow-lg" />
-                  
-                  {/* Particles / Background depth */}
                   <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-brand-red/10 blur-[100px] rounded-full" />
                 </div>
               </div>
@@ -206,7 +222,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className={cn(
-          "py-24 px-6 border-t transition-colors duration-700",
+          "py-24 px-6 border-t transition-colors duration-1000",
           lineProgress > 0.5 ? "bg-black border-white/10" : "bg-white border-gray-100"
         )}>
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
