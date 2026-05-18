@@ -101,8 +101,8 @@ export default function Home() {
       description: "Desde arquitectura de software y sistemas distribuidos hasta optimización de rendimiento, debugging avanzado e implementación de nuevas funcionalidades. Cada desafío evalúa habilidades reales en distintos entornos de desarrollo.",
     },
     {
-      title: "Tu DNA, verificado.",
-      description: "Al finalizar, obtienes una firma digital única que certifica tu nivel de arquitectura y resolución. La prueba para el 1%.",
+      title: "Evaluación basada en desempeño real.",
+      description: "Los resultados permiten identificar cómo cada candidato analiza, resuelve y ejecuta frente a desafíos técnicos alineados al rol.",
     }
   ];
 
