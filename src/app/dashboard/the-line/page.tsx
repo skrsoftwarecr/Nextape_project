@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronRight, X, AlertTriangle, Monitor, ArrowLeft, ArrowRight } from "lucide-react";
+import { ChevronRight, X, AlertTriangle, Monitor, ArrowLeft, ArrowRight, Award } from "lucide-react";
 import Link from "next/link";
 
 type AssessmentState = "selector" | "immersive" | "results";
@@ -43,6 +43,17 @@ export default function TheLinePage() {
        context: "The CAP theorem states that any distributed system can only provide two of the three: Consistency, Availability, and Partition Tolerance."
     }
   ];
+
+  // Auto-advance typewriter effect moved to top level to follow Rules of Hooks
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (viewState === "immersive" && !typewriterComplete) {
+      timer = setTimeout(() => setTypewriterComplete(true), 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentQuestion, viewState, typewriterComplete]);
 
   const handleStart = () => {
     setIsConfirmOpen(false);
@@ -238,12 +249,6 @@ export default function TheLinePage() {
                     ))}
                   </div>
                 </div>
-
-                {/* 
-                  IMPORTANT: THREE.JS INTEGRATION POINT
-                  Replace this placeholder with the .glb laptop model.
-                  The independent screen material should react to the 'showFeedback' state.
-                */}
               </div>
               <div className="w-72 h-4 md:w-[420px] md:h-6 bg-white/20 mt-1 mx-auto"></div>
             </div>
@@ -290,12 +295,6 @@ export default function TheLinePage() {
               >
                 SKIP SEQUENCE <ArrowRight className="h-4 w-4" />
               </button>
-              
-              {/* Auto-advance typewriter */}
-              {useEffect(() => {
-                const timer = setTimeout(() => setTypewriterComplete(true), 3000);
-                return () => clearTimeout(timer);
-              }, [currentQuestion])}
             </div>
           )}
         </div>
