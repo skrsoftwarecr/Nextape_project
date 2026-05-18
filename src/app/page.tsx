@@ -14,28 +14,28 @@ import * as THREE from "three";
 function LaptopModel({ progress }: { progress: number }) {
   // Cargamos el modelo desde la carpeta public/models/laptop.glb
   const { scene } = useGLTF("/models/laptop.glb");
-  const groupRef = useRef<THREE.Group>(null);
+  const scrollGroupRef = useRef<THREE.Group>(null);
 
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Rotación suave vinculada al scroll
+  useFrame(() => {
+    if (scrollGroupRef.current) {
+      // Aplicamos la rotación del scroll a un grupo interno para que no pelee con PresentationControls
       const targetRotationY = (progress * Math.PI * 0.4) - (Math.PI / 6);
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(
-        groupRef.current.rotation.y,
+      scrollGroupRef.current.rotation.y = THREE.MathUtils.lerp(
+        scrollGroupRef.current.rotation.y,
         targetRotationY,
         0.05
       );
-      // Inclinación sutil al entrar en la sección
-      groupRef.current.rotation.x = THREE.MathUtils.lerp(
-        groupRef.current.rotation.x,
-        Math.max(0, (0.1 - progress) * 0.2),
+      // Inclinación sutil basada en el scroll
+      scrollGroupRef.current.rotation.x = THREE.MathUtils.lerp(
+        scrollGroupRef.current.rotation.x,
+        Math.max(0, (0.1 - progress) * 0.1),
         0.05
       );
     }
   });
 
   return (
-    <group ref={groupRef} dispose={null}>
+    <group ref={scrollGroupRef} dispose={null}>
       <primitive object={scene} />
     </group>
   );
@@ -63,7 +63,6 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        // Calculamos el progreso basado en la posición del scroll dentro de la sección sticky
         const totalHeight = rect.height - windowHeight;
         const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
         setLineProgress(progress);
@@ -266,7 +265,7 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual 3D Container con Stage */}
+              {/* Visual 3D Container */}
               <div className={cn(
                 "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
@@ -274,23 +273,23 @@ export default function Home() {
                 <div className="w-full h-[60vh] lg:h-[80vh] relative">
                   <Canvas 
                     shadows 
-                    camera={{ position: [0, 0, 15], fov: 35 }}
+                    camera={{ position: [0, 0, 12], fov: 35 }}
                     style={{ background: 'transparent' }}
                   >
                     <Suspense fallback={<Loader3D />}>
-                      <Stage environment="studio" intensity={1} contactShadow={{ opacity: 0.5, blur: 2 }}>
-                        <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
-                          <PresentationControls
-                            global
-                            config={{ mass: 1, tension: 170 }}
-                            snap={{ mass: 2, tension: 400 }}
-                            rotation={[0, 0, 0]}
-                            polar={[-Math.PI / 4, Math.PI / 4]}
-                            azimuth={[-Math.PI / 2, Math.PI / 2]}
-                          >
+                      <Stage environment="studio" intensity={0.8} contactShadow={{ opacity: 0.5, blur: 2 }}>
+                        <PresentationControls
+                          global
+                          config={{ mass: 2, tension: 500 }}
+                          snap={{ mass: 4, tension: 1500 }}
+                          rotation={[0, 0.3, 0]}
+                          polar={[-Math.PI / 4, Math.PI / 4]}
+                          azimuth={[-Math.PI / 2, Math.PI / 2]}
+                        >
+                          <Float speed={1} rotationIntensity={0.1} floatIntensity={0.2}>
                             <LaptopModel progress={lineProgress} />
-                          </PresentationControls>
-                        </Float>
+                          </Float>
+                        </PresentationControls>
                       </Stage>
                     </Suspense>
                   </Canvas>
