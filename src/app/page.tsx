@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, Suspense } from "react";
@@ -188,25 +189,25 @@ export default function Home() {
         <section id="problem" className="py-24 md:py-40 px-6">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-black leading-tight">
+              <h2 className={cn("text-3xl md:text-5xl font-bold tracking-tight leading-tight", isDarkMode ? "text-white" : "text-black")}>
                 El hiring técnico <br /> <span className="text-brand-red">está roto.</span>
               </h2>
               <div className="space-y-6">
-                <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50">
+                <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
                   <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">CVs vs Realidad</h4>
                     <p className="text-gray-500 text-sm font-medium">LinkedIn está lleno de palabras vacías. Un "Senior" en papel puede no saber debugear una arquitectura distribuida hoy.</p>
                   </div>
                 </div>
-                <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50">
+                <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
                   <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">Pruebas Genéricas</h4>
                     <p className="text-gray-500 text-sm font-medium">Los desafíos de algoritmos (LeetCode) no predicen cómo un developer reacciona ante un fallo en producción.</p>
                   </div>
                 </div>
-                <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50">
+                <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
                   <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">Ruido y Fricción</h4>
@@ -226,7 +227,7 @@ export default function Home() {
         </section>
 
         {/* 5. How it Works / Solution Section */}
-        <section id="how-it-works" className="py-24 md:py-40 px-6 bg-white">
+        <section id="how-it-works" className="py-24 md:py-40 px-6 bg-white text-slate-900">
           <div className="max-w-7xl mx-auto">
             <div className="text-center space-y-4 mb-20">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-black">La Nueva Era de Validación</h2>
@@ -319,32 +320,34 @@ export default function Home() {
         {/* 7. Differentiation Section */}
         <section className="py-24 md:py-40 px-6">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-black text-center mb-16">¿Por qué Nextape?</h2>
+            <h2 className={cn("text-3xl md:text-5xl font-bold tracking-tight text-center mb-16", isDarkMode ? "text-white" : "text-black")}>¿Por qué Nextape?</h2>
             
-            <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-apple-lg">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Característica</th>
-                    <th className="p-8 font-bold uppercase tracking-widest text-[10px] text-brand-blue bg-brand-blue/5">Nextape</th>
-                    <th className="p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Reclutamiento Tradicional</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {[
-                    { feature: "Validación de Habilidades", next: "Simulación de Incidentes Real-Time", trad: "Filtros por Palabras Clave en CV" },
-                    { feature: "Tiempo de Respuesta", next: "Instantáneo (Score Certificado)", trad: "2-3 Semanas de Entrevistas" },
-                    { feature: "Precisión del Match", next: "92% Basado en Performance", trad: "30% Basado en Intuición" },
-                    { feature: "Calidad del Candidato", next: "Elite Verified (The LINE)", trad: "Incierta hasta el Mes 1" }
-                  ].map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="p-8 font-bold text-sm md:text-base">{row.feature}</td>
-                      <td className="p-8 text-brand-blue font-bold text-sm md:text-base bg-brand-blue/5">{row.next}</td>
-                      <td className="p-8 text-gray-400 text-sm md:text-base">{row.trad}</td>
+            <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 bg-white shadow-apple-lg text-slate-900">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[600px]">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="p-6 md:p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Característica</th>
+                      <th className="p-6 md:p-8 font-bold uppercase tracking-widest text-[10px] text-brand-blue bg-brand-blue/5">Nextape</th>
+                      <th className="p-6 md:p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Reclutamiento Tradicional</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {[
+                      { feature: "Validación de Habilidades", next: "Simulación de Incidentes Real-Time", trad: "Filtros por Palabras Clave en CV" },
+                      { feature: "Tiempo de Respuesta", next: "Instantáneo (Score Certificado)", trad: "2-3 Semanas de Entrevistas" },
+                      { feature: "Precisión del Match", next: "92% Basado en Performance", trad: "30% Basado en Intuición" },
+                      { feature: "Calidad del Candidato", next: "Elite Verified (The LINE)", trad: "Incierta hasta el Mes 1" }
+                    ].map((row, i) => (
+                      <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="p-6 md:p-8 font-bold text-sm md:text-base text-slate-900">{row.feature}</td>
+                        <td className="p-6 md:p-8 text-brand-blue font-bold text-sm md:text-base bg-brand-blue/5">{row.next}</td>
+                        <td className="p-6 md:p-8 text-gray-400 text-sm md:text-base">{row.trad}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </section>
@@ -367,7 +370,7 @@ export default function Home() {
         </section>
 
         {/* 10. FAQ Section */}
-        <section id="faq" className="py-24 md:py-40 px-6 bg-white">
+        <section id="faq" className="py-24 md:py-40 px-6 bg-white text-slate-900">
           <div className="max-w-3xl mx-auto space-y-12">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-center">Preguntas Frecuentes</h2>
             <Accordion type="single" collapsible className="w-full">
@@ -460,7 +463,7 @@ export default function Home() {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Newsletter</p>
               <p className="text-xs text-gray-400 font-medium">Recibe los mejores desafíos de THE LINE en tu correo.</p>
               <div className="flex gap-2">
-                 <input type="email" placeholder="email@nextape.io" className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs flex-1 focus:ring-1 ring-brand-blue outline-none" />
+                 <input type="email" placeholder="email@nextape.io" className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs flex-1 focus:ring-1 ring-brand-blue outline-none text-slate-900" />
                  <Button className="rounded-xl bg-black text-white px-4 h-10">Ok</Button>
               </div>
             </div>
