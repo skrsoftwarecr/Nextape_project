@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Layers, Terminal, ArrowRight, Cpu, Zap, ShieldCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, ContactShadows, PresentationControls, Float } from "@react-three/drei";
+import { useGLTF, Environment, ContactShadows, PresentationControls, Float, Center } from "@react-three/drei";
 import * as THREE from "three";
 
 function LaptopModel({ progress }: { progress: number }) {
@@ -17,28 +17,31 @@ function LaptopModel({ progress }: { progress: number }) {
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Rotación suave vinculada al scroll
+      // Rotación vinculada al scroll
+      const targetRotationY = (progress * Math.PI * 0.5) - (Math.PI / 8);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(
         groupRef.current.rotation.y,
-        (progress * Math.PI * 0.8) - (Math.PI / 4),
-        0.1
+        targetRotationY,
+        0.05
       );
-      // Inclinación sutil
+      // Inclinación sutil según el progreso
       groupRef.current.rotation.x = THREE.MathUtils.lerp(
         groupRef.current.rotation.x,
-        Math.max(0, (0.3 - progress) * 0.5),
-        0.1
+        Math.max(0, (0.2 - progress) * 0.3),
+        0.05
       );
     }
   });
 
   return (
-    <primitive 
-      ref={groupRef}
-      object={scene} 
-      scale={0.8} 
-      position={[0, -0.8, 0]} 
-    />
+    <group ref={groupRef}>
+      <Center>
+        <primitive 
+          object={scene} 
+          scale={1.2} 
+        />
+      </Center>
+    </group>
   );
 }
 
@@ -55,11 +58,7 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        
-        // Calculamos el progreso basado en cuánto de la sección ha pasado por el viewport
-        const start = rect.top;
-        const height = rect.height;
-        const progress = Math.max(0, Math.min(1, -start / (height - windowHeight)));
+        const progress = Math.max(0, Math.min(1, -rect.top / (rect.height - windowHeight)));
         setLineProgress(progress);
       }
     };
@@ -107,7 +106,6 @@ export default function Home() {
     }
   ];
 
-  // El fondo negro comienza a desvanecerse cuando el scroll llega a la sección
   const isDarkMode = lineProgress > 0.05;
 
   return (
@@ -225,15 +223,15 @@ export default function Home() {
         </section>
 
         {/* Sección: The LINE - Scrollytelling 3D */}
-        <section ref={lineSectionRef} className="relative h-[500vh]">
+        <section ref={lineSectionRef} className="relative h-[400vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
-            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-16 w-full h-full">
+            <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-12 w-full h-full">
               
               {/* Contenedor de Texto Dinámico */}
-              <div className="relative h-[400px] flex items-center z-20">
+              <div className="relative h-[500px] flex items-center z-20">
                 {lineStages.map((stage, i) => {
-                  const start = i * 0.3;
-                  const end = (i + 1) * 0.3;
+                  const start = i * 0.33;
+                  const end = (i + 1) * 0.33;
                   const isActive = lineProgress >= start && lineProgress < end;
                   const opacity = isActive ? 1 : 0;
                   const translate = isActive ? "translate-y-0" : (lineProgress > end ? "-translate-y-12" : "translate-y-12");
@@ -261,45 +259,41 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual 3D */}
+              {/* Visual 3D Full Width Container */}
               <div className={cn(
                 "transition-all duration-1000 h-full w-full flex items-center justify-center relative z-10",
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
-                <div className="w-full h-[80vh] relative">
+                <div className="w-full h-full max-h-[70vh] relative">
                   <Canvas 
                     shadows 
-                    camera={{ position: [0, 0, 6], fov: 35 }}
+                    camera={{ position: [0, 0, 8], fov: 30 }}
                     style={{ background: 'transparent' }}
                   >
-                    <ambientLight intensity={0.5} />
-                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1.5} castShadow />
-                    <pointLight position={[-10, -10, -10]} intensity={0.5} />
+                    <ambientLight intensity={0.8} />
+                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} castShadow />
+                    <pointLight position={[-10, -10, -10]} intensity={1} />
                     
                     <Suspense fallback={null}>
-                      <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
+                      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.3}>
                         <PresentationControls
                           global
-                          config={{ mass: 2, tension: 500 }}
-                          snap={{ mass: 4, tension: 1500 }}
+                          config={{ mass: 1, tension: 200 }}
+                          snap={{ mass: 2, tension: 400 }}
                           rotation={[0, 0, 0]}
-                          polar={[-Math.PI / 4, Math.PI / 4]}
+                          polar={[-Math.PI / 6, Math.PI / 6]}
                           azimuth={[-Math.PI / 2, Math.PI / 2]}
                         >
                           <LaptopModel progress={lineProgress} />
                         </PresentationControls>
                       </Float>
-                      <Environment preset="city" />
-                      <ContactShadows position={[0, -1.2, 0]} opacity={0.6} scale={10} blur={2.5} far={4} />
+                      <Environment preset="studio" />
+                      <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={15} blur={2} far={4} />
                     </Suspense>
                   </Canvas>
                   
-                  <Suspense fallback={
-                    <div className="absolute inset-0 flex items-center justify-center text-brand-blue">
-                      <Loader2 className="h-12 w-12 animate-spin opacity-20" />
-                    </div>
-                  }>
-                    {null}
+                  <Suspense fallback={null}>
+                    {/* El Canvas maneja su propio fallback con el prop fallback de Suspense */}
                   </Suspense>
                 </div>
               </div>
