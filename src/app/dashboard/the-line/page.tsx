@@ -29,14 +29,14 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posiciones absolutas estables sin depender de Stage
-      // En modo narrativo: x=0, y=0, scale=0.8
-      // En modo análisis (extremo izquierdo): x=-8, y=-0.5, scale=0.45
+      // Coordenadas calculadas para cámara Z=15, FOV=35
+      // Al centro: x=0, y=0
+      // Izquierda (Análisis): x=-8, y=-0.5
       const targetX = isAnalysisMode ? -8 : 0;
       const targetY = isAnalysisMode ? -0.5 : 0;
       const targetScale = isAnalysisMode ? 0.45 : 0.8;
       
-      // Interpolación suave y robusta
+      // Interpolación suave y robusta para evitar saltos
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
       
