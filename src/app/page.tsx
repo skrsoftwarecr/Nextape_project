@@ -100,7 +100,7 @@ export default function Home() {
     },
     {
       title: "Escenarios de alto impacto.",
-      description: "Desde cuellos de botella en sistemas distribuidos hasta optimización de renderizado en tiempo real. Sin distracciones.",
+      description: "Desde arquitectura de software y sistemas distribuidos hasta optimización de rendimiento, debugging avanzado e implementación de nuevas funcionalidades. Cada desafío evalúa habilidades reales en distintos entornos de desarrollo.",
     },
     {
       title: "Tu DNA, verificado.",
