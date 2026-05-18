@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, Suspense, useRef } from "react";
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronRight, X, AlertTriangle, Monitor, Award, Terminal } from "lucide-react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, Float, Text, Stage } from "@react-three/drei";
+import { useGLTF, Text, Float, Stage } from "@react-three/drei";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
@@ -16,18 +15,14 @@ type AssessmentState = "selector" | "immersive" | "results";
 type NarrativeStep = "briefing" | "problem" | "analysis";
 type FeedbackStatus = "none" | "correct" | "incorrect";
 
-function LaptopModel({ 
-  feedback 
-}: { 
-  feedback: FeedbackStatus 
-}) {
+function LaptopModel({ feedback }: { feedback: FeedbackStatus }) {
   const { scene } = useGLTF("/models/laptop.glb");
   const groupRef = useRef<THREE.Group>(null);
   const feedbackLightRef = useRef<THREE.PointLight>(null);
 
   useFrame((state) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.05;
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.2) * 0.05;
     }
     if (feedbackLightRef.current) {
       feedbackLightRef.current.intensity = feedback !== "none" ? 10 : 0;
@@ -39,12 +34,7 @@ function LaptopModel({
   return (
     <group ref={groupRef}>
       <primitive object={scene} />
-      <pointLight 
-        ref={feedbackLightRef} 
-        position={[0, 2, 1]} 
-        color={feedbackColor} 
-        distance={5}
-      />
+      <pointLight ref={feedbackLightRef} position={[0, 2, 1]} color={feedbackColor} distance={5} />
       {feedback !== "none" && (
         <Float speed={5} rotationIntensity={0.1} floatIntensity={0.5}>
           <Text
@@ -215,19 +205,19 @@ export default function TheLinePage() {
         </div>
 
         <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-          <DialogContent className="border-none rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 bg-white max-w-xl shadow-apple-lg">
-            <DialogHeader className="space-y-6">
+          <DialogContent className="border-none rounded-[2rem] md:rounded-[3rem] p-6 sm:p-10 md:p-12 bg-white w-[92vw] sm:max-w-xl shadow-apple-lg">
+            <DialogHeader className="space-y-4 md:space-y-6">
               <div className="bg-brand-blue/10 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] inline-flex w-fit mx-auto">
-                <AlertTriangle className="h-10 w-10 md:h-12 md:w-12 text-brand-blue" />
+                <AlertTriangle className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 text-brand-blue" />
               </div>
-              <DialogTitle className="text-3xl md:text-4xl font-bold tracking-tighter text-center leading-none">¿Estás preparado?</DialogTitle>
-              <DialogDescription className="text-base md:text-lg font-medium text-center text-gray-500 leading-relaxed px-4">
+              <DialogTitle className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tighter text-center leading-none">¿Estás preparado?</DialogTitle>
+              <DialogDescription className="text-sm sm:text-base md:text-lg font-medium text-center text-gray-500 leading-relaxed px-2 sm:px-4">
                 Tus resultados se firmarán digitalmente en tu identidad Nextape.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex-col sm:flex-row gap-4 mt-8 md:mt-10">
-              <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="h-14 md:h-16 w-full rounded-2xl font-bold text-gray-400">Regresar</Button>
-              <Button onClick={handleStart} className="bg-gray-950 hover:bg-black text-white h-14 md:h-16 w-full rounded-2xl font-bold">Iniciar Sync</Button>
+            <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8 md:mt-10">
+              <Button variant="ghost" onClick={() => setIsConfirmOpen(false)} className="h-12 sm:h-14 md:h-16 w-full rounded-2xl font-bold text-gray-400">Regresar</Button>
+              <Button onClick={handleStart} className="bg-gray-950 hover:bg-black text-white h-12 sm:h-14 md:h-16 w-full rounded-2xl font-bold">Iniciar Sync</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -263,14 +253,16 @@ export default function TheLinePage() {
                 "flex flex-col h-full justify-center items-center text-center transition-all duration-700 space-y-8 md:space-y-12",
                 isTransitioning && "opacity-0 scale-95 blur-xl"
               )}>
-                <div className="absolute inset-0 z-0 opacity-30 md:opacity-40 pointer-events-none">
-                  <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
-                    <Suspense fallback={null}>
-                      <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.2 }}>
-                        <LaptopModel feedback={feedback} />
-                      </Stage>
-                    </Suspense>
-                  </Canvas>
+                <div className="absolute inset-0 z-0 opacity-30 md:opacity-40 pointer-events-none flex items-center justify-center">
+                  <div className="w-full h-[50vh] md:h-[70vh]">
+                    <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
+                      <Suspense fallback={null}>
+                        <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.2 }}>
+                          <LaptopModel feedback={feedback} />
+                        </Stage>
+                      </Suspense>
+                    </Canvas>
+                  </div>
                 </div>
 
                 <div className="relative z-10 space-y-6 md:space-y-12 cursor-pointer group w-full max-w-4xl" onClick={nextStep}>
@@ -297,7 +289,6 @@ export default function TheLinePage() {
                 "grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 h-full items-center transition-all duration-700",
                 isTransitioning && "opacity-0 blur-xl"
               )}>
-                {/* Left Column: Model */}
                 <div className="flex flex-col h-[30vh] md:h-full justify-center space-y-4 md:space-y-8 order-1">
                   <div className="space-y-2 md:space-y-3 px-2">
                     <div className="flex items-center gap-3">
@@ -320,7 +311,6 @@ export default function TheLinePage() {
                   </div>
                 </div>
 
-                {/* Right Column: Content */}
                 <div className="flex flex-col justify-center space-y-6 md:space-y-10 order-2 overflow-y-auto max-h-[50vh] md:max-h-full pb-8 md:pb-0">
                   <div className="p-6 md:p-10 bg-white/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-white/10 backdrop-blur-3xl space-y-3 md:space-y-4 shadow-2xl">
                     <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-[0.3em] text-brand-blue">Vector del Incidente</span>
