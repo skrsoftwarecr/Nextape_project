@@ -17,14 +17,12 @@ function LaptopModel({ progress }: { progress: number }) {
 
   useFrame(() => {
     if (scrollGroupRef.current) {
-      // Rotación suave basada únicamente en el scroll
       const targetRotationY = (progress * Math.PI * 0.4) - (Math.PI / 6);
       scrollGroupRef.current.rotation.y = THREE.MathUtils.lerp(
         scrollGroupRef.current.rotation.y,
         targetRotationY,
         0.05
       );
-      // Inclinación sutil basada en el scroll
       scrollGroupRef.current.rotation.x = THREE.MathUtils.lerp(
         scrollGroupRef.current.rotation.x,
         Math.max(0, (0.1 - progress) * 0.1),
@@ -95,7 +93,7 @@ export default function Home() {
 
   const lineStages = [
     {
-      title: "Neural Dynamic Testing.",
+      title: "Evaluación Dinámica Neural.",
       description: "Cada prueba en THE LINE es generada por IA según el perfil que busca el reclutador. Simulamos desafíos reales para medir cómo los candidatos piensan, resuelven y responden ante fallos e incidentes específicos para el puesto.",
     },
     {
@@ -135,7 +133,7 @@ export default function Home() {
                 isDarkMode ? "bg-white text-black hover:bg-gray-200" : "bg-black text-white hover:bg-black/80 shadow-apple"
               )}
             >
-              Sign In
+              Iniciar Sesión
             </Button>
           </div>
         </div>
@@ -146,10 +144,10 @@ export default function Home() {
         <section className="px-6 pt-32 md:pt-48 pb-20 md:pb-32 max-w-7xl mx-auto text-center">
           <div className="space-y-4 md:space-y-6">
             <h1 className="text-4xl sm:text-6xl md:text-8xl font-headline font-black leading-[1.1] md:leading-[1] tracking-tighter italic">
-              Level up <br />
-              <span className="text-brand-blue">your code.</span> <br />
-              Find your <br />
-              <span className="text-brand-red">next tape.</span>
+              Eleva tu <br />
+              <span className="text-brand-blue">nivel de código.</span> <br />
+              Encuentra tu <br />
+              <span className="text-brand-red">próximo tape.</span>
             </h1>
             <p className="text-base md:text-xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed pt-4 md:pt-8 px-4">
               La plataforma de evaluación para desarrolladores que ven el código como un arte. Verificado por IA. Diseñado para maestros.
@@ -296,7 +294,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-12">
             <div className="space-y-4">
               <div className="text-2xl font-bold tracking-tighter">Nextape</div>
-              <p className="text-gray-400 max-w-xs font-medium">Diseñado para los maestros del código. Tokyo & Worldwide.</p>
+              <p className="text-gray-400 max-w-xs font-medium">Diseñado para los maestros del código. Tokio y el mundo entero.</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 md:gap-12 w-full md:w-auto">
               <div className="space-y-4">
