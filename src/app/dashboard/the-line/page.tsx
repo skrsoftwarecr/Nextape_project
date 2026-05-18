@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronRight, X, AlertTriangle, Monitor, Award, Terminal } from "lucide-react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Stage, Float, Text } from "@react-three/drei";
+import { useGLTF, Environment, Float, Text, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +29,14 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posicionamiento dinámico:
-      // En modo narrativo (centro): x=0, y=0, scale=1.1
-      // En modo análisis (extremo izquierdo): x=-36, y=-2, scale=0.6
-      const targetX = isAnalysisMode ? -36 : 0;
-      const targetY = isAnalysisMode ? -2 : 0;
-      const targetScale = isAnalysisMode ? 0.6 : 1.1;
+      // Posiciones absolutas estables
+      // En modo narrativo: x=0, y=0, scale=4.5
+      // En modo análisis (extremo izquierdo): x=-22, y=-1, scale=2.5
+      const targetX = isAnalysisMode ? -22 : 0;
+      const targetY = isAnalysisMode ? -1 : 0;
+      const targetScale = isAnalysisMode ? 2.5 : 4.5;
       
-      // Interpolación suave para posición y escala
+      // Interpolación suave y robusta
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
       
@@ -44,12 +44,12 @@ function LaptopModel({
       const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.08);
       groupRef.current.scale.setScalar(newScale);
       
-      // Rotación sutil de balanceo constante - Ahora mucho más sutil
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, 0, 0.03) + Math.sin(state.clock.elapsedTime * 0.3) * 0.04;
+      // Balanceo sutil constante
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.04;
     }
 
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 30 : 0;
+      feedbackLightRef.current.intensity = feedback !== "none" ? 20 : 0;
     }
   });
 
@@ -60,18 +60,19 @@ function LaptopModel({
       <primitive object={scene} />
       <pointLight 
         ref={feedbackLightRef} 
-        position={[0, 2, 1]} 
+        position={[0, 2, 2]} 
         color={feedbackColor} 
-        distance={15}
+        distance={10}
       />
       {feedback !== "none" && (
         <Float speed={3} rotationIntensity={0.2} floatIntensity={0.5}>
           <Text
-            position={[0, 4, 0]}
+            position={[0, 4.5, 0]}
             fontSize={0.4}
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
+            font="/fonts/Geist-Bold.ttf"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
@@ -273,16 +274,18 @@ export default function TheLinePage() {
           
           <div className={cn(
             "absolute inset-0 z-0 overflow-hidden transition-all duration-1000",
-            isTransitioning && "blur-2xl brightness-150 scale-110 opacity-40 grayscale"
+            isTransitioning && "blur-[100px] brightness-150 scale-110 opacity-30 grayscale"
           )}>
             <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
               <Suspense fallback={null}>
-                <Stage environment="studio" intensity={0.6} contactShadow={{ opacity: 0.2 }}>
-                  <LaptopModel 
-                    isAnalysisMode={isAnalysis} 
-                    feedback={feedback} 
-                  />
-                </Stage>
+                <Environment preset="studio" intensity={0.5} />
+                <ambientLight intensity={0.4} />
+                <pointLight position={[10, 10, 10]} intensity={1.5} />
+                <LaptopModel 
+                  isAnalysisMode={isAnalysis} 
+                  feedback={feedback} 
+                />
+                <ContactShadows position={[0, -4.5, 0]} opacity={0.4} scale={20} blur={2.5} far={4.5} />
               </Suspense>
             </Canvas>
           </div>
@@ -325,10 +328,10 @@ export default function TheLinePage() {
                 <div className="space-y-6 max-w-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-2 h-2 bg-brand-blue rounded-full animate-ping" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">EVALUANDO DESEMPEÑO</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">PROCEDIMIENTO_DE_ANÁLISIS</span>
                   </div>
                   <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tighter">
-                    Análisis de integridad en curso.
+                    Evaluando desempeño sistémico.
                   </h2>
                 </div>
               )}
