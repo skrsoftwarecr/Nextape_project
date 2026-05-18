@@ -29,12 +29,12 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Posiciones absolutas estables
-      // En modo narrativo: x=0, y=0, scale=4.5
-      // En modo análisis (extremo izquierdo): x=-22, y=-1, scale=2.5
-      const targetX = isAnalysisMode ? -22 : 0;
-      const targetY = isAnalysisMode ? -1 : 0;
-      const targetScale = isAnalysisMode ? 2.5 : 4.5;
+      // Posiciones absolutas estables sin depender de Stage
+      // En modo narrativo: x=0, y=0, scale=0.8
+      // En modo análisis (extremo izquierdo): x=-8, y=-0.5, scale=0.45
+      const targetX = isAnalysisMode ? -8 : 0;
+      const targetY = isAnalysisMode ? -0.5 : 0;
+      const targetScale = isAnalysisMode ? 0.45 : 0.8;
       
       // Interpolación suave y robusta
       groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
@@ -49,7 +49,7 @@ function LaptopModel({
     }
 
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 20 : 0;
+      feedbackLightRef.current.intensity = feedback !== "none" ? 15 : 0;
     }
   });
 
@@ -72,7 +72,6 @@ function LaptopModel({
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
-            font="/fonts/Geist-Bold.ttf"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
@@ -273,8 +272,8 @@ export default function TheLinePage() {
         <div className="flex-grow relative flex flex-col items-center justify-center p-6 md:p-12">
           
           <div className={cn(
-            "absolute inset-0 z-0 overflow-hidden transition-all duration-1000",
-            isTransitioning && "blur-[100px] brightness-150 scale-110 opacity-30 grayscale"
+            "absolute inset-0 z-0 transition-all duration-1000",
+            isTransitioning && "blur-[80px] brightness-150 scale-105 opacity-50 grayscale"
           )}>
             <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
               <Suspense fallback={null}>
