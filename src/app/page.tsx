@@ -24,8 +24,6 @@ export default function Home() {
         const windowHeight = window.innerHeight;
         
         // Calculate progress based on how much of the section is visible
-        // Start fading when the top of section reaches bottom of viewport
-        // Complete fade when top of section reaches top of viewport
         const progress = Math.max(0, Math.min(1, (windowHeight - rect.top) / windowHeight));
         setLineProgress(progress);
       }
@@ -39,19 +37,16 @@ export default function Home() {
     {
       title: "Validación de Intuición",
       description: "No solo evaluamos sintaxis, sino la capacidad de tomar decisiones arquitectónicas bajo presión.",
-      icon: Cpu,
       color: "bg-brand-blue"
     },
     {
       title: "Feedback en Tiempo Real",
       description: "Recibe un desglose detallado de tu DNA técnico inmediatamente después de cada prueba.",
-      icon: Zap,
       color: "bg-brand-orange"
     },
     {
       title: "Identidad Verificada",
       description: "Un perfil de Nextape es una prueba irrefutable de maestría técnica para las mejores empresas del mundo.",
-      icon: ShieldCheck,
       color: "bg-brand-green"
     }
   ];
@@ -124,13 +119,10 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {features.map((f, i) => (
-                <div key={i} className="bg-white p-10 rounded-[2.5rem] shadow-apple hover:shadow-apple-lg transition-all border border-gray-100 group">
-                  <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-8 text-white group-hover:scale-110 transition-transform", f.color)}>
-                    <f.icon className="h-7 w-7" />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4 text-black">{f.title}</h3>
+                <div key={i} className="bg-white p-12 rounded-none shadow-apple hover:shadow-apple-lg transition-all border border-gray-100">
+                  <h3 className="text-2xl font-bold mb-6 text-black uppercase tracking-tight">{f.title}</h3>
                   <p className="text-gray-500 font-medium leading-relaxed">
                     {f.description}
                   </p>
