@@ -1,12 +1,50 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/auth/AuthModal";
 import Link from "next/link";
-import { Layers, Terminal, ArrowRight, Cpu, Zap, ShieldCheck } from "lucide-react";
+import { Layers, Terminal, ArrowRight, Cpu, Zap, ShieldCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useGLTF, Environment, ContactShadows, PresentationControls, Float } from "@react-three/drei";
+import * as THREE from "three";
+
+// Componente para cargar el modelo 3D
+function LaptopModel({ progress }: { progress: number }) {
+  // Intentamos cargar el modelo. Debes poner el archivo en /public/models/laptop.glb
+  const { scene } = useGLTF("/models/laptop.glb");
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      // Rotación sutil basada en el scroll
+      groupRef.current.rotation.y = (progress * Math.PI) / 4;
+      groupRef.current.rotation.x = Math.max(0, (0.5 - progress) * 0.2);
+    }
+  });
+
+  return (
+    <primitive 
+      ref={groupRef}
+      object={scene} 
+      scale={1.5} 
+      position={[0, -1, 0]} 
+      rotation={[0, -Math.PI / 4, 0]}
+    />
+  );
+}
+
+// Fallback mientras carga el modelo o si no existe
+function ModelFallback() {
+  return (
+    <mesh rotation={[0, 45, 0]}>
+      <boxGeometry args={[2, 1.2, 0.1]} />
+      <meshStandardMaterial color="#444" />
+    </mesh>
+  );
+}
 
 export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -21,9 +59,6 @@ export default function Home() {
       if (lineSectionRef.current) {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
-        
-        // Calculamos el progreso basado en la posición relativa de la sección
-        // El progreso empieza cuando el tope de la sección entra en el viewport
         const startVisible = rect.top - windowHeight;
         const totalDist = rect.height + windowHeight;
         const progress = Math.max(0, Math.min(1, -startVisible / totalDist));
@@ -74,8 +109,7 @@ export default function Home() {
     }
   ];
 
-  // Umbral sutil para el cambio a modo oscuro (aprox al 25% del progreso de la sección)
-  const isDarkMode = lineProgress > 0.25;
+  const isDarkMode = lineProgress > 0.15;
 
   return (
     <div className={cn(
@@ -191,7 +225,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Sección: The LINE - Cinematic Scroll Experience */}
+        {/* Sección: The LINE - Scrollytelling 3D */}
         <section ref={lineSectionRef} className="relative h-[400vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-16 w-full">
@@ -228,47 +262,47 @@ export default function Home() {
                 })}
               </div>
 
-              {/* Visual de Laptop */}
+              {/* Visual 3D */}
               <div className={cn(
-                "transition-all duration-1000 flex items-center justify-center",
-                lineProgress > 0.05 ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-10"
+                "transition-all duration-1000 h-[60vh] w-full flex items-center justify-center",
+                lineProgress > 0.05 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
-                <div className="relative group w-full max-w-md md:max-w-xl">
-                  {/* Laptop Mockup Estilizado */}
-                  <div className="bg-neutral-800 rounded-t-[2.5rem] p-3 shadow-2xl relative border border-white/5">
-                    <div className="bg-black aspect-[16/10] rounded-2xl overflow-hidden border-2 border-white/5 relative">
-                       {/* Overlay dinámico basado en el progreso */}
-                       <div className={cn(
-                         "absolute inset-0 bg-gradient-to-tr transition-opacity duration-1000",
-                         lineProgress < 0.3 ? "from-brand-blue/10 to-transparent" : 
-                         lineProgress < 0.6 ? "from-brand-orange/10 to-transparent" : 
-                         "from-brand-green/10 to-transparent"
-                       )} />
-                       
-                       <div className="absolute inset-0 flex items-center justify-center">
-                          <Terminal className={cn(
-                            "h-16 w-16 transition-all duration-700",
-                            lineProgress > 0.1 ? "text-brand-red opacity-30 scale-110" : "text-white opacity-5 scale-100"
-                          )} />
-                       </div>
-
-                       {/* Faux Code */}
-                       <div className="absolute inset-x-8 top-8 space-y-2 opacity-10 font-mono text-[8px] text-white">
-                          <div className="w-2/3 h-2 bg-white/20 rounded" />
-                          <div className="w-1/2 h-2 bg-white/10 rounded" />
-                          <div className="w-3/4 h-2 bg-white/20 rounded" />
-                       </div>
-
-                       <div className="absolute bottom-6 left-8 right-8 h-1 bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-brand-red transition-all duration-300" 
-                            style={{ width: `${lineProgress * 100}%` }}
-                          />
-                       </div>
+                <div className="w-full h-full relative">
+                  <Canvas 
+                    shadows 
+                    camera={{ position: [0, 0, 5], fov: 35 }}
+                    style={{ background: 'transparent' }}
+                  >
+                    <ambientLight intensity={0.5} />
+                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={1} castShadow />
+                    <pointLight position={[-10, -10, -10]} intensity={0.5} />
+                    
+                    <Suspense fallback={null}>
+                      <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
+                        <PresentationControls
+                          global
+                          config={{ mass: 2, tension: 500 }}
+                          snap={{ mass: 4, tension: 1500 }}
+                          rotation={[0, -0.3, 0]}
+                          polar={[-Math.PI / 3, Math.PI / 3]}
+                          azimuth={[-Math.PI / 1.4, Math.PI / 1.4]}
+                        >
+                          <LaptopModel progress={lineProgress} />
+                        </PresentationControls>
+                      </Float>
+                      <Environment preset="city" />
+                      <ContactShadows position={[0, -1.5, 0]} opacity={0.4} scale={10} blur={2} far={4.5} />
+                    </Suspense>
+                  </Canvas>
+                  
+                  {/* Overlay de carga sutil */}
+                  <Suspense fallback={
+                    <div className="absolute inset-0 flex items-center justify-center text-brand-blue">
+                      <Loader2 className="h-12 w-12 animate-spin opacity-20" />
                     </div>
-                  </div>
-                  <div className="bg-neutral-700 h-4 rounded-b-[2.5rem] mx-auto w-[92%] shadow-lg border-t border-white/10" />
-                  <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] bg-brand-red/5 blur-[100px] rounded-full" />
+                  }>
+                    {null}
+                  </Suspense>
                 </div>
               </div>
 
