@@ -31,7 +31,7 @@ function LaptopModel({
     if (groupRef.current) {
       // Coordenadas calculadas para cámara Z=15, FOV=35
       // Al centro: x=0, y=0
-      // Izquierda (Análisis): x=-8, y=-0.5
+      // Izquierda (Análisis): x=-8, y=-0.5 (Escala reducida drásticamente)
       const targetX = isAnalysisMode ? -8 : 0;
       const targetY = isAnalysisMode ? -0.5 : 0;
       const targetScale = isAnalysisMode ? 0.45 : 0.8;
