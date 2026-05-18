@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ChevronRight, X, AlertTriangle, Monitor, Award, Terminal } from "lucide-react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { useGLTF, Environment, Float, Text, ContactShadows } from "@react-three/drei";
+import { useGLTF, Environment, Float, Text, ContactShadows, Stage, Center } from "@react-three/drei";
 import * as THREE from "three";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +17,8 @@ type NarrativeStep = "briefing" | "problem" | "analysis";
 type FeedbackStatus = "none" | "correct" | "incorrect";
 
 function LaptopModel({ 
-  isAnalysisMode, 
   feedback 
 }: { 
-  isAnalysisMode: boolean; 
   feedback: FeedbackStatus 
 }) {
   const { scene } = useGLTF("/models/laptop.glb");
@@ -29,27 +27,10 @@ function LaptopModel({
 
   useFrame((state) => {
     if (groupRef.current) {
-      // Coordenadas calculadas para cámara Z=15, FOV=35
-      // Al centro: x=0, y=0
-      // Izquierda (Análisis): x=-8, y=-0.5 (Escala reducida drásticamente)
-      const targetX = isAnalysisMode ? -8 : 0;
-      const targetY = isAnalysisMode ? -0.5 : 0;
-      const targetScale = isAnalysisMode ? 0.45 : 0.8;
-      
-      // Interpolación suave y robusta para evitar saltos
-      groupRef.current.position.x = THREE.MathUtils.lerp(groupRef.current.position.x, targetX, 0.08);
-      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, 0.08);
-      
-      const currentScale = groupRef.current.scale.x;
-      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.08);
-      groupRef.current.scale.setScalar(newScale);
-      
-      // Balanceo sutil constante
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.04;
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.05;
     }
-
     if (feedbackLightRef.current) {
-      feedbackLightRef.current.intensity = feedback !== "none" ? 15 : 0;
+      feedbackLightRef.current.intensity = feedback !== "none" ? 10 : 0;
     }
   });
 
@@ -60,18 +41,19 @@ function LaptopModel({
       <primitive object={scene} />
       <pointLight 
         ref={feedbackLightRef} 
-        position={[0, 2, 2]} 
+        position={[0, 2, 1]} 
         color={feedbackColor} 
-        distance={10}
+        distance={5}
       />
       {feedback !== "none" && (
-        <Float speed={3} rotationIntensity={0.2} floatIntensity={0.5}>
+        <Float speed={5} rotationIntensity={0.1} floatIntensity={0.5}>
           <Text
-            position={[0, 4.5, 0]}
-            fontSize={0.4}
+            position={[0, 3.5, 0.5]}
+            fontSize={0.3}
             color={feedbackColor}
             anchorX="center"
             anchorY="middle"
+            font="https://fonts.gstatic.com/s/dmmono/v14/u-4n0qWbwpswbXTV7CH_XW_m.woff"
           >
             {feedback === "correct" ? "INTEGRITY_RESTORED" : "SYSTEM_FAILURE"}
           </Text>
@@ -159,8 +141,8 @@ export default function TheLinePage() {
           setViewState("results");
         }
         setIsTransitioning(false);
-      }, 800);
-    }, 2500);
+      }, 1000);
+    }, 2000);
   };
 
   if (!isMounted) return null;
@@ -270,106 +252,109 @@ export default function TheLinePage() {
         </header>
 
         <div className="flex-grow relative flex flex-col items-center justify-center p-6 md:p-12">
-          
+          {/* Neural Transition Blur Effect */}
           <div className={cn(
-            "absolute inset-0 z-0 transition-all duration-1000",
-            isTransitioning && "blur-[80px] brightness-150 scale-105 opacity-50 grayscale"
-          )}>
-            <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
-              <Suspense fallback={null}>
-                <Environment preset="studio" intensity={0.5} />
-                <ambientLight intensity={0.4} />
-                <pointLight position={[10, 10, 10]} intensity={1.5} />
-                <LaptopModel 
-                  isAnalysisMode={isAnalysis} 
-                  feedback={feedback} 
-                />
-                <ContactShadows position={[0, -4.5, 0]} opacity={0.4} scale={20} blur={2.5} far={4.5} />
-              </Suspense>
-            </Canvas>
-          </div>
+            "absolute inset-0 z-10 pointer-events-none transition-all duration-700 bg-brand-blue/0",
+            isTransitioning && "bg-brand-blue/20 backdrop-blur-[100px] z-50"
+          )} />
 
-          <div className={cn(
-            "max-w-7xl w-full h-full relative z-20 transition-all duration-700 grid",
-            isAnalysis ? "grid-cols-1 md:grid-cols-2 gap-12" : "grid-cols-1"
-          )}>
-            
-            <div className={cn(
-              "flex flex-col transition-all duration-700 h-full",
-              isAnalysis ? "justify-start pt-20 text-left" : "justify-center items-center text-center",
-              isTransitioning && "opacity-0 translate-y-4 blur-sm"
-            )}>
-              {narrativeStep === "briefing" && (
-                <div className="space-y-12 cursor-pointer w-full group" onClick={nextStep}>
-                  <div className="space-y-6">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto del Sistema</span>
-                    <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tighter italic leading-[1.1]">
-                      {q.briefing}
-                    </h2>
-                  </div>
-                  <p className="text-white/20 text-[9px] font-bold tracking-[0.4em] uppercase group-hover:text-white/50 transition-colors">Recibir_datos (Click)</p>
-                </div>
-              )}
-
-              {narrativeStep === "problem" && (
-                <div className="space-y-12 cursor-pointer w-full group" onClick={nextStep}>
-                  <div className="space-y-6">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Detección de Anomalía</span>
-                    <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight">
-                      "{q.text}"
-                    </h2>
-                  </div>
-                  <p className="text-white/20 text-[9px] font-bold tracking-[0.4em] uppercase group-hover:text-white/50 transition-colors">Analizar_vectores (Click)</p>
-                </div>
-              )}
-
-              {isAnalysis && (
-                <div className="space-y-6 max-w-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-brand-blue rounded-full animate-ping" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">PROCEDIMIENTO_DE_ANÁLISIS</span>
-                  </div>
-                  <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tighter">
-                    Evaluando desempeño sistémico.
-                  </h2>
-                </div>
-              )}
-            </div>
-
-            {isAnalysis && (
+          <div className="max-w-7xl w-full h-full relative z-20 transition-all duration-700">
+            {!isAnalysis ? (
+              // Phase: Briefing and Problem (Centered)
               <div className={cn(
-                "flex flex-col justify-center space-y-10 transition-all duration-700 h-full",
-                isTransitioning ? "opacity-0 translate-x-8" : "opacity-100 translate-x-0"
+                "flex flex-col h-full justify-center items-center text-center transition-all duration-700",
+                isTransitioning && "opacity-0 scale-95 blur-xl"
               )}>
-                <div className="p-10 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl space-y-4 shadow-2xl">
-                  <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-brand-blue">Vector del Incidente</span>
-                  <p className="text-white text-lg md:text-xl font-medium leading-relaxed italic tracking-tight">"{q.text}"</p>
+                <div className="absolute inset-0 z-0 opacity-40">
+                  <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
+                    <Suspense fallback={null}>
+                      <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.2 }}>
+                        <LaptopModel feedback={feedback} />
+                      </Stage>
+                    </Suspense>
+                  </Canvas>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {q.options.map((opt, idx) => (
-                    <button 
-                      key={idx}
-                      disabled={feedback !== "none"}
-                      onClick={() => handleAnswer(idx)}
-                      className={cn(
-                        "p-8 rounded-[2rem] border text-left font-bold transition-all relative overflow-hidden h-full flex items-center justify-between group",
-                        feedback === "none" 
-                          ? "bg-white/5 border-white/10 text-white/50 hover:border-brand-blue hover:bg-brand-blue/5 hover:text-white"
-                          : idx === q.correct 
-                            ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
-                            : answers[currentQuestion] === idx 
-                              ? "bg-brand-red/20 border-brand-red/50 text-brand-red"
-                              : "bg-white/5 border-white/5 text-white/10"
-                      )}
-                    >
-                      <span className="text-xs md:text-sm tracking-tight leading-snug">{opt}</span>
-                      <ChevronRight className={cn(
-                        "h-4 w-4 shrink-0 transition-all",
-                        feedback === "none" ? "opacity-0 group-hover:opacity-100 group-hover:translate-x-1" : "opacity-0"
-                      )} />
-                    </button>
-                  ))}
+                <div className="relative z-10 space-y-12 cursor-pointer group" onClick={nextStep}>
+                  {narrativeStep === "briefing" ? (
+                    <div className="space-y-6">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Contexto del Sistema</span>
+                      <h2 className="text-4xl md:text-7xl font-bold text-white tracking-tighter italic leading-[1.1]">
+                        {q.briefing}
+                      </h2>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">Detección de Anomalía</span>
+                      <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight px-10">
+                        "{q.text}"
+                      </h2>
+                    </div>
+                  )}
+                  <p className="text-white/20 text-[9px] font-bold tracking-[0.4em] uppercase group-hover:text-white/50 transition-colors">Siguiente_fase (Click)</p>
+                </div>
+              </div>
+            ) : (
+              // Phase: Analysis (Two Columns)
+              <div className={cn(
+                "grid grid-cols-1 md:grid-cols-2 gap-12 h-full items-center transition-all duration-700",
+                isTransitioning && "opacity-0 blur-xl"
+              )}>
+                {/* Left Column: Laptop + Status */}
+                <div className="flex flex-col h-full justify-center space-y-8">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-brand-blue rounded-full animate-ping" />
+                      <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-brand-blue">ANALYSIS_MODE_ACTIVE</span>
+                    </div>
+                    <h2 className="text-2xl md:text-4xl font-bold text-white tracking-tighter">
+                      Evaluando desempeño sistémico.
+                    </h2>
+                  </div>
+                  
+                  <div className="flex-grow min-h-[400px] relative">
+                    <Canvas camera={{ position: [0, 0, 15], fov: 35 }}>
+                      <Suspense fallback={null}>
+                        <Stage environment="studio" intensity={0.5} contactShadow={{ opacity: 0.2 }}>
+                          <LaptopModel feedback={feedback} />
+                        </Stage>
+                      </Suspense>
+                    </Canvas>
+                  </div>
+                </div>
+
+                {/* Right Column: Incident + Options */}
+                <div className="flex flex-col justify-center space-y-10">
+                  <div className="p-10 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl space-y-4 shadow-2xl">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-brand-blue">Vector del Incidente</span>
+                    <p className="text-white text-lg md:text-xl font-medium leading-relaxed italic tracking-tight">"{q.text}"</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {q.options.map((opt, idx) => (
+                      <button 
+                        key={idx}
+                        disabled={feedback !== "none"}
+                        onClick={() => handleAnswer(idx)}
+                        className={cn(
+                          "p-8 rounded-[2rem] border text-left font-bold transition-all relative overflow-hidden h-full flex items-center justify-between group",
+                          feedback === "none" 
+                            ? "bg-white/5 border-white/10 text-white/50 hover:border-brand-blue hover:bg-brand-blue/5 hover:text-white"
+                            : idx === q.correct 
+                              ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
+                              : answers[currentQuestion] === idx 
+                                ? "bg-brand-red/20 border-brand-red/50 text-brand-red"
+                                : "bg-white/5 border-white/5 text-white/10"
+                        )}
+                      >
+                        <span className="text-xs md:text-sm tracking-tight leading-snug">{opt}</span>
+                        <ChevronRight className={cn(
+                          "h-4 w-4 shrink-0 transition-all",
+                          feedback === "none" ? "opacity-0 group-hover:opacity-100 group-hover:translate-x-1" : "opacity-0"
+                        )} />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -395,7 +380,7 @@ export default function TheLinePage() {
     const score = Math.round((Object.values(answers).filter((a, i) => a === questions[i].correct).length / questions.length) * 100);
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center space-y-12 p-6 animate-in fade-in zoom-in duration-700">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center space-y-12 p-6 animate-in fade-in zoom-in duration-700 bg-black text-white">
         <div className="bg-brand-blue/10 p-8 rounded-[3rem] inline-flex mb-4">
            <Award className="h-16 w-16 text-brand-blue" />
         </div>
@@ -405,9 +390,9 @@ export default function TheLinePage() {
         </div>
         <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm pt-8">
            <Link href="/dashboard" className="w-full">
-             <Button className="w-full h-14 bg-black text-white rounded-2xl font-bold uppercase tracking-widest text-xs">Actualizar Perfil</Button>
+             <Button className="w-full h-14 bg-white text-black rounded-2xl font-bold uppercase tracking-widest text-xs">Actualizar Perfil</Button>
            </Link>
-           <Button onClick={handleExit} variant="outline" className="h-14 w-full rounded-2xl border-gray-200 font-bold uppercase tracking-widest text-xs">Reintentar</Button>
+           <Button onClick={handleExit} variant="outline" className="h-14 w-full rounded-2xl border-white/20 text-white font-bold uppercase tracking-widest text-xs hover:bg-white/10 transition-colors">Reintentar</Button>
         </div>
       </div>
     );
