@@ -18,7 +18,9 @@ import {
   Briefcase,
   Users,
   Target,
-  Search
+  Search,
+  Menu,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Canvas, useFrame } from "@react-three/fiber";
@@ -33,12 +35,14 @@ function LaptopModel({ progress }: { progress: number }) {
 
   useFrame(() => {
     if (scrollGroupRef.current) {
+      // Rotación basada en el scroll
       const targetRotationY = (progress * Math.PI * 0.5) - (Math.PI / 4);
       scrollGroupRef.current.rotation.y = THREE.MathUtils.lerp(
         scrollGroupRef.current.rotation.y,
         targetRotationY,
         0.08
       );
+      // Pequeña inclinación inicial
       scrollGroupRef.current.rotation.x = THREE.MathUtils.lerp(
         scrollGroupRef.current.rotation.x,
         Math.max(0, (0.1 - progress) * 0.1),
@@ -77,12 +81,20 @@ export default function Home() {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
         const totalHeight = rect.height - windowHeight;
-        const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
-        setLineProgress(progress);
+        
+        // Evitar división por cero o valores NaN
+        if (totalHeight > 0) {
+          const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
+          setLineProgress(progress);
+        } else {
+          setLineProgress(0);
+        }
       }
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
+    // Ejecutar una vez al inicio para establecer estado correcto
+    handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -108,7 +120,7 @@ export default function Home() {
       "flex flex-col min-h-screen transition-colors duration-1000 ease-in-out",
       isDarkMode ? "bg-black text-white" : "bg-[#F5F5F7] text-foreground"
     )}>
-      {/* 1. Navbar */}
+      {/* Navbar */}
       <nav className={cn(
         "fixed top-0 w-full z-[100] transition-all duration-500",
         scrolled 
@@ -138,7 +150,7 @@ export default function Home() {
       </nav>
 
       <main className="flex-grow">
-        {/* 2. Hero Section */}
+        {/* Hero Section */}
         <section className="px-6 pt-32 md:pt-48 pb-20 md:pb-32 max-w-7xl mx-auto text-center relative overflow-hidden">
           <div className="relative z-10 space-y-6 md:space-y-8">
             <div className="inline-flex items-center gap-2 bg-brand-blue/10 text-brand-blue px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest animate-fade-in">
@@ -167,11 +179,10 @@ export default function Home() {
               </Button>
             </div>
           </div>
-          {/* Background Decorative Blur */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[50vh] bg-brand-blue/5 rounded-full blur-[120px] -z-10" />
         </section>
 
-        {/* 3. Social Proof Bar */}
+        {/* Social Proof Bar */}
         <section className="py-12 border-y border-gray-100 bg-white/50 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-6">
             <p className="text-center text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-8">Con la confianza de +100 empresas de alto impacto</p>
@@ -185,7 +196,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4. Problem Section */}
+        {/* Problem Section */}
         <section id="problem" className="py-24 md:py-40 px-6">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
@@ -204,7 +215,7 @@ export default function Home() {
                   <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">Pruebas Genéricas</h4>
-                    <p className="text-gray-500 text-sm font-medium">Los desafíos de algoritmos (LeetCode) no predicen cómo un developer reacciona ante un fallo en producción.</p>
+                    <p className="text-gray-500 text-sm font-medium">Los desafíos de algoritmos no predicen cómo un developer reacciona ante un fallo en producción.</p>
                   </div>
                 </div>
                 <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
@@ -226,7 +237,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 5. How it Works / Solution Section */}
+        {/* How it Works / Solution Section */}
         <section id="how-it-works" className="py-24 md:py-40 px-6 bg-white text-slate-900">
           <div className="max-w-7xl mx-auto">
             <div className="text-center space-y-4 mb-20">
@@ -252,7 +263,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 6. The LINE Section (Interactive Laptop) */}
+        {/* THE LINE Interactive Section */}
         <section ref={lineSectionRef} className="relative h-[500vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-4 md:gap-12 w-full h-full">
@@ -317,52 +328,35 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 7. Differentiation Section */}
+        {/* Differentiation Section */}
         <section className="py-24 md:py-40 px-6">
           <div className="max-w-5xl mx-auto">
             <h2 className={cn("text-3xl md:text-5xl font-bold tracking-tight text-center mb-16", isDarkMode ? "text-white" : "text-black")}>¿Por qué Nextape?</h2>
             
-            <div className="space-y-6 md:space-y-0 md:rounded-[2.5rem] md:border md:border-gray-100 md:bg-white md:shadow-apple-lg md:overflow-hidden">
-              {/* Desktop Header */}
-              <div className="hidden md:grid grid-cols-3 bg-gray-50 border-b border-gray-100">
-                <div className="p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Característica</div>
-                <div className="p-8 font-bold uppercase tracking-widest text-[10px] text-brand-blue bg-brand-blue/5">Nextape</div>
-                <div className="p-8 font-bold uppercase tracking-widest text-[10px] text-gray-400">Reclutamiento Tradicional</div>
-              </div>
-
-              {/* Rows */}
+            <div className="space-y-6">
               {[
                 { feature: "Validación de Habilidades", next: "Simulación de Incidentes Real-Time", trad: "Filtros por Palabras Clave en CV" },
                 { feature: "Tiempo de Respuesta", next: "Instantáneo (Score Certificado)", trad: "2-3 Semanas de Entrevistas" },
                 { feature: "Precisión del Match", next: "92% Basado en Performance", trad: "30% Basado en Intuición" },
                 { feature: "Calidad del Candidato", next: "Elite Verified (The LINE)", trad: "Incierta hasta el Mes 1" }
               ].map((row, i) => (
-                <div key={i} className="group">
-                  {/* Mobile Layout (Cards) */}
-                  <div className={cn(
-                    "md:hidden p-8 rounded-[2rem] border space-y-4 transition-all",
-                    isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-gray-100 shadow-apple"
-                  )}>
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">Característica</div>
-                    <div className={cn("text-xl font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>{row.feature}</div>
-                    
-                    <div className="grid grid-cols-1 gap-4 pt-4">
-                      <div className="p-4 rounded-2xl bg-brand-blue/5 space-y-1">
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-brand-blue">Nextape</div>
-                        <div className="text-sm font-bold text-brand-blue">{row.next}</div>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-gray-50 space-y-1">
-                        <div className="text-[8px] font-bold uppercase tracking-widest text-gray-400">Tradicional</div>
-                        <div className="text-sm font-medium text-gray-500">{row.trad}</div>
-                      </div>
-                    </div>
+                <div key={i} className={cn(
+                  "p-8 rounded-[2rem] border transition-all flex flex-col md:grid md:grid-cols-3 md:items-center gap-6",
+                  isDarkMode ? "bg-white/5 border-white/10" : "bg-white border-gray-100 shadow-apple"
+                )}>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">Característica</span>
+                    <span className={cn("text-xl font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>{row.feature}</span>
                   </div>
-
-                  {/* Desktop Layout (Table Row) */}
-                  <div className="hidden md:grid grid-cols-3 divide-x divide-gray-50 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                    <div className="p-8 font-bold text-base text-slate-900 flex items-center">{row.feature}</div>
-                    <div className="p-8 text-brand-blue font-bold text-base bg-brand-blue/5 flex items-center">{row.next}</div>
-                    <div className="p-8 text-gray-400 text-sm flex items-center">{row.trad}</div>
+                  
+                  <div className="p-4 rounded-2xl bg-brand-blue/5 border border-brand-blue/10 space-y-1">
+                    <div className="text-[8px] font-bold uppercase tracking-widest text-brand-blue">Nextape</div>
+                    <div className="text-sm font-bold text-brand-blue">{row.next}</div>
+                  </div>
+                  
+                  <div className="p-4 rounded-2xl bg-gray-50 space-y-1">
+                    <div className="text-[8px] font-bold uppercase tracking-widest text-gray-400">Tradicional</div>
+                    <div className="text-sm font-medium text-gray-500">{row.trad}</div>
                   </div>
                 </div>
               ))}
@@ -370,7 +364,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 9. Intermediate CTA */}
+        {/* CTA Intermedio */}
         <section className="px-6 py-20">
            <div className="max-w-7xl mx-auto p-12 md:p-20 bg-brand-blue rounded-[3rem] text-white text-center space-y-8 relative overflow-hidden group">
               <div className="relative z-10 space-y-6">
@@ -387,16 +381,16 @@ export default function Home() {
            </div>
         </section>
 
-        {/* 10. FAQ Section */}
+        {/* FAQ Section */}
         <section id="faq" className="py-24 md:py-40 px-6 bg-white text-slate-900">
           <div className="max-w-3xl mx-auto space-y-12">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-center">Preguntas Frecuentes</h2>
             <Accordion type="single" collapsible className="w-full">
               {[
-                { q: "¿Es gratis para desarrolladores?", a: "Sí, Nextape es y siempre será gratuito para los desarrolladores que buscan validar su talento y encontrar mejores oportunidades." },
-                { q: "¿Cómo funciona la IA en THE LINE?", a: "Nuestra IA analiza el perfil del puesto y el stack del candidato para generar un entorno de simulación dinámico con fallos y tareas que ocurrirían en un día real de trabajo." },
-                { q: "¿Qué empresas están contratando?", a: "Trabajamos con startups Tier 1 y empresas tecnológicas consolidadas que valoran la excelencia técnica sobre los títulos académicos." },
-                { q: "¿Qué pasa si no paso THE LINE?", a: "No te preocupes. Recibirás un feedback detallado de tus áreas de mejora y podrás volver a intentarlo después de un periodo de enfriamiento para asegurar tu crecimiento." }
+                { q: "¿Es gratis para desarrolladores?", a: "Sí, Nextape es gratuito para los desarrolladores que buscan validar su talento y encontrar mejores oportunidades." },
+                { q: "¿Cómo funciona la IA en THE LINE?", a: "Nuestra IA analiza el perfil del puesto y el stack del candidato para generar un entorno de simulación dinámico con desafíos reales." },
+                { q: "¿Qué empresas están contratando?", a: "Trabajamos con startups Tier 1 y empresas tecnológicas que valoran la excelencia técnica sobre los títulos académicos." },
+                { q: "¿Qué pasa si no paso THE LINE?", a: "Recibirás feedback detallado y podrás volver a intentarlo después de un periodo de enfriamiento para asegurar tu crecimiento." }
               ].map((item, i) => (
                 <AccordionItem key={i} value={`item-${i}`} className="border-b border-gray-100 py-2">
                   <AccordionTrigger className="text-left font-bold text-base md:text-lg hover:no-underline hover:text-brand-blue transition-colors">
@@ -411,7 +405,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 11. Final CTA */}
+        {/* Final CTA */}
         <section className="py-24 md:py-40 px-6 bg-gray-950 text-white overflow-hidden relative">
           <div className="max-w-7xl mx-auto text-center space-y-10 relative z-10">
             <h2 className="text-4xl md:text-7xl font-headline font-black italic tracking-tighter leading-tight">
@@ -437,7 +431,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 12. Footer */}
+        {/* Footer */}
         <footer className={cn(
           "py-16 md:py-24 px-6 border-t transition-colors duration-1000",
           isDarkMode ? "bg-black border-white/10 text-white" : "bg-white border-gray-100 text-foreground"
@@ -479,7 +473,7 @@ export default function Home() {
 
             <div className="space-y-6">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Newsletter</p>
-              <p className="text-xs text-gray-400 font-medium">Recibe los mejores desafíos de THE LINE en tu correo.</p>
+              <p className="text-xs text-gray-400 font-medium">Recibe los mejores desafíos en tu correo.</p>
               <div className="flex gap-2">
                  <input type="email" placeholder="email@nextape.io" className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs flex-1 focus:ring-1 ring-brand-blue outline-none text-slate-900" />
                  <Button className="rounded-xl bg-black text-white px-4 h-10">Ok</Button>
