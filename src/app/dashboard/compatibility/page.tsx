@@ -1,2 +1,3 @@
-// Archivo neutralizado para evitar conflictos de rutas paralelas.
-export default function RemovedPage() { return null; }
+// Archivo desactivado para evitar conflictos de rutas paralelas.
+// La ruta oficial es src/app/compatibility/page.tsx
+export default function RedundantPage() { return null; }
