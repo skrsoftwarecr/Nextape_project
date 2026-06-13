@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -12,18 +11,20 @@ import {
   Target,
   Terminal,
   LogOut,
-  Menu
+  Menu,
+  User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const navItems = [
   { name: "Panel", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "The LINE", icon: Terminal, href: "/line" },
-  { name: "Digital Twin", icon: Fingerprint, href: "/profile" },
-  { name: "Roadmap", icon: Map, href: "/roadmap" },
-  { name: "Jobs", icon: Briefcase, href: "/jobs" },
-  { name: "Compatibilidad", icon: Target, href: "/compatibility" },
+  { name: "The LINE", icon: Terminal, href: "/dashboard/line" },
+  { name: "Digital Twin", icon: Fingerprint, href: "/dashboard/digital-twin" },
+  { name: "Roadmap", icon: Map, href: "/dashboard/roadmap" },
+  { name: "Jobs", icon: Briefcase, href: "/dashboard/jobs" },
+  { name: "Compatibilidad", icon: Target, href: "/dashboard/compatibility" },
+  { name: "Perfil", icon: User, href: "/dashboard/profile" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -83,26 +84,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <SheetContent side="left" className="w-80 border-none p-0 bg-white">
             <SheetHeader className="p-8 border-b border-gray-50">
               <SheetTitle className="text-left flex items-center gap-2 text-black italic">
-                 <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
-                   <div className="w-3 h-3 bg-white rounded-full" />
-                 </div>
-                 Nextape
+                 Nextape.
               </SheetTitle>
             </SheetHeader>
             <div className="p-6 overflow-y-auto h-full pb-20">
               <NavLinks onClick={() => setIsMobileMenuOpen(false)} />
-              <div className="mt-8 pt-8 border-t border-gray-50">
-                <Button variant="ghost" className="w-full justify-start gap-3 text-gray-400 hover:text-brand-red hover:bg-brand-red/5 rounded-2xl py-6">
-                  <LogOut className="h-5 w-5" />
-                  Cerrar Sesión
-                </Button>
-              </div>
             </div>
           </SheetContent>
         </Sheet>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 md:ml-72 pt-16 md:pt-0 min-h-screen">
         <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20 md:pb-10">
           {children}
