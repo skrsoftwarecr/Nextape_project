@@ -1,2 +1,2 @@
-// Ruta desactivada para evitar conflicto con la ruta raíz /compatibility
-export default function InactivePage() { return null; }
+// Archivo neutralizado para resolver conflicto de rutas paralelas. 
+// La página oficial reside en src/app/compatibility/page.tsx

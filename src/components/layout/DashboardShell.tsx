@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -20,11 +21,10 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/co
 const navItems = [
   { name: "Panel", icon: LayoutDashboard, href: "/dashboard" },
   { name: "The LINE", icon: Terminal, href: "/line" },
-  { name: "Digital Twin", icon: Fingerprint, href: "/digital-twin" },
+  { name: "Digital Twin", icon: Fingerprint, href: "/profile" },
   { name: "Roadmap", icon: Map, href: "/roadmap" },
   { name: "Jobs", icon: Briefcase, href: "/jobs" },
   { name: "Compatibilidad", icon: Target, href: "/compatibility" },
-  { name: "Perfil", icon: User, href: "/profile" },
 ];
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
@@ -49,6 +49,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F7] font-body">
+      {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200 z-50">
         <div className="p-8">
           <Link href="/" className="flex items-center gap-2">
@@ -71,6 +72,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
+      {/* Mobile Header */}
       <header className="md:hidden fixed top-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-40 p-4 flex justify-between items-center h-16">
         <Link href="/" className="text-xl font-bold tracking-tight text-black">Nextape</Link>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -81,7 +83,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80 border-none p-0 bg-white">
             <SheetHeader className="p-8 border-b border-gray-50">
-              <SheetTitle className="text-left flex items-center gap-2">
+              <SheetTitle className="text-left flex items-center gap-2 text-black">
                  <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
                    <div className="w-3 h-3 bg-white rounded-full" />
                  </div>
@@ -101,6 +103,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </Sheet>
       </header>
 
+      {/* Main Content Area */}
       <main className="flex-1 md:ml-72 pt-16 md:pt-0 min-h-screen">
         <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20 md:pb-10">
           {children}

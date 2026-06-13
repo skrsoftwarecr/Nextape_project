@@ -2,7 +2,7 @@
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Briefcase, Brain, Target, Zap } from "lucide-react";
+import { ArrowRight, Briefcase, Target, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const JOBS_COMPATIBILITY = [

@@ -1,2 +1,2 @@
-// Archivo desactivado. La lógica de Digital Twin reside en /profile o /digital-twin.
-export {};
+// Archivo neutralizado para resolver conflicto de rutas paralelas. 
+// La lógica reside en src/app/profile/page.tsx
