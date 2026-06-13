@@ -71,7 +71,7 @@ export default function LinePage() {
                </div>
                <div className="grid grid-cols-1 gap-3">
                   {["Ajustar Off-heap Memory", "Implementar Sharding", "Z-Stream Optimization", "Profile Heap Snapshot"].map((opt, i) => (
-                    <Button key={i} variant="outline" className="h-14 rounded-xl border-white/10 text-white hover:bg-white/10 justify-start px-6 font-bold text-base transition-all hover:translate-x-2">
+                    <Button key={i} variant="outline" className="h-14 rounded-xl border-white/10 text-white hover:bg-white/10 justify-start px-6 font-bold text-base transition-all hover:translate-x-2 text-left">
                       {i + 1}. {opt}
                     </Button>
                   ))}

@@ -1,8 +1,9 @@
 "use client";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
-import { Map, Zap, CheckCircle2, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const STEPS = [
   { title: "Sistemas Distribuidos", desc: "Patrones de consistencia y consenso (Raft/Paxos).", hours: 40, status: "in_progress" },
@@ -56,5 +57,3 @@ export default function RoadmapPage() {
     </DashboardShell>
   );
 }
-
-import { cn } from "@/lib/utils";
