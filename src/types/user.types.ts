@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { FirestoreTimestamp } from "./firebase.types";
 
 export interface UserProfile {
   uid: string;
@@ -7,11 +7,11 @@ export interface UserProfile {
   photoURL: string;
   githubUrl: string;
   role: "developer" | "recruiter";
-  createdAt: Timestamp;
+  createdAt: FirestoreTimestamp;
 }
 
 export interface UserSkills {
   uid: string;
   scores: { [skillName: string]: number };
-  updatedAt: Timestamp;
+  updatedAt: FirestoreTimestamp;
 }

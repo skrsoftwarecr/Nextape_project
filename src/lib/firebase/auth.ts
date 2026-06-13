@@ -11,7 +11,6 @@ import {
 import { auth } from "./client";
 
 export const signOut = () => firebaseSignOut(auth);
-
 export const signInWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
 export const signInWithGithub = () => signInWithPopup(auth, new GithubAuthProvider());
 

@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { FirestoreTimestamp } from "./firebase.types";
 
 export interface AssessmentSession {
   assessmentId: string;
@@ -6,6 +6,6 @@ export interface AssessmentSession {
   status: "pending" | "in_progress" | "completed";
   answers: { [questionId: string]: string };
   score: number;
-  startedAt: Timestamp;
-  completedAt?: Timestamp;
+  startedAt: FirestoreTimestamp;
+  completedAt?: FirestoreTimestamp;
 }

@@ -5,5 +5,5 @@ export type FirestoreTimestamp = Timestamp;
 export interface BaseEntity {
   id: string;
   createdAt: FirestoreTimestamp;
-  updatedAt: FirestoreTimestamp;
+  updatedAt?: FirestoreTimestamp;
 }

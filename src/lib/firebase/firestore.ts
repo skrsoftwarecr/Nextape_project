@@ -20,13 +20,12 @@ export const getDocById = async <T>(collectionName: string, id: string): Promise
 
 export const setDocById = async <T extends object>(collectionName: string, id: string, data: T): Promise<void> => {
   const docRef = doc(db, collectionName, id);
-  // No usamos await para persistencia optimista en el cliente según lineamientos
-  firestoreSetDoc(docRef, data, { merge: true });
+  await firestoreSetDoc(docRef, data, { merge: true });
 };
 
 export const updateDocById = async <T extends object>(collectionName: string, id: string, data: Partial<T>): Promise<void> => {
   const docRef = doc(db, collectionName, id);
-  firestoreUpdateDoc(docRef, data as any);
+  await firestoreUpdateDoc(docRef, data as any);
 };
 
 export const queryCollection = async <T>(collectionName: string, ...constraints: QueryConstraint[]): Promise<T[]> => {

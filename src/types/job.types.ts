@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { FirestoreTimestamp } from "./firebase.types";
 
 export interface JobOpportunity {
   id: string;
@@ -6,7 +6,7 @@ export interface JobOpportunity {
   company: string;
   description: string;
   requiredSkills: string[];
-  postedAt: Timestamp;
+  postedAt: FirestoreTimestamp;
 }
 
 export interface CompatibilityMatch {
@@ -14,5 +14,5 @@ export interface CompatibilityMatch {
   jobId: string;
   percentage: number;
   breakdown: { [skill: string]: number };
-  calculatedAt: Timestamp;
+  calculatedAt: FirestoreTimestamp;
 }
