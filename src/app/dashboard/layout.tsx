@@ -4,15 +4,28 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Briefcase, User, Terminal, LogOut, Menu, X } from "lucide-react";
+import { 
+  LayoutDashboard, 
+  Briefcase, 
+  User, 
+  Terminal, 
+  LogOut, 
+  Menu, 
+  Fingerprint, 
+  Map, 
+  Target 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const navItems = [
   { name: "Panel", icon: LayoutDashboard, href: "/dashboard" },
-  { name: "Jobs", icon: Briefcase, href: "/dashboard/jobs" },
-  { name: "Profile", icon: User, href: "/dashboard/profile" },
   { name: "The LINE", icon: Terminal, href: "/dashboard/the-line" },
+  { name: "Digital Twin", icon: Fingerprint, href: "/dashboard/digital-twin" },
+  { name: "Roadmap", icon: Map, href: "/dashboard/roadmap" },
+  { name: "Jobs", icon: Briefcase, href: "/dashboard/jobs" },
+  { name: "Compatibilidad", icon: Target, href: "/dashboard/compatibility" },
+  { name: "Perfil", icon: User, href: "/dashboard/profile" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +38,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const isActive = pathname === item.href;
         return (
           <Link key={item.name} href={item.href} onClick={onClick}>
-            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? "bg-primary text-white shadow-md shadow-primary/20" : "text-gray-500 hover:bg-gray-100"}`}>
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? "bg-brand-blue text-white shadow-md shadow-brand-blue/20" : "text-gray-500 hover:bg-gray-100"}`}>
               <item.icon className={`h-5 w-5 ${isActive ? "text-white" : "text-gray-400"}`} />
               {item.name}
             </div>
@@ -41,21 +54,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200 z-50">
         <div className="p-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
+            <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
               <div className="w-3 h-3 bg-white rounded-full" />
             </div>
             <span className="text-xl font-bold tracking-tight">Nextape</span>
           </Link>
         </div>
         
-        <div className="flex-grow px-4">
+        <div className="flex-grow px-4 overflow-y-auto">
           <NavLinks />
         </div>
 
         <div className="p-6">
           <Button variant="ghost" className="w-full justify-start gap-3 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-2xl py-6">
             <LogOut className="h-5 w-5" />
-            Sign Out
+            Cerrar Sesión
           </Button>
         </div>
       </aside>
@@ -72,18 +85,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SheetContent side="left" className="w-80 border-none p-0 bg-white">
             <SheetHeader className="p-8 border-b border-gray-50">
               <SheetTitle className="text-left flex items-center gap-2">
-                 <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
+                 <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
                    <div className="w-3 h-3 bg-white rounded-full" />
                  </div>
                  Nextape
               </SheetTitle>
             </SheetHeader>
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto h-full pb-20">
               <NavLinks onClick={() => setIsMobileMenuOpen(false)} />
-              <div className="mt-12 pt-12 border-t border-gray-50">
+              <div className="mt-8 pt-8 border-t border-gray-50">
                 <Button variant="ghost" className="w-full justify-start gap-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl py-6">
                   <LogOut className="h-5 w-5" />
-                  Sign Out
+                  Cerrar Sesión
                 </Button>
               </div>
             </div>
