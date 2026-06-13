@@ -1,119 +1,122 @@
-
 "use client";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, Terminal } from "lucide-react";
+import { ArrowUpRight, Terminal, Zap, Target, Users } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const metrics = [
     { label: "Evaluaciones", value: "12", color: "bg-brand-blue" },
     { label: "Puntaje Promedio", value: "88%", color: "bg-brand-green" },
-    { label: "Vistas del Clon", value: "245", color: "bg-brand-purple" },
+    { label: "Vistas Digital Twin", value: "245", color: "bg-brand-purple" },
     { label: "Match de Empleos", value: "18", color: "bg-brand-orange" }
-  ];
-
-  const recommendedJobs = [
-    { title: "Senior Fullstack Engineer", company: "Z-Tech Systems", score: 98, stack: ["React", "Go", "Postgres"] },
-    { title: "Frontend Mastermind", company: "Neon Creative", score: 94, stack: ["Next.js", "Three.js", "Tailwind"] },
-    { title: "DevOps Architect", company: "Global Cloud", score: 87, stack: ["K8s", "AWS", "Terraform"] }
   ];
 
   return (
     <DashboardShell>
-      <div className="space-y-8 md:space-y-10">
+      <div className="space-y-10">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-black">Hola, Developer Alpha.</h1>
-            <p className="text-gray-500 font-medium text-sm md:text-base">Resumen de tu DNA técnico hoy.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-black italic">Dashboard.</h1>
+            <p className="text-gray-500 font-medium">Resumen de tu DNA técnico y compatibilidad.</p>
           </div>
-          <div className="bg-white shadow-apple px-4 py-2 rounded-full border border-gray-100 text-[10px] md:text-sm font-medium flex items-center gap-2">
+          <div className="bg-white shadow-apple px-4 py-2 rounded-full border border-gray-100 text-sm font-bold flex items-center gap-2">
             <div className="w-2 h-2 bg-brand-green rounded-full animate-pulse" />
-            Status: Verified Master
+            STATUS: VERIFIED_MASTER
           </div>
         </header>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
           {metrics.map((m, idx) => (
-            <Card key={idx} className="border-none shadow-apple rounded-[1.5rem] md:rounded-[2rem] overflow-hidden bg-white hover:shadow-apple-lg transition-all duration-300 group">
-              <CardHeader className="pb-1 md:pb-2 p-4 md:p-6">
-                <CardTitle className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400">{m.label}</CardTitle>
+            <Card key={idx} className="border-none shadow-apple rounded-[2rem] overflow-hidden bg-white group hover:shadow-apple-lg transition-all">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{m.label}</CardTitle>
               </CardHeader>
-              <CardContent className="p-4 md:p-6 pt-0">
-                <div className="text-2xl md:text-4xl font-bold tracking-tighter">{m.value}</div>
-                <div className={`h-1 w-6 md:h-1.5 md:w-8 rounded-full mt-2 md:mt-4 transition-all group-hover:w-12 md:group-hover:w-16 ${m.color}`} />
+              <CardContent>
+                <div className="text-4xl font-black tracking-tighter">{m.value}</div>
+                <div className={`h-1.5 w-8 rounded-full mt-4 transition-all group-hover:w-16 ${m.color}`} />
               </CardContent>
             </Card>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-4 md:space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between px-2">
-              <h2 className="text-lg md:text-xl font-bold tracking-tight text-black">Recomendados</h2>
-              <Link href="/jobs" className="text-brand-blue text-xs md:text-sm font-semibold hover:underline flex items-center gap-1">
-                Ver todos <ArrowUpRight className="h-3 w-3 md:h-4 md:w-4" />
+              <h2 className="text-xl font-bold tracking-tight text-black italic">Recomendaciones.</h2>
+              <Link href="/jobs" className="text-brand-blue text-xs font-bold uppercase tracking-widest hover:underline flex items-center gap-1">
+                Ver todo <ArrowUpRight className="h-3 w-3" />
               </Link>
             </div>
+            
             <div className="space-y-4">
-              {recommendedJobs.map((job, idx) => (
-                <div key={idx} className="bg-white rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 border border-gray-50 shadow-apple flex flex-col sm:flex-row justify-between items-center gap-6 hover:scale-[1.01] transition-all cursor-pointer group">
-                  <div className="space-y-2 w-full text-center sm:text-left">
-                    <h3 className="text-lg md:text-xl font-bold text-black group-hover:text-brand-blue transition-colors">{job.title}</h3>
-                    <p className="text-xs md:text-sm text-gray-500 font-medium">{job.company}</p>
-                    <div className="flex flex-wrap gap-2 pt-2 justify-center sm:justify-start">
+              {[
+                { title: "Senior Fullstack Engineer", company: "Vercel", score: 98, stack: ["React", "Go"] },
+                { title: "Frontend Mastermind", company: "Neon Creative", score: 94, stack: ["Next.js", "Three.js"] }
+              ].map((job, idx) => (
+                <div key={idx} className="bg-white rounded-[2rem] p-8 border border-gray-50 shadow-apple flex justify-between items-center group cursor-pointer hover:scale-[1.01] transition-all">
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-black group-hover:text-brand-blue transition-colors">{job.title}</h3>
+                    <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">{job.company}</p>
+                    <div className="flex gap-2 pt-2">
                       {job.stack.map(s => (
-                        <Badge key={s} variant="secondary" className="rounded-full px-3 py-0.5 text-[9px] font-bold bg-gray-50 text-gray-400 border-none uppercase tracking-widest">
+                        <Badge key={s} variant="secondary" className="rounded-full px-3 text-[9px] font-bold bg-gray-50 text-gray-400 uppercase tracking-widest border-none">
                           {s}
                         </Badge>
                       ))}
                     </div>
                   </div>
-                  <div className="flex flex-row sm:flex-col items-center gap-2 sm:gap-0 shrink-0 bg-gray-50 sm:bg-transparent p-4 sm:p-0 rounded-2xl w-full sm:w-auto justify-between sm:justify-center">
-                     <div className="text-3xl md:text-5xl font-black tracking-tighter text-brand-blue">{job.score}%</div>
-                     <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300">Match</span>
+                  <div className="text-right">
+                    <div className="text-5xl font-black text-brand-blue tracking-tighter">{job.score}%</div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300">Match</span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="space-y-6">
-             <h2 className="text-lg md:text-xl font-bold tracking-tight px-2 text-black">Actividad Reciente</h2>
-             <div className="bg-white rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 shadow-apple space-y-6 md:space-y-8 border border-gray-50">
+          <div className="space-y-8">
+            <h2 className="text-xl font-bold tracking-tight px-2 italic text-black">Próximos Pasos.</h2>
+            <div className="bg-gray-950 rounded-[2.5rem] p-10 text-white space-y-8 shadow-apple-lg relative overflow-hidden group">
+              <div className="relative z-10 space-y-6">
+                <div className="w-12 h-12 bg-brand-blue/20 rounded-2xl flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-brand-blue" />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-xl font-bold">Optimiza tu DNA.</h4>
+                  <p className="text-sm text-gray-400 font-medium leading-relaxed">Completa el módulo de Sistemas Distribuidos para subir tu score un 15%.</p>
+                </div>
+                <Link href="/line">
+                  <Button className="w-full bg-brand-blue hover:bg-brand-blue/90 text-white rounded-2xl h-14 font-bold uppercase tracking-widest text-[10px] mt-4">
+                    Ir a The LINE
+                  </Button>
+                </Link>
+              </div>
+              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-brand-blue/10 rounded-full blur-3xl group-hover:scale-125 transition-transform" />
+            </div>
+
+            <div className="bg-white rounded-[2rem] p-8 shadow-apple border border-gray-50 space-y-6">
+              <h4 className="font-bold text-black italic">Actividad Reciente.</h4>
+              <div className="space-y-6">
                 {[
-                  { type: "Assessment", name: "System Design", score: "92/100", date: "2h ago", color: "text-brand-blue" },
-                  { type: "Skill Verified", name: "React Advanced", score: "LEVEL 5", date: "1d ago", color: "text-brand-green" },
-                  { type: "Job Match", name: "Tech Lead @ Stripe", score: "99%", date: "3d ago", color: "text-brand-orange" }
-                ].map((act, idx) => (
-                  <div key={idx} className="flex items-center gap-4 group">
-                    <div className={`w-1 h-10 md:h-12 rounded-full transition-all group-hover:w-1.5 ${idx === 0 ? "bg-brand-blue" : idx === 1 ? "bg-brand-green" : "bg-brand-orange"}`} />
+                  { icon: Target, label: "Assessment", name: "System Design", val: "92%" },
+                  { icon: Users, label: "Job Match", name: "Stripe", val: "99%" }
+                ].map((act, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+                      <act.icon className="h-4 w-4 text-brand-blue" />
+                    </div>
                     <div className="flex-1">
-                      <p className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">{act.type}</p>
-                      <p className="font-bold text-gray-800 text-xs md:text-sm">{act.name}</p>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{act.label}</p>
+                      <p className="text-sm font-bold text-gray-800">{act.name}</p>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-bold text-xs md:text-sm ${act.color}`}>{act.score}</p>
-                      <p className="text-[9px] text-gray-400 font-medium">{act.date}</p>
-                    </div>
+                    <div className="text-right font-black text-brand-blue">{act.val}</div>
                   </div>
                 ))}
-             </div>
-             
-             <Link href="/line" className="block">
-               <div className="bg-gray-950 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 text-white flex justify-between items-center group cursor-pointer hover:bg-black shadow-apple-lg transition-all relative overflow-hidden">
-                 <div className="relative z-10">
-                   <span className="font-bold text-lg md:text-xl block">Enter The LINE</span>
-                   <span className="text-[10px] text-gray-500 font-medium opacity-60 tracking-wider">Start Neural Sync</span>
-                 </div>
-                 <div className="w-12 h-12 md:w-14 md:h-14 bg-white/10 rounded-xl md:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform relative z-10">
-                   <Terminal className="h-6 w-6 md:h-7 md:w-7 text-brand-blue" />
-                 </div>
-                 <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-brand-blue/10 rounded-full blur-3xl" />
-               </div>
-             </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>

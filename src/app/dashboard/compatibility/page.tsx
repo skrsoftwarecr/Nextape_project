@@ -1,3 +1,2 @@
-// Archivo desactivado para evitar conflictos de rutas paralelas.
-// La ruta oficial es src/app/compatibility/page.tsx
-export default function RedundantPage() { return null; }
+// Ruta desactivada para evitar conflicto con la ruta raíz /compatibility
+export default function InactivePage() { return null; }
