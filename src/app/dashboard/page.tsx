@@ -4,7 +4,7 @@
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, Zap, Target, Users, Fingerprint } from "lucide-react";
+import { ArrowUpRight, Fingerprint, Target, Users, Zap } from "lucide-react";
 import Link from "next/link";
 
 export default function DashboardPage() {

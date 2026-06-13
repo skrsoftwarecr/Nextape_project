@@ -7,13 +7,12 @@ import { usePathname } from "next/navigation";
 import { 
   LayoutDashboard, 
   Briefcase, 
-  User, 
-  Terminal, 
-  LogOut, 
-  Menu, 
   Fingerprint, 
   Map, 
-  Target 
+  Target,
+  Terminal,
+  LogOut,
+  Menu
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -48,7 +47,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex min-h-screen bg-[#F5F5F7] font-body">
+    <div className="flex min-h-screen bg-[#F5F5F7] font-body text-foreground">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200 z-50">
         <div className="p-8">
@@ -56,7 +55,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
               <div className="w-3 h-3 bg-white rounded-full" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-black">Nextape</span>
+            <span className="text-xl font-bold tracking-tight text-black italic">Nextape.</span>
           </Link>
         </div>
         
@@ -65,7 +64,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="p-6">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-2xl py-6">
+          <Button variant="ghost" className="w-full justify-start gap-3 text-gray-400 hover:text-brand-red hover:bg-brand-red/5 rounded-2xl py-6 transition-colors">
             <LogOut className="h-5 w-5" />
             Cerrar Sesión
           </Button>
@@ -74,7 +73,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Header */}
       <header className="md:hidden fixed top-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-40 p-4 flex justify-between items-center h-16">
-        <Link href="/" className="text-xl font-bold tracking-tight text-black">Nextape</Link>
+        <Link href="/" className="text-xl font-bold tracking-tight text-black italic">Nextape.</Link>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full bg-gray-100 h-10 w-10">
@@ -83,7 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80 border-none p-0 bg-white">
             <SheetHeader className="p-8 border-b border-gray-50">
-              <SheetTitle className="text-left flex items-center gap-2 text-black">
+              <SheetTitle className="text-left flex items-center gap-2 text-black italic">
                  <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
                    <div className="w-3 h-3 bg-white rounded-full" />
                  </div>
@@ -93,7 +92,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <div className="p-6 overflow-y-auto h-full pb-20">
               <NavLinks onClick={() => setIsMobileMenuOpen(false)} />
               <div className="mt-8 pt-8 border-t border-gray-50">
-                <Button variant="ghost" className="w-full justify-start gap-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-2xl py-6">
+                <Button variant="ghost" className="w-full justify-start gap-3 text-gray-400 hover:text-brand-red hover:bg-brand-red/5 rounded-2xl py-6">
                   <LogOut className="h-5 w-5" />
                   Cerrar Sesión
                 </Button>
