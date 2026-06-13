@@ -16,12 +16,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { signOut } from "@/lib/firebase/auth";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase/client";
 
 const navItems = [
   { name: "Panel", icon: LayoutDashboard, href: "/dashboard" },
   { name: "The LINE", icon: Terminal, href: "/dashboard/line" },
-  { name: "Digital Twin", icon: Fingerprint, href: "/dashboard/digital-twin" },
+  { name: "CORE", icon: Fingerprint, href: "/dashboard/core" },
   { name: "Roadmap", icon: Map, href: "/dashboard/roadmap" },
   { name: "Jobs", icon: Briefcase, href: "/dashboard/jobs" },
   { name: "Compatibilidad", icon: Target, href: "/dashboard/compatibility" },
@@ -48,6 +49,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </nav>
   );
 
+  const handleSignOut = async () => {
+    await signOut(auth);
+  };
+
   return (
     <div className="flex min-h-screen bg-[#F5F5F7] font-body text-foreground">
       <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200 z-50">
@@ -67,7 +72,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="p-6">
           <Button 
             variant="ghost" 
-            onClick={() => signOut()}
+            onClick={handleSignOut}
             className="w-full justify-start gap-3 text-gray-400 hover:text-brand-red hover:bg-brand-red/5 rounded-2xl py-6 transition-colors"
           >
             <LogOut className="h-5 w-5" />

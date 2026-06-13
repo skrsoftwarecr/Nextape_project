@@ -22,8 +22,8 @@ service cloud.firestore {
     match /compatibility/{id} {
       allow read: if request.auth != null && id.split('_')[0] == request.auth.uid;
     }
-    // Digital Twin privado
-    match /digitalTwin/{userId} {
+    // CORE (Núcleo de identidad) privado
+    match /core/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
   }

@@ -1,4 +1,3 @@
-
 export type SkillScore = {
   skill: string;
   score: number;
@@ -11,10 +10,11 @@ export type UserProfile = {
   username: string;
   grade: 'S' | 'A+' | 'A' | 'B' | 'C';
   skills: SkillScore[];
-  digitalTwin: {
+  core: {
     visibility: 'public' | 'private';
     views: number;
     tags: string[];
+    telemetry: any;
   };
 };
 
