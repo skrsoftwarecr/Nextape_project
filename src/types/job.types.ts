@@ -1,13 +1,10 @@
 import { Timestamp } from "firebase/firestore";
 
 export interface JobOpportunity {
-  jobId: string;
+  id: string;
   title: string;
   company: string;
   description: string;
-  location: string;
-  type: string;
-  salary: string;
   requiredSkills: string[];
   postedAt: Timestamp;
 }

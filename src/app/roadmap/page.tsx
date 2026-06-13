@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
-export default function RedirectPage() {
-  redirect("/dashboard/roadmap");
-}
+// Archivo desactivado para cumplir con la arquitectura oficial.
+// La ruta válida es src/app/dashboard/roadmap/page.tsx
+export default function Inactive() { return null; }
