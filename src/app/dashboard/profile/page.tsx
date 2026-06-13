@@ -1,4 +1,3 @@
-
-// Archivo desactivado para evitar conflictos de rutas paralelas.
-// La página oficial es src/app/profile/page.tsx
+// Archivo desactivado para resolver el conflicto de rutas paralelas.
+// La ruta oficial es src/app/profile/page.tsx
 export default function InactivePage() { return null; }

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -40,7 +39,6 @@ export default function CompatibilityPage() {
                  <span className="text-7xl font-black italic tracking-tighter text-brand-blue leading-none">9.2</span>
                  <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4">Rank Score</span>
               </div>
-              <div className="absolute -top-12 -left-12 w-48 h-48 bg-brand-blue/5 rounded-full blur-3xl" />
            </div>
            
            <div className="bg-white p-12 rounded-[2.5rem] shadow-apple border border-gray-50 flex flex-col justify-center space-y-8">

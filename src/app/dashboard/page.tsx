@@ -1,4 +1,3 @@
-
 "use client";
 
 import { DashboardShell } from "@/components/layout/DashboardShell";
@@ -20,8 +19,8 @@ export default function DashboardPage() {
       <div className="space-y-10">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-black italic">Dashboard.</h1>
-            <p className="text-gray-500 font-medium">Métricas clave de tu identidad técnica Nextape.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-black italic">Panel de Control.</h1>
+            <p className="text-gray-500 font-medium text-sm">Métricas clave de tu identidad técnica Nextape.</p>
           </div>
           <div className="bg-white shadow-apple px-6 py-3 rounded-full border border-gray-100 text-[10px] font-bold flex items-center gap-3">
             <div className="w-2 h-2 bg-brand-green rounded-full animate-pulse" />
@@ -98,27 +97,6 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-brand-blue/10 rounded-full blur-3xl group-hover:scale-125 transition-transform" />
-            </div>
-
-            <div className="bg-white rounded-[2rem] p-8 shadow-apple border border-gray-50 space-y-6">
-              <h4 className="font-bold text-black italic text-sm">Próximos Hitos.</h4>
-              <div className="space-y-6">
-                {[
-                  { icon: Target, label: "Assessment", name: "Arquitectura Senior", val: "92%" },
-                  { icon: Users, label: "Job Match", name: "Stripe", val: "99%" }
-                ].map((act, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
-                      <act.icon className="h-4 w-4 text-brand-blue" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{act.label}</p>
-                      <p className="text-sm font-bold text-gray-800">{act.name}</p>
-                    </div>
-                    <div className="text-right font-black text-brand-blue italic">{act.val}</div>
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
