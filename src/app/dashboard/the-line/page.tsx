@@ -1,2 +1,2 @@
-// Renombrado a src/app/dashboard/line/page.tsx
-export default function InactivePage() { return null; }
+// Renombrado a src/app/dashboard/line/page.tsx para cumplir con el árbol objetivo.
+export const dynamic = 'force-static';

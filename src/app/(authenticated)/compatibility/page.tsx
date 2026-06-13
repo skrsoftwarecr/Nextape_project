@@ -1,3 +1,2 @@
-// Ruta obsoleta. La oficial es src/app/dashboard/compatibility/page.tsx
-// Se elimina la exportación para resolver el error de "Parallel Pages"
+// Carpeta (authenticated) obsoleta. Los archivos han sido movidos a src/app/dashboard/
 export const dynamic = 'force-static';

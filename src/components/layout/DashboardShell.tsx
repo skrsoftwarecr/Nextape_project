@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { signOut } from "@/lib/firebase/auth";
 
 const navItems = [
   { name: "Panel", icon: LayoutDashboard, href: "/dashboard" },
@@ -49,7 +50,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-[#F5F5F7] font-body text-foreground">
-      {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200 z-50">
         <div className="p-8">
           <Link href="/" className="flex items-center gap-2">
@@ -65,14 +65,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="p-6">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-gray-400 hover:text-brand-red hover:bg-brand-red/5 rounded-2xl py-6 transition-colors">
+          <Button 
+            variant="ghost" 
+            onClick={() => signOut()}
+            className="w-full justify-start gap-3 text-gray-400 hover:text-brand-red hover:bg-brand-red/5 rounded-2xl py-6 transition-colors"
+          >
             <LogOut className="h-5 w-5" />
             Cerrar Sesión
           </Button>
         </div>
       </aside>
 
-      {/* Mobile Header */}
       <header className="md:hidden fixed top-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-40 p-4 flex justify-between items-center h-16">
         <Link href="/" className="text-xl font-bold tracking-tight text-black italic">Nextape.</Link>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -83,7 +86,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80 border-none p-0 bg-white">
             <SheetHeader className="p-8 border-b border-gray-50">
-              <SheetTitle className="text-left flex items-center gap-2 text-black italic">
+              <SheetTitle className="text-left flex items-center gap-2 text-black italic font-bold">
                  Nextape.
               </SheetTitle>
             </SheetHeader>
