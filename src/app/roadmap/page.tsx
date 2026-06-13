@@ -1,2 +1,3 @@
-// Ruta movida a src/app/dashboard/roadmap/page.tsx
-export default function Page() { return null; }
+// Archivo neutralizado para cumplir con la arquitectura oficial.
+// La lógica se ha movido a src/features/roadmap/
+export default function InactivePage() { return null; }

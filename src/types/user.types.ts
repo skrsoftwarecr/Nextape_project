@@ -12,13 +12,6 @@ export interface UserProfile {
 
 export interface UserSkills {
   uid: string;
-  scores: { [skillName: string]: number }; // 0-100
+  scores: { [skillName: string]: number };
   updatedAt: Timestamp;
-}
-
-export interface DigitalTwinData {
-  uid: string;
-  visitCount: number;
-  lastVisit: Timestamp;
-  telemetry: Record<string, any>;
 }

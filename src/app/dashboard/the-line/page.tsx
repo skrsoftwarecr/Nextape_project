@@ -1,2 +1,2 @@
-// Archivo neutralizado. La nueva ruta oficial es src/app/dashboard/line/page.tsx
-export default function Redirect() { return null; }
+// Renombrado a src/app/dashboard/line/page.tsx
+export default function InactivePage() { return null; }

@@ -10,18 +10,18 @@ import {
 } from "firebase/firestore";
 import { db } from "./client";
 
-export const getDoc = async <T>(collectionName: string, id: string): Promise<T | null> => {
+export const getDocById = async <T>(collectionName: string, id: string): Promise<T | null> => {
   const docRef = doc(db, collectionName, id);
   const docSnap = await firestoreGetDoc(docRef);
   return docSnap.exists() ? (docSnap.data() as T) : null;
 };
 
-export const setDoc = async <T extends object>(collectionName: string, id: string, data: T): Promise<void> => {
+export const setDocById = async <T extends object>(collectionName: string, id: string, data: T): Promise<void> => {
   const docRef = doc(db, collectionName, id);
   await firestoreSetDoc(docRef, data, { merge: true });
 };
 
-export const updateDoc = async <T extends object>(collectionName: string, id: string, data: Partial<T>): Promise<void> => {
+export const updateDocById = async <T extends object>(collectionName: string, id: string, data: Partial<T>): Promise<void> => {
   const docRef = doc(db, collectionName, id);
   await firestoreUpdateDoc(docRef, data as any);
 };
