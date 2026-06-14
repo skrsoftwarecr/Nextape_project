@@ -7,6 +7,8 @@ export interface UserProfile {
   photoURL: string;
   githubUrl: string;
   role: "developer" | "recruiter";
+  experience?: "junior" | "mid" | "senior";
+  seniority?: "junior" | "mid" | "senior";
   createdAt: FirestoreTimestamp;
 }
 
@@ -15,3 +17,17 @@ export interface UserSkills {
   scores: { [skillName: string]: number };
   updatedAt: FirestoreTimestamp;
 }
+
+export interface UserSkillScores {
+  uid: string;
+  scores: {
+    [skillKey: string]: {
+      junior?: number;
+      mid?: number;
+      senior?: number;
+    };
+  };
+  lastUpdated: FirestoreTimestamp;
+  totalAssessments: number;
+}
+

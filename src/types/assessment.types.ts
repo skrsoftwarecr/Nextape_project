@@ -9,3 +9,15 @@ export interface AssessmentSession {
   startedAt: FirestoreTimestamp;
   completedAt?: FirestoreTimestamp;
 }
+
+export interface AssessmentAttempt {
+  id: string;
+  userId: string;
+  assessmentId: string;
+  skill: string;
+  difficulty: "junior" | "mid" | "senior";
+  score: number;
+  completedAt: FirestoreTimestamp;
+  usedForScore: boolean;
+}
+
