@@ -1,5 +1,2 @@
-/**
- * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE
- * La ruta oficial es /dashboard/compatibility
- */
-export default function ObsoletePage() { return null; }
+// Archivo neutralizado para evitar error de Parallel Pages.
+// La ruta oficial es /dashboard/compatibility

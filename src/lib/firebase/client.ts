@@ -5,7 +5,6 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Configuración oficial de NEXTAPE
 const firebaseConfig = {
   apiKey: "AIzaSyALMrOQqW8MUX0Ube0HX4HOwDJgWKj_Rtg",
   authDomain: "studio-4462619429-470d8.firebaseapp.com",
@@ -15,7 +14,6 @@ const firebaseConfig = {
   appId: "1:1098477758552:web:99dc337c8c986b4c7fc22d"
 };
 
-// Inicialización persistente en el cliente
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);

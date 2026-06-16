@@ -6,10 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github, Mail } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const router = useRouter();
+
+  const handleAuth = () => {
+    // MODO DE PRUEBAS: Si ambos campos están vacíos
+    if (!email && !password) {
+      sessionStorage.setItem('nextape_test_mode', 'true');
+      router.push('/dashboard');
+      return;
+    }
+
+    // Aquí iría la lógica normal de Firebase Auth si hay datos
+    console.log("Intentando login con Firebase...");
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6">
@@ -23,19 +38,32 @@ export default function AuthPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Email</Label>
-              <Input type="email" placeholder="name@example.com" className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" />
+              <Input 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email" 
+                placeholder="name@example.com" 
+                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
+              />
             </div>
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Contraseña</Label>
-              <Input type="password" placeholder="••••••••" className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" />
+              <Input 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password" 
+                placeholder="••••••••" 
+                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
+              />
             </div>
           </div>
 
-          <Link href="/dashboard" className="block">
-            <Button className="w-full h-14 text-lg font-bold rounded-2xl bg-brand-blue hover:bg-brand-blue/90 shadow-apple transition-all">
-              {mode === "login" ? "Acceder" : "Crear Cuenta"}
-            </Button>
-          </Link>
+          <Button 
+            onClick={handleAuth}
+            className="w-full h-14 text-lg font-bold rounded-2xl bg-brand-blue hover:bg-brand-blue/90 shadow-apple transition-all"
+          >
+            {mode === "login" ? "Acceder" : "Crear Cuenta"}
+          </Button>
 
           <div className="relative py-4">
             <div className="absolute inset-0 flex items-center">

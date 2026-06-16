@@ -1,5 +1,2 @@
-/**
- * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE
- * El módulo ha sido renombrado a CORE y reside en /dashboard/core
- */
-export default function ObsoletePage() { return null; }
+// Archivo neutralizado para evitar error de Parallel Pages.
+// El módulo ha sido renombrado a CORE en /dashboard/core
