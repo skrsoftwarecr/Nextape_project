@@ -10,17 +10,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Verificar si estamos en modo de pruebas
-    const isTestMode = typeof window !== 'undefined' && sessionStorage.getItem('nextape_test_mode') === 'true';
-    
-    if (isTestMode) {
-      setLoading(false);
-      return;
-    }
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        router.push("/auth");
+        // No redirigir si ya estamos en la página de auth o landing
+        if (window.location.pathname !== '/auth' && window.location.pathname !== '/') {
+           router.push("/auth");
+        } else {
+           setLoading(false);
+        }
       } else {
         setLoading(false);
       }
