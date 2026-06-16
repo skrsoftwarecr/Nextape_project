@@ -1,4 +1,5 @@
 /**
- * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE CON COMANDO rm
- * La página oficial reside en src/app/dashboard/compatibility/page.tsx
+ * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE
+ * La ruta oficial es /dashboard/compatibility
  */
+export default function ObsoletePage() { return null; }

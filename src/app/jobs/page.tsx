@@ -1,4 +1,5 @@
 /**
- * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE CON COMANDO rm
- * La página oficial reside en src/app/dashboard/jobs/page.tsx
+ * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE
+ * La ruta oficial es /dashboard/jobs
  */
+export default function ObsoletePage() { return null; }
