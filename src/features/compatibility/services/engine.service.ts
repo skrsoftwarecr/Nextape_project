@@ -12,8 +12,8 @@ import {
   serverTimestamp,
   QueryConstraint
 } from "firebase/firestore";
-import { CandidateMatch, GithubEvidence } from "@/types/compatibility.types";
-import { UserSkillScores, UserProfile } from "@/types/user.types";
+import { CandidateMatch, GithubEvidence } from "@/features/compatibility/types/compatibility.types";
+import { UserSkillScores, UserProfile } from "@/features/auth/types/user.types";
 
 export const EngineService = {
   /**
