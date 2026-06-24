@@ -1,40 +1,58 @@
 import { db } from "@/lib/firebase/client";
 import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
-import { UserSkillScores } from "@/types/user.types";
+import { UserSkillScores } from "@/features/auth/types/user.types";
+import { Question, QuestionOption, OPTION_SCORES } from "../types/assessment.types";
 
 export const ScoringService = {
+  /**
+   * Calcula el score de un intento en base a las respuestas elegidas.
+   */
+  calculateAttemptScore: (
+    answers: Record<string, QuestionOption>,
+    questions: Question[]
+  ): number => {
+    if (questions.length === 0) return 0;
+    
+    const total = questions.length * 100;
+    const earned = questions.reduce((sum, q) => {
+      const option = answers[q.id] ?? 'bad';
+      return sum + OPTION_SCORES[option];
+    }, 0);
+    return Math.round((earned / total) * 100);
+  },
+
   /**
    * Updates or creates a user's skill score in the user_skill_scores collection.
    * Only features/assessments/ should write to user_skill_scores.
    */
   updateUserSkillScore: async (
-    userId: string,
-    skill: string,
+    uid: string,
+    skillId: string,
     difficulty: "junior" | "mid" | "senior",
     newScore: number
   ): Promise<void> => {
-    // 3. Validación de rango de score (0-100)
+    // Validación de rango de score (0-100)
     if (newScore < 0 || newScore > 100) {
       throw new Error("Score fuera de rango");
     }
 
     try {
-      const docRef = doc(db, "user_skill_scores", userId);
+      const docRef = doc(db, "user_skill_scores", uid);
 
-      // 4. Envuelve la lógica en runTransaction para evitar race conditions
+      // Envuelve la lógica en runTransaction para evitar race conditions
       await runTransaction(db, async (transaction) => {
         const docSnap = await transaction.get(docRef);
 
-        // 5. Valida que docSnap exista y tenga la propiedad scores definida
+        // Valida que docSnap exista y tenga la propiedad scores definida
         const data = docSnap.data();
         if (docSnap.exists() && data && data.scores !== undefined) {
           const typedData = data as UserSkillScores;
           const currentScores = typedData.scores || {};
-          const currentSkillScores = currentScores[skill] || {};
+          const currentSkillScores = currentScores[skillId] || {};
 
           const updatedScores = {
             ...currentScores,
-            [skill]: {
+            [skillId]: {
               ...currentSkillScores,
               [difficulty]: newScore
             }
@@ -46,11 +64,11 @@ export const ScoringService = {
             totalAssessments: (typedData.totalAssessments || 0) + 1
           });
         } else {
-          // 2. Creación de nuevo documento: omitir llaves no actualizadas
+          // Creación de nuevo documento: omitir llaves no actualizadas
           transaction.set(docRef, {
-            uid: userId,
+            uid: uid,
             scores: {
-              [skill]: {
+              [skillId]: {
                 [difficulty]: newScore
               }
             },

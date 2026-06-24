@@ -10,10 +10,9 @@ import {
   limit, 
   writeBatch,
   serverTimestamp,
-  FieldValue,
   QueryConstraint
 } from "firebase/firestore";
-import { AssessmentAttempt } from "@/types/assessment.types";
+import { AssessmentAttempt } from "@/features/assessments/types/assessment.types";
 import ScoringService from "./scoring.service";
 
 export const AttemptsService = {
@@ -46,16 +45,16 @@ export const AttemptsService = {
    * Ordered by completedAt DESC.
    */
   getAttemptsBySkill: async (
-    userId: string,
-    skill: string,
+    uid: string,
+    skillId: string,
     difficulty: "junior" | "mid" | "senior",
     limitCount?: number
   ): Promise<AssessmentAttempt[]> => {
     try {
       const attemptsCol = collection(db, "assessment_attempts");
       const constraints: QueryConstraint[] = [
-        where("userId", "==", userId),
-        where("skill", "==", skill),
+        where("uid", "==", uid),
+        where("skillId", "==", skillId),
         where("difficulty", "==", difficulty),
         orderBy("completedAt", "desc")
       ];
@@ -80,16 +79,15 @@ export const AttemptsService = {
    * and recalculates/saves the new average score in user_skill_scores using ScoringService.
    */
   recalculateActiveAttempts: async (
-    userId: string,
-    skill: string,
+    uid: string,
+    skillId: string,
     difficulty: "junior" | "mid" | "senior"
   ): Promise<void> => {
     try {
       // Fetch all attempts for this user, skill, and difficulty, sorted newest first.
-      const attempts = await AttemptsService.getAttemptsBySkill(userId, skill, difficulty);
+      const attempts = await AttemptsService.getAttemptsBySkill(uid, skillId, difficulty);
 
-      const activeAttempts = attempts.slice(0, 3);
-      const inactiveAttempts = attempts.slice(3);
+      const activeAttempts = attempts.filter(a => a.approved).slice(0, 3); // Solo los aprobados cuentan
 
       const batch = writeBatch(db);
       let needsCommit = false;
@@ -106,11 +104,13 @@ export const AttemptsService = {
       }
 
       // Update remaining attempts to usedForScore: false if they aren't already.
-      for (const attempt of inactiveAttempts) {
-        if (attempt.usedForScore) {
-          const docRef = doc(db, "assessment_attempts", attempt.id);
-          batch.update(docRef, { usedForScore: false });
-          needsCommit = true;
+      for (const attempt of attempts) {
+        if (!activeAttempts.find(a => a.id === attempt.id)) {
+          if (attempt.usedForScore) {
+            const docRef = doc(db, "assessment_attempts", attempt.id);
+            batch.update(docRef, { usedForScore: false });
+            needsCommit = true;
+          }
         }
       }
 
@@ -122,7 +122,7 @@ export const AttemptsService = {
       const newAverageScore = activeAttempts.length > 0 ? Math.round(totalScoreSum / activeAttempts.length) : 0;
 
       // Delegate writing the average score to ScoringService (respects modular Monolith rule).
-      await ScoringService.updateUserSkillScore(userId, skill, difficulty, newAverageScore);
+      await ScoringService.updateUserSkillScore(uid, skillId, difficulty, newAverageScore);
     } catch (error) {
       console.error("Error in recalculateActiveAttempts:", error);
       throw error;

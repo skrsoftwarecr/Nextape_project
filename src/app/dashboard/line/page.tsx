@@ -1,83 +1,88 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Terminal, Cpu } from "lucide-react";
+import React, { useEffect } from "react";
+import { useAssessment } from "@/features/assessments/hooks/useAssessment";
+import AssessmentCard from "@/features/assessments/components/AssessmentCard";
+import QuestionScreen from "@/features/assessments/components/QuestionScreen";
+import ResultScreen from "@/features/assessments/components/ResultScreen";
+import type { QuestionOption } from "@/features/assessments/types/assessment.types";
+export default function TheLinePage() {
+  const {
+    state,
+    session,
+    currentQuestion,
+    progress,
+    result,
+    error,
+    startAssessment,
+    answerQuestion,
+    submitAssessment
+  } = useAssessment();
 
-export default function LinePage() {
-  const [status, setStatus] = useState<"idle" | "active">("idle");
+  // If we've reached the end of the questions in an active session, auto-submit
+  useEffect(() => {
+    if (state === "active" && session && session.currentIndex >= session.questions.length) {
+      submitAssessment();
+    }
+  }, [state, session, submitAssessment]);
 
   return (
-    <div className="space-y-12 max-w-6xl mx-auto">
-      <header className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight text-black italic">The LINE.</h1>
-        <p className="text-gray-500 font-medium text-sm">Evaluación técnica generada por IA para tu stack específico.</p>
-      </header>
+    <div className="flex-1 w-full bg-[#F5F5F7] min-h-[calc(100vh-4rem)] md:min-h-screen py-10 px-6">
+      <div className="max-w-4xl mx-auto space-y-10">
 
-      {status === "idle" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="bg-white p-10 rounded-[2.5rem] shadow-apple border border-gray-50 space-y-10">
-            <div className="space-y-4">
-               <div className="w-14 h-14 bg-brand-blue/10 rounded-2xl flex items-center justify-center">
-                  <Cpu className="h-7 w-7 text-brand-blue" />
-               </div>
-               <h2 className="text-2xl font-bold italic">Configuración Neural.</h2>
-               <p className="text-sm text-gray-400 font-medium leading-relaxed">Prepara el entorno de simulación basado en tu perfil digital.</p>
-            </div>
-
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-300 ml-1">Simulación Target</label>
-                <Select defaultValue="master">
-                  <SelectTrigger className="bg-gray-50 border-none h-16 rounded-2xl font-bold text-lg px-6 focus:ring-1">
-                    <SelectValue placeholder="Dificultad" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-none shadow-apple-lg">
-                    <SelectItem value="master">Nivel Maestro</SelectItem>
-                    <SelectItem value="expert">Nivel Experto</SelectItem>
-                    <SelectItem value="senior">Nivel Senior</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button 
-                onClick={() => setStatus("active")}
-                className="w-full h-16 bg-black text-white rounded-2xl text-base font-bold shadow-apple uppercase tracking-widest hover:scale-[1.02] transition-transform"
-              >
-                Iniciar Sincronización
-              </Button>
-            </div>
-          </div>
-
-          <div className="bg-brand-blue p-12 rounded-[2.5rem] text-white flex flex-col justify-center space-y-6 shadow-apple-lg relative overflow-hidden">
-             <h3 className="text-4xl font-black italic tracking-tighter leading-none">Validación Dinámica.</h3>
-             <p className="text-lg opacity-80 font-medium leading-relaxed">No evaluamos lo que sabes, sino cómo resuelves bajo presión técnica real.</p>
-             <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-          </div>
+        <div className="space-y-4">
+          <h1 className="text-4xl font-headline font-black italic tracking-tighter">THE LINE</h1>
+          <p className="text-gray-500 font-medium">Demuestra lo que sabes resolviendo incidentes reales.</p>
         </div>
-      ) : (
-        <div className="fixed inset-0 z-[100] bg-black text-white p-6 md:p-12 flex flex-col items-center justify-center space-y-12">
-          <div className="flex items-center gap-4 animate-pulse">
-             <Terminal className="h-8 w-8 text-brand-blue" />
-             <h2 className="text-2xl font-black italic tracking-tighter uppercase">THE_LINE_ENV_01</h2>
+
+        {error && (
+          <div className="p-4 bg-brand-red/10 border border-brand-red/20 rounded-xl text-brand-red font-bold text-sm">
+            {error}
           </div>
-          <div className="max-w-2xl w-full p-8 md:p-12 bg-white/5 rounded-[2.5rem] border border-white/10 space-y-8 backdrop-blur-3xl">
-             <div className="space-y-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">Anomalía Detectada</span>
-                <p className="text-xl md:text-2xl font-bold leading-tight">Se observa un cuello de botella en el Garbage Collector bajo carga pico de I/O distribuido. ¿Cuál es la estrategia de mitigación inmediata?</p>
-             </div>
-             <div className="grid grid-cols-1 gap-3">
-                {["Ajustar Off-heap Memory", "Implementar Sharding", "Z-Stream Optimization", "Profile Heap Snapshot"].map((opt, i) => (
-                  <Button key={i} variant="outline" className="h-14 rounded-xl border-white/10 text-white hover:bg-white/10 justify-start px-6 font-bold text-base transition-all hover:translate-x-2 text-left">
-                    {i + 1}. {opt}
-                  </Button>
-                ))}
-             </div>
+        )}
+
+        {(state === "idle" || state === "loading") && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <AssessmentCard
+              skillId="solid"
+              skillName="S.O.L.I.D. Architecture"
+              description="Diseño de software mantenible, inyección de dependencias y desacoplamiento de componentes en sistemas distribuidos."
+              onStart={startAssessment}
+              isLoading={state === "loading"}
+            />
+            <AssessmentCard
+              skillId="testing"
+              skillName="Advanced Testing"
+              description="Estrategias de pruebas unitarias, integración y end-to-end. TDD, mockeo avanzado y aserciones complejas."
+              onStart={startAssessment}
+              isLoading={state === "loading"}
+            />
           </div>
-          <Button onClick={() => setStatus("idle")} variant="ghost" className="text-white/40 hover:text-white uppercase tracking-widest font-bold text-xs">Terminar Simulación</Button>
-        </div>
-      )}
+        )}
+
+        {state === "active" && currentQuestion && (
+          <QuestionScreen
+            question={currentQuestion}
+            progress={progress}
+            onAnswer={(_questionId: string, option: QuestionOption) => answerQuestion(currentQuestion.id, option)}
+          />
+        )}
+
+        {state === "submitting" && (
+          <div className="py-24 text-center space-y-4">
+            <div className="w-12 h-12 border-4 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="font-bold text-gray-500 uppercase tracking-widest text-xs">Evaluando desempeño...</p>
+          </div>
+        )}
+
+        {state === "completed" && result && (
+          <ResultScreen
+            score={result.score}
+            onContinue={() => window.location.reload()} // Simple reload to reset state for demo
+          />
+        )}
+
+      </div>
     </div>
   );
 }
