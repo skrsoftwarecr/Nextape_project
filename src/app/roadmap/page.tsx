@@ -1,4 +1,2 @@
-/**
- * ARCHIVO OBSOLETO - ELIMINAR FÍSICAMENTE CON COMANDO rm
- * La página oficial reside en src/app/dashboard/roadmap/page.tsx
- */
+// Archivo neutralizado para evitar error de Parallel Pages.
+// La ruta oficial es /dashboard/roadmap

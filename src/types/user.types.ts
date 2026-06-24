@@ -4,12 +4,13 @@ export interface UserProfile {
   uid: string;
   displayName: string;
   email: string;
-  photoURL: string;
-  githubUrl: string;
+  photoURL?: string;
+  githubUrl?: string;
   role: "developer" | "recruiter";
   experience?: "junior" | "mid" | "senior";
   seniority?: "junior" | "mid" | "senior";
   createdAt: FirestoreTimestamp;
+  updatedAt?: FirestoreTimestamp;
 }
 
 export interface UserSkills {

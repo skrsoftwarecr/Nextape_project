@@ -12,7 +12,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        router.push("/auth");
+        // No redirigir si ya estamos en la página de auth o landing
+        if (window.location.pathname !== '/auth' && window.location.pathname !== '/') {
+           router.push("/auth");
+        } else {
+           setLoading(false);
+        }
       } else {
         setLoading(false);
       }
