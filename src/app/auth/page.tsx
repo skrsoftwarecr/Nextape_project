@@ -8,15 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Github, Mail, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { 
-  signInWithGoogle, 
-  signInWithGithub, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
+import {
+  signInWithGoogle,
+  signInWithGithub,
+  signInWithEmail,
+  createUserWithEmail
 } from "@/lib/firebase/auth";
-import { UserService } from "@/services/users.service";
+import { UserService } from "@/features/auth/services/users.service";
 import { Timestamp } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -34,7 +34,7 @@ export default function AuthPage() {
 
     try {
       if (mode === "register") {
-        const { user } = await createUserWithEmailAndPassword(null as any, email, password);
+        const { user } = await createUserWithEmail(email, password);
         await UserService.saveUser(user.uid, {
           uid: user.uid,
           displayName: name || user.displayName || "User",
@@ -43,15 +43,12 @@ export default function AuthPage() {
           createdAt: Timestamp.now() as any
         });
       } else {
-        await signInWithEmailAndPassword(null as any, email, password);
+        await signInWithEmail(email, password);
       }
       router.push("/dashboard");
-    } catch (error: any) {
-      toast({
-        title: "Error de autenticación",
-        description: error.message,
-        variant: "destructive"
-      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error de autenticación';
+      toast({ description: msg })
     } finally {
       setLoading(false);
     }
@@ -62,7 +59,7 @@ export default function AuthPage() {
     try {
       const result = provider === 'google' ? await signInWithGoogle() : await signInWithGithub();
       const user = result.user;
-      
+
       // Intentar obtener usuario existente
       const existing = await UserService.getUser(user.uid);
       if (!existing) {
@@ -76,12 +73,9 @@ export default function AuthPage() {
         });
       }
       router.push("/dashboard");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Error de autenticación';
+      toast({ description: msg })
     } finally {
       setLoading(false);
     }
@@ -114,11 +108,11 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Nombre Completo</Label>
-                  <Input 
+                  <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre" 
-                    className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
+                    placeholder="Tu nombre"
+                    className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1"
                   />
                 </div>
               </div>
@@ -126,28 +120,28 @@ export default function AuthPage() {
 
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Email</Label>
-              <Input 
+              <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                type="email" 
+                type="email"
                 required
-                placeholder="name@example.com" 
-                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
+                placeholder="name@example.com"
+                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1"
               />
             </div>
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Contraseña</Label>
-              <Input 
+              <Input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                type="password" 
+                type="password"
                 required
-                placeholder="••••••••" 
-                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
+                placeholder="••••••••"
+                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1"
               />
             </div>
 
-            <Button 
+            <Button
               type="submit"
               disabled={loading}
               className="w-full h-14 text-lg font-bold rounded-2xl bg-brand-blue hover:bg-brand-blue/90 shadow-apple transition-all mt-4"
