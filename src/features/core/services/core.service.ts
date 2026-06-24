@@ -1,15 +1,15 @@
 import { getDocById, setDocById } from "@/lib/firebase/firestore";
-import { UserProfile } from "@/types/index";
+import { CoreIdentity } from "../types/core.types";
 
 export const CoreService = {
   /**
    * Obtiene la identidad central (CORE) del usuario.
    */
-  getCoreIdentity: (uid: string) => getDocById<UserProfile>("core", uid),
+  getCoreIdentity: (uid: string) => getDocById<CoreIdentity>("core", uid),
   
   /**
    * Actualiza los datos de telemetría y visibilidad del CORE.
    */
-  updateCoreIdentity: (uid: string, data: Partial<UserProfile["core"]>) => 
+  updateCoreIdentity: (uid: string, data: Partial<CoreIdentity>) => 
     setDocById("core", uid, data)
 };

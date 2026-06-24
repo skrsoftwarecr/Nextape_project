@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { CoreService } from "../services/core.service";
-import { UserProfile } from "@/types/index";
+import { CoreIdentity } from "../types/core.types";
 
 export const useCore = (uid: string | undefined) => {
-  const [coreData, setCoreData] = useState<UserProfile["core"] | null>(null);
+  const [coreData, setCoreData] = useState<CoreIdentity | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -12,7 +12,7 @@ export const useCore = (uid: string | undefined) => {
     const fetchCore = async () => {
       try {
         const data = await CoreService.getCoreIdentity(uid);
-        if (data) setCoreData(data.core);
+        if (data) setCoreData(data);
       } catch (error) {
         console.error("Error fetching CORE identity:", error);
       } finally {

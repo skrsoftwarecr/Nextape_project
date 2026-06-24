@@ -3,17 +3,17 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { AuthModal } from "@/components/auth/AuthModal";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 import Link from "next/link";
-import { 
-  Layers, 
-  Cpu, 
-  Zap, 
-  ShieldCheck, 
-  ArrowRight, 
-  CheckCircle2, 
-  XCircle, 
-  Plus, 
+import {
+  Layers,
+  Cpu,
+  Zap,
+  ShieldCheck,
+  ArrowRight,
+  CheckCircle2,
+  XCircle,
+  Plus,
   Minus,
   Briefcase,
   Users,
@@ -70,7 +70,7 @@ function Loader3D() {
 export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [lineProgress, setLineProgress] = useState(0); 
+  const [lineProgress, setLineProgress] = useState(0);
   const lineSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export default function Home() {
         const rect = lineSectionRef.current.getBoundingClientRect();
         const windowHeight = window.innerHeight;
         const totalHeight = rect.height - windowHeight;
-        
+
         // Evitar división por cero o valores NaN
         if (totalHeight > 0) {
           const progress = Math.max(0, Math.min(1, -rect.top / totalHeight));
@@ -123,21 +123,21 @@ export default function Home() {
       {/* Navbar */}
       <nav className={cn(
         "fixed top-0 w-full z-[100] transition-all duration-500",
-        scrolled 
-          ? (isDarkMode ? "bg-black/60 backdrop-blur-xl border-b border-white/5 py-3" : "bg-white/80 backdrop-blur-xl border-b border-gray-100 py-3") 
+        scrolled
+          ? (isDarkMode ? "bg-black/60 backdrop-blur-xl border-b border-white/5 py-3" : "bg-white/80 backdrop-blur-xl border-b border-gray-100 py-3")
           : "bg-transparent py-6"
       )}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="text-xl md:text-2xl font-bold tracking-tighter flex items-center gap-2">
-             <div className="w-6 h-6 md:w-8 md:h-8 bg-brand-blue rounded-lg md:rounded-xl" />
-             <span className={cn("transition-colors duration-500", isDarkMode ? "text-white" : "text-black")}>Nextape</span>
+            <div className="w-6 h-6 md:w-8 md:h-8 bg-brand-blue rounded-lg md:rounded-xl" />
+            <span className={cn("transition-colors duration-500", isDarkMode ? "text-white" : "text-black")}>Nextape</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <Link href="#problem" className="text-xs font-bold uppercase tracking-widest hover:text-brand-blue transition-colors">Problema</Link>
             <Link href="#how-it-works" className="text-xs font-bold uppercase tracking-widest hover:text-brand-blue transition-colors">Cómo funciona</Link>
             <Link href="#faq" className="text-xs font-bold uppercase tracking-widest hover:text-brand-blue transition-colors">FAQ</Link>
           </div>
-          <Button 
+          <Button
             onClick={() => setIsAuthModalOpen(true)}
             className={cn(
               "px-5 py-5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all duration-500",
@@ -165,13 +165,13 @@ export default function Home() {
               Validamos habilidades técnicas reales a través de simulaciones generadas por IA. La confianza que necesitas para contratar developers de élite sin filtros innecesarios.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 md:pt-10 px-6">
-              <Button 
+              <Button
                 onClick={() => setIsAuthModalOpen(true)}
                 className="bg-brand-blue text-white hover:bg-brand-blue/90 h-14 md:h-16 px-8 md:px-12 rounded-full text-xs md:text-sm font-bold shadow-apple-lg uppercase tracking-widest w-full sm:w-auto transition-transform hover:scale-105"
               >
                 Soy Developer - Validarme
               </Button>
-              <Button 
+              <Button
                 variant="outline"
                 className="border-gray-200 h-14 md:h-16 px-8 md:px-12 rounded-full text-xs md:text-sm font-bold hover:bg-gray-50 transition-all bg-white text-black uppercase tracking-widest w-full sm:w-auto"
               >
@@ -228,11 +228,11 @@ export default function Home() {
               </div>
             </div>
             <div className="relative">
-               <div className="bg-gray-950 p-8 md:p-12 rounded-[2.5rem] text-white shadow-apple-lg relative overflow-hidden group">
-                  <h3 className="text-2xl font-bold mb-4">"Perdemos semanas filtrando CVs que parecen perfectos pero fallan en lo básico."</h3>
-                  <p className="text-brand-blue font-bold uppercase tracking-widest text-xs">— CTO de una Serie B</p>
-                  <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-brand-red/10 rounded-full blur-3xl" />
-               </div>
+              <div className="bg-gray-950 p-8 md:p-12 rounded-[2.5rem] text-white shadow-apple-lg relative overflow-hidden group">
+                <h3 className="text-2xl font-bold mb-4">"Perdemos semanas filtrando CVs que parecen perfectos pero fallan en lo básico."</h3>
+                <p className="text-brand-blue font-bold uppercase tracking-widest text-xs">— CTO de una Serie B</p>
+                <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-brand-red/10 rounded-full blur-3xl" />
+              </div>
             </div>
           </div>
         </section>
@@ -267,24 +267,24 @@ export default function Home() {
         <section ref={lineSectionRef} className="relative h-[500vh]">
           <div className="sticky top-0 h-screen w-full flex items-center justify-center overflow-hidden">
             <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 items-center gap-4 md:gap-12 w-full h-full">
-              
+
               <div className="relative h-[300px] md:h-[450px] flex items-center z-20 order-2 lg:order-1">
                 {lineStages.map((stage, i) => {
                   const threshold = 1 / lineStages.length;
                   const start = i * threshold;
                   const end = (i + 1) * threshold;
-                  
+
                   const isActive = lineProgress >= start && lineProgress < end;
                   const isPast = lineProgress >= end;
 
                   return (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={cn(
                         "absolute inset-0 flex flex-col justify-center space-y-4 md:space-y-6 transition-all duration-1000 ease-out text-center lg:text-left",
-                        isActive ? "opacity-100 translate-y-0 scale-100" : 
-                        isPast ? "opacity-0 -translate-y-12 scale-95 blur-sm" : 
-                        "opacity-0 translate-y-12 scale-95 blur-sm"
+                        isActive ? "opacity-100 translate-y-0 scale-100" :
+                          isPast ? "opacity-0 -translate-y-12 scale-95 blur-sm" :
+                            "opacity-0 translate-y-12 scale-95 blur-sm"
                       )}
                     >
                       <h2 className={cn(
@@ -306,13 +306,13 @@ export default function Home() {
                 lineProgress > 0.01 ? "opacity-100 scale-100" : "opacity-0 scale-90"
               )}>
                 <div className="w-full h-[40vh] md:h-[50vh] lg:h-[70vh] relative">
-                  <Canvas 
-                    shadows 
+                  <Canvas
+                    shadows
                     camera={{ position: [0, 0, 15], fov: 35 }}
                     style={{ background: 'transparent' }}
                   >
                     <Suspense fallback={<Loader3D />}>
-                      <Stage environment="studio" intensity={0.8} contactShadow={{ opacity: 0.5, blur: 2 }}>
+                      <Stage environment="studio" intensity={0.8}>
                         <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
                           <Center top position={[0, -0.5, 0]}>
                             <LaptopModel progress={lineProgress} />
@@ -332,7 +332,7 @@ export default function Home() {
         <section className="py-24 md:py-40 px-6">
           <div className="max-w-5xl mx-auto">
             <h2 className={cn("text-3xl md:text-5xl font-bold tracking-tight text-center mb-16", isDarkMode ? "text-white" : "text-black")}>¿Por qué Nextape?</h2>
-            
+
             <div className="space-y-6">
               {[
                 { feature: "Validación de Habilidades", next: "Simulación de Incidentes Real-Time", trad: "Filtros por Palabras Clave en CV" },
@@ -348,12 +348,12 @@ export default function Home() {
                     <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">Característica</span>
                     <span className={cn("text-xl font-bold leading-tight", isDarkMode ? "text-white" : "text-slate-900")}>{row.feature}</span>
                   </div>
-                  
+
                   <div className="p-4 rounded-2xl bg-brand-blue/5 border border-brand-blue/10 space-y-1">
                     <div className="text-[8px] font-bold uppercase tracking-widest text-brand-blue">Nextape</div>
                     <div className="text-sm font-bold text-brand-blue">{row.next}</div>
                   </div>
-                  
+
                   <div className="p-4 rounded-2xl bg-gray-50 space-y-1">
                     <div className="text-[8px] font-bold uppercase tracking-widest text-gray-400">Tradicional</div>
                     <div className="text-sm font-medium text-gray-500">{row.trad}</div>
@@ -366,19 +366,19 @@ export default function Home() {
 
         {/* CTA Intermedio */}
         <section className="px-6 py-20">
-           <div className="max-w-7xl mx-auto p-12 md:p-20 bg-brand-blue rounded-[3rem] text-white text-center space-y-8 relative overflow-hidden group">
-              <div className="relative z-10 space-y-6">
-                <h2 className="text-3xl md:text-5xl font-bold tracking-tight">¿Listo para demostrar lo que vales?</h2>
-                <p className="text-lg opacity-80 max-w-xl mx-auto font-medium">Entra en THE LINE hoy y conviértete en un developer certificado por la élite tech.</p>
-                <Button 
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="bg-black text-white hover:bg-black/80 h-16 px-12 rounded-full font-bold uppercase tracking-widest text-xs shadow-apple-lg transition-transform hover:scale-105"
-                >
-                  Empezar Evaluación
-                </Button>
-              </div>
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-           </div>
+          <div className="max-w-7xl mx-auto p-12 md:p-20 bg-brand-blue rounded-[3rem] text-white text-center space-y-8 relative overflow-hidden group">
+            <div className="relative z-10 space-y-6">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight">¿Listo para demostrar lo que vales?</h2>
+              <p className="text-lg opacity-80 max-w-xl mx-auto font-medium">Entra en THE LINE hoy y conviértete en un developer certificado por la élite tech.</p>
+              <Button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="bg-black text-white hover:bg-black/80 h-16 px-12 rounded-full font-bold uppercase tracking-widest text-xs shadow-apple-lg transition-transform hover:scale-105"
+              >
+                Empezar Evaluación
+              </Button>
+            </div>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
+          </div>
         </section>
 
         {/* FAQ Section */}
@@ -412,22 +412,22 @@ export default function Home() {
               Deja de buscar trabajo. <br /> <span className="text-brand-blue">Haz que te encuentren.</span>
             </h2>
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
-               <Button 
+              <Button
                 onClick={() => setIsAuthModalOpen(true)}
                 className="bg-brand-blue text-white h-16 px-12 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-brand-blue/90"
-               >
-                 Crear Mi Perfil
-               </Button>
-               <Button 
+              >
+                Crear Mi Perfil
+              </Button>
+              <Button
                 variant="outline"
                 className="border-white/20 h-16 px-12 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-white/10 text-white"
-               >
-                 Hablar con Ventas
-               </Button>
+              >
+                Hablar con Ventas
+              </Button>
             </div>
           </div>
           <div className="absolute top-0 left-0 w-full h-full opacity-10">
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[100vh] border border-white/10 rounded-full animate-pulse" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[100vh] border border-white/10 rounded-full animate-pulse" />
           </div>
         </section>
 
@@ -445,14 +445,14 @@ export default function Home() {
               <p className="text-gray-400 text-sm font-medium leading-relaxed">Rediseñando el futuro del hiring técnico a través de la validación por IA.</p>
               <div className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-brand-blue/10 hover:text-brand-blue transition-colors">
-                   <Users className="h-4 w-4" />
+                  <Users className="h-4 w-4" />
                 </div>
                 <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-brand-blue/10 hover:text-brand-blue transition-colors">
-                   <Target className="h-4 w-4" />
+                  <Target className="h-4 w-4" />
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Plataforma</p>
               <ul className="space-y-3 text-sm font-bold text-gray-500">
@@ -475,8 +475,8 @@ export default function Home() {
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Newsletter</p>
               <p className="text-xs text-gray-400 font-medium">Recibe los mejores desafíos en tu correo.</p>
               <div className="flex gap-2">
-                 <input type="email" placeholder="email@nextape.io" className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs flex-1 focus:ring-1 ring-brand-blue outline-none text-slate-900" />
-                 <Button className="rounded-xl bg-black text-white px-4 h-10">Ok</Button>
+                <input type="email" placeholder="email@nextape.io" className="bg-gray-50 border-none rounded-xl px-4 py-2 text-xs flex-1 focus:ring-1 ring-brand-blue outline-none text-slate-900" />
+                <Button className="rounded-xl bg-black text-white px-4 h-10">Ok</Button>
               </div>
             </div>
           </div>
