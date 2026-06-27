@@ -1,65 +1,74 @@
 "use client";
 
-import { DashboardShell } from "@/components/layout/DashboardShell";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Briefcase, DollarSign, Clock, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-
-const JOBS = [
-  { id: 1, title: "Lead Frontend Engineer", company: "Vercel", location: "Remote", type: "Full-time", salary: "$180k-$220k", date: "2d ago", stack: ["React", "Next.js", "TypeScript"], match: 98 },
-  { id: 2, title: "Backend Architect", company: "Prisma", location: "Berlin / Remote", type: "Contract", salary: "$120k-$150k", date: "4d ago", stack: ["Rust", "Postgres", "GraphQL"], match: 92 },
-];
+import React from "react";
+import { useJobs } from "@/features/jobs/hooks/useJobs";
+import JobCard from "@/features/jobs/components/JobCard";
+import JobDetail from "@/features/jobs/components/JobDetail";
 
 export default function JobsPage() {
-  return (
-    <DashboardShell>
-      <div className="space-y-12">
-        <header>
-          <h1 className="text-4xl font-bold tracking-tight text-black italic">Oportunidades.</h1>
-          <p className="text-gray-500 font-medium">Posiciones curadas según tu perfil técnico.</p>
-        </header>
+  const { jobs, loading, error, selectedJob, selectJob } = useJobs();
 
-        <div className="flex gap-4 items-center bg-white p-6 rounded-[2rem] shadow-apple border border-gray-50">
-          <div className="relative flex-grow">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Buscar por rol, empresa o stack..." className="pl-12 bg-gray-50 border-none h-14 rounded-2xl" />
-          </div>
-          <Button className="h-14 px-8 bg-brand-blue rounded-2xl font-bold uppercase tracking-widest text-xs">Filtrar</Button>
+  return (
+    <div className="flex-1 w-full bg-[#F5F5F7] min-h-[calc(100vh-4rem)] md:min-h-screen py-10 px-6">
+      <div className="max-w-[1400px] mx-auto space-y-8">
+        
+        <div className="space-y-2">
+          <h1 className="text-4xl font-headline font-black tracking-tight">Vacantes Disponibles</h1>
+          <p className="text-gray-500 font-medium">Encuentra tu próximo desafío técnico basado en tus habilidades demostradas.</p>
         </div>
 
-        <div className="space-y-6">
-          {JOBS.map((job) => (
-            <div key={job.id} className="bg-white rounded-[2.5rem] p-8 md:p-10 flex flex-col md:flex-row gap-8 items-center border border-gray-50 shadow-apple hover:shadow-apple-lg transition-all group cursor-pointer">
-              <div className="flex-grow space-y-6 w-full">
-                <div>
-                  <h2 className="text-2xl font-bold group-hover:text-brand-blue transition-colors text-black leading-none italic">{job.title}</h2>
-                  <p className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-2">{job.company}</p>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-brand-blue" /> {job.location}</div>
-                  <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-brand-blue" /> {job.type}</div>
-                  <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-brand-blue" /> {job.salary}</div>
-                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-brand-blue" /> {job.date}</div>
-                </div>
+        {error && (
+          <div className="p-4 bg-brand-red/10 border border-brand-red/20 rounded-xl text-brand-red font-bold text-sm">
+            {error}
+          </div>
+        )}
 
-                <div className="flex flex-wrap gap-2">
-                  {job.stack.map(s => (
-                    <Badge key={s} className="bg-gray-50 text-gray-400 border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Columna Izquierda: Lista de Jobs */}
+          <div className="lg:col-span-5 xl:col-span-4 flex flex-col gap-4">
+            {loading ? (
+              <div className="py-20 flex justify-center">
+                <div className="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin" />
               </div>
-              <div className="text-right shrink-0">
-                 <div className="text-4xl font-black text-brand-blue tracking-tighter italic">{job.match}%</div>
-                 <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-300">Match</div>
+            ) : jobs.length === 0 && !error ? (
+              <div className="p-10 text-center bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-500 font-medium">No hay vacantes activas en este momento.</p>
               </div>
+            ) : (
+              jobs.map(job => (
+                <JobCard 
+                  key={job.id}
+                  job={job}
+                  isSelected={selectedJob?.id === job.id}
+                  onSelect={selectJob}
+                />
+              ))
+            )}
+          </div>
+
+          {/* Columna Derecha: Detalles del Job */}
+          <div className="lg:col-span-7 xl:col-span-8 sticky top-24 hidden lg:block">
+            <JobDetail job={selectedJob} />
+          </div>
+
+          {/* Versión Mobile del Detalle (cuando hay uno seleccionado) */}
+          {selectedJob && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-[#F5F5F7] overflow-y-auto p-6 pt-20">
+              <button 
+                onClick={() => selectJob("")} 
+                className="absolute top-6 right-6 p-2 bg-white rounded-full shadow-sm text-gray-500"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              <JobDetail job={selectedJob} />
             </div>
-          ))}
+          )}
+
         </div>
       </div>
-    </DashboardShell>
+    </div>
   );
 }

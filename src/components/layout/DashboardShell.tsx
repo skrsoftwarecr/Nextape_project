@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
-import Image from "next/image";
 
 const navItems = [
   { name: "Panel", icon: LayoutDashboard, href: "/dashboard" },
@@ -58,18 +57,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-[#F5F5F7] font-body text-foreground">
       <aside className="hidden md:flex flex-col w-72 fixed top-0 bottom-0 bg-white/70 backdrop-blur-xl border-r border-gray-200 z-50">
         <div className="p-8">
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/models/logo1.jpeg"
-              alt="Nextape"
-              width={120}
-              height={60}
-              className="h-10 w-auto object-contain"
-              priority
-            />
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-brand-blue rounded-xl flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-full" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-black italic">Nextape.</span>
           </Link>
         </div>
-
+        
         <div className="flex-grow px-4 overflow-y-auto">
           <NavLinks />
         </div>
@@ -87,16 +82,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <header className="md:hidden fixed top-0 w-full bg-white/80 backdrop-blur-xl border-b border-gray-200 z-40 p-4 flex justify-between items-center h-16">
-        <Link href="/">
-          <Image
-            src="/models/logo1.jpeg"
-            alt="Nextape"
-            width={120}
-            height={60}
-            className="h-10 w-auto object-contain"
-            priority
-          />
-        </Link>
+        <Link href="/" className="text-xl font-bold tracking-tight text-black italic">Nextape.</Link>
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full bg-gray-100 h-10 w-10">
@@ -105,14 +91,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </SheetTrigger>
           <SheetContent side="left" className="w-80 border-none p-0 bg-white">
             <SheetHeader className="p-8 border-b border-gray-50">
-              <SheetTitle className="text-left">
-                <Image
-                  src="/models/logo1.jpeg"
-                  alt="Nextape"
-                  width={120}
-                  height={60}
-                  className="h-10 w-auto object-contain"
-                />
+              <SheetTitle className="text-left flex items-center gap-2 text-black italic font-bold">
+                 Nextape.
               </SheetTitle>
             </SheetHeader>
             <div className="p-6 overflow-y-auto h-full pb-20">

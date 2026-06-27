@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { AuthModal } from "@/components/auth/AuthModal";
+import { AuthModal } from "@/features/auth/components/AuthModal";
 import Link from "next/link";
 import {
   Layers,
@@ -128,18 +128,9 @@ export default function Home() {
           : "bg-transparent py-6"
       )}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
-          <div className={cn(
-            "flex items-center rounded-xl transition-colors duration-500",
-            isDarkMode ? "bg-white px-3 py-1.5" : "bg-transparent"
-          )}>
-            <Image
-              src="/models/logo1-removebg-preview.png"
-              alt="Nextape"
-              width={200}
-              height={60}
-              className="h-12 md:h-14 w-auto object-contain"
-              priority
-            />
+          <div className="text-xl md:text-2xl font-bold tracking-tighter flex items-center gap-2">
+            <div className="w-6 h-6 md:w-8 md:h-8 bg-brand-blue rounded-lg md:rounded-xl" />
+            <span className={cn("transition-colors duration-500", isDarkMode ? "text-white" : "text-black")}>Nextape</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <Link href="#problem" className="text-xs font-bold uppercase tracking-widest hover:text-brand-blue transition-colors">Problema</Link>
@@ -160,7 +151,7 @@ export default function Home() {
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="px-6 pt-32 md:pt-48 pb-32 md:pb-48 max-w-7xl mx-auto text-center relative overflow-hidden">
+        <section className="px-6 pt-32 md:pt-48 pb-20 md:pb-32 max-w-7xl mx-auto text-center relative overflow-hidden">
           <div className="relative z-10 space-y-6 md:space-y-8">
             <div className="inline-flex items-center gap-2 bg-brand-blue/10 text-brand-blue px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest animate-fade-in">
               <Zap className="h-3 w-3" /> Hiring de precisión por IA
@@ -191,35 +182,44 @@ export default function Home() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[50vh] bg-brand-blue/5 rounded-full blur-[120px] -z-10" />
         </section>
 
-
+        {/* Social Proof Bar */}
+        <section className="py-12 border-y border-gray-100 bg-white/50 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-6">
+            <p className="text-center text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400 mb-8">Con la confianza de +100 empresas de alto impacto</p>
+            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20 opacity-40 grayscale">
+              <div className="text-xl font-bold tracking-tighter">Vercel</div>
+              <div className="text-xl font-bold tracking-tighter">Stripe</div>
+              <div className="text-xl font-bold tracking-tighter">Linear</div>
+              <div className="text-xl font-bold tracking-tighter">Prisma</div>
+              <div className="text-xl font-bold tracking-tighter">Fly.io</div>
+            </div>
+          </div>
+        </section>
 
         {/* Problem Section */}
         <section id="problem" className="py-24 md:py-40 px-6">
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className={cn("text-3xl md:text-5xl font-bold tracking-tight leading-tight", isDarkMode ? "text-white" : "text-black")}>
-                Resolvemos estos puntos débiles y <span className="text-brand-red">problemas</span> del hiring técnico
+                El hiring técnico <br /> <span className="text-brand-red">está roto.</span>
               </h2>
-              <p className="text-gray-500 text-base md:text-lg font-medium leading-relaxed max-w-xl">
-                Las empresas siguen contratando con herramientas de hace una década, mientras los developers cambian más rápido que nunca. El resultado: procesos lentos, caros, y contrataciones que fallan donde más importa.
-              </p>
               <div className="space-y-6">
                 <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
-                  <span className="text-2xl font-black text-brand-red/30 shrink-0">01</span>
+                  <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">CVs vs Realidad</h4>
                     <p className="text-gray-500 text-sm font-medium">LinkedIn está lleno de palabras vacías. Un "Senior" en papel puede no saber debugear una arquitectura distribuida hoy.</p>
                   </div>
                 </div>
                 <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
-                  <span className="text-2xl font-black text-brand-red/30 shrink-0">02</span>
+                  <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">Pruebas Genéricas</h4>
                     <p className="text-gray-500 text-sm font-medium">Los desafíos de algoritmos no predicen cómo un developer reacciona ante un fallo en producción.</p>
                   </div>
                 </div>
                 <div className="flex gap-4 p-6 bg-white rounded-[1.5rem] shadow-apple border border-gray-50 text-slate-900">
-                  <span className="text-2xl font-black text-brand-red/30 shrink-0">03</span>
+                  <XCircle className="h-6 w-6 text-brand-red shrink-0" />
                   <div>
                     <h4 className="font-bold text-lg">Ruido y Fricción</h4>
                     <p className="text-gray-500 text-sm font-medium">Las empresas pierden 40+ horas en entrevistas con candidatos que no tienen el nivel técnico real requerido.</p>
@@ -230,7 +230,7 @@ export default function Home() {
             <div className="relative">
               <div className="bg-gray-950 p-8 md:p-12 rounded-[2.5rem] text-white shadow-apple-lg relative overflow-hidden group">
                 <h3 className="text-2xl font-bold mb-4">"Perdemos semanas filtrando CVs que parecen perfectos pero fallan en lo básico."</h3>
-                <p className="text-brand-blue font-bold uppercase tracking-widest text-xs">— Lo que escuchamos de reclutadores técnicos a diario</p>
+                <p className="text-brand-blue font-bold uppercase tracking-widest text-xs">— CTO de una Serie B</p>
                 <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-brand-red/10 rounded-full blur-3xl" />
               </div>
             </div>
@@ -312,7 +312,7 @@ export default function Home() {
                     style={{ background: 'transparent' }}
                   >
                     <Suspense fallback={<Loader3D />}>
-                      <Stage environment="studio" intensity={0.8} contactShadow={{ opacity: 0.5, blur: 2 }}>
+                      <Stage environment="studio" intensity={0.8}>
                         <Float speed={1.5} rotationIntensity={0.2} floatIntensity={0.5}>
                           <Center top position={[0, -0.5, 0]}>
                             <LaptopModel progress={lineProgress} />
@@ -420,7 +420,7 @@ export default function Home() {
               </Button>
               <Button
                 variant="outline"
-                className="border-white/20 bg-transparent h-16 px-12 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-white/10 text-white"
+                className="border-white/20 h-16 px-12 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-white/10 text-white"
               >
                 Hablar con Ventas
               </Button>
@@ -438,24 +438,16 @@ export default function Home() {
         )}>
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
             <div className="space-y-6">
-              <div className={cn(
-                "inline-flex items-center rounded-xl",
-                isDarkMode ? "bg-white px-3 py-2" : "bg-transparent"
-              )}>
-                <Image
-                  src="/models/logo2-removebg-preview.png"
-                  alt="Nextape"
-                  width={200}
-                  height={100}
-                  className="h-12 w-auto object-contain"
-                />
+              <div className="text-2xl font-bold tracking-tighter flex items-center gap-2">
+                <div className="w-6 h-6 bg-brand-blue rounded-lg" />
+                Nextape
               </div>
               <p className="text-gray-400 text-sm font-medium leading-relaxed">Rediseñando el futuro del hiring técnico a través de la validación por IA.</p>
               <div className="flex gap-4">
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer text-slate-900 hover:bg-brand-blue/10 hover:text-brand-blue transition-colors">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-brand-blue/10 hover:text-brand-blue transition-colors">
                   <Users className="h-4 w-4" />
                 </div>
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer text-slate-900 hover:bg-brand-blue/10 hover:text-brand-blue transition-colors">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-brand-blue/10 hover:text-brand-blue transition-colors">
                   <Target className="h-4 w-4" />
                 </div>
               </div>

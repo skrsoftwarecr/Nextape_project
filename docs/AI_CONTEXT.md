@@ -138,5 +138,26 @@ src/
 - **3D (CORE):** Three.js r128
 
 ---
+## AUTH MODULE RULES
+
+- AuthGuard belongs to auth module.
+- Authentication logic belongs to auth module.
+- Firebase Auth belongs to auth module.
+- Dashboard, Jobs, Profile and Assessments may consume AuthGuard.
+- No module except auth may implement authentication logic.
+- Shared authentication state must come from auth hooks and services.
+
+## COMPATIBILITY ENGINE RULES
+
+ The Compatibility Engine is deterministic.
+
+Never use AI, LLMs, prompts or external models to calculate compatibility percentages.
+
+Compatibility must be calculated exclusively through mathematical formulas and business rules.
+
+AI may explain compatibility results but may never generate them.
+
+
 
 *Versión: 1.0 — Junio 2025 — Equipo Antigravity*
+
