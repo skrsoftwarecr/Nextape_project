@@ -1,8 +1,7 @@
 'use client';
-
-import { 
-  signOut as firebaseSignOut, 
-  onAuthStateChanged, 
+import {
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
   User,
   GoogleAuthProvider,
   GithubAuthProvider,
@@ -15,9 +14,9 @@ import { auth } from "./client";
 export const signOut = () => firebaseSignOut(auth);
 export const signInWithGoogle = () => signInWithPopup(auth, new GoogleAuthProvider());
 export const signInWithGithub = () => signInWithPopup(auth, new GithubAuthProvider());
-
-export { signInWithEmailAndPassword, createUserWithEmailAndPassword };
-
-export const subscribeToAuth = (callback: (user: User | null) => void) => {
-  return onAuthStateChanged(auth, callback);
-};
+export const signInWithEmail = (email: string, password: string) =>
+  signInWithEmailAndPassword(auth, email, password);
+export const createUserWithEmail = (email: string, password: string) =>
+  createUserWithEmailAndPassword(auth, email, password);
+export const subscribeToAuth = (callback: (user: User | null) => void) =>
+  onAuthStateChanged(auth, callback);

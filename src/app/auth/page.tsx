@@ -8,15 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Github, Mail, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { 
-  signInWithGoogle, 
-  signInWithGithub, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword 
-} from "@/lib/firebase/auth";
-import { UserService } from "@/services/users.service";
+import { signInWithGoogle, signInWithGithub, signInWithEmail, createUserWithEmail } from "@/lib/firebase/auth";
+import { UserService } from "@/features/auth/services/users.service";
 import { Timestamp } from "firebase/firestore";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/useToast";
 
 export default function AuthPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -31,27 +26,23 @@ export default function AuthPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       if (mode === "register") {
-        const { user } = await createUserWithEmailAndPassword(null as any, email, password);
+        const { user } = await createUserWithEmail(email, password);
         await UserService.saveUser(user.uid, {
           uid: user.uid,
           displayName: name || user.displayName || "User",
           email: user.email!,
-          role: role,
-          createdAt: Timestamp.now() as any
+          role,
+          createdAt: Timestamp.now()
         });
       } else {
-        await signInWithEmailAndPassword(null as any, email, password);
+        await signInWithEmail(email, password);
       }
       router.push("/dashboard");
-    } catch (error: any) {
-      toast({
-        title: "Error de autenticación",
-        description: error.message,
-        variant: "destructive"
-      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error de autenticación";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -62,8 +53,6 @@ export default function AuthPage() {
     try {
       const result = provider === 'google' ? await signInWithGoogle() : await signInWithGithub();
       const user = result.user;
-      
-      // Intentar obtener usuario existente
       const existing = await UserService.getUser(user.uid);
       if (!existing) {
         await UserService.saveUser(user.uid, {
@@ -71,17 +60,14 @@ export default function AuthPage() {
           displayName: user.displayName || "User",
           email: user.email!,
           photoURL: user.photoURL || undefined,
-          role: role, // Usamos el rol seleccionado en el UI
-          createdAt: Timestamp.now() as any
+          role,
+          createdAt: Timestamp.now()
         });
       }
       router.push("/dashboard");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive"
-      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error de autenticación";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -101,12 +87,12 @@ export default function AuthPage() {
               <div className="space-y-4 mb-6">
                 <div className="space-y-2">
                   <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">¿Qué buscas?</Label>
-                  <RadioGroup defaultValue="developer" onValueChange={(v) => setRole(v as any)} className="grid grid-cols-2 gap-4">
-                    <div className={cn("flex items-center justify-center p-4 border rounded-2xl cursor-pointer transition-all", role === 'developer' ? "border-brand-blue bg-brand-blue/5 shadow-sm" : "border-gray-100")}>
+                  <RadioGroup defaultValue="developer" onValueChange={(v) => setRole(v as "developer" | "recruiter")} className="grid grid-cols-2 gap-4">
+                    <div className={`flex items-center justify-center p-4 border rounded-2xl cursor-pointer transition-all ${role === 'developer' ? "border-brand-blue bg-brand-blue/5 shadow-sm" : "border-gray-100"}`}>
                       <RadioGroupItem value="developer" id="dev" className="sr-only" />
                       <Label htmlFor="dev" className="cursor-pointer font-bold text-xs uppercase tracking-tight">Soy Developer</Label>
                     </div>
-                    <div className={cn("flex items-center justify-center p-4 border rounded-2xl cursor-pointer transition-all", role === 'recruiter' ? "border-brand-blue bg-brand-blue/5 shadow-sm" : "border-gray-100")}>
+                    <div className={`flex items-center justify-center p-4 border rounded-2xl cursor-pointer transition-all ${role === 'recruiter' ? "border-brand-blue bg-brand-blue/5 shadow-sm" : "border-gray-100"}`}>
                       <RadioGroupItem value="recruiter" id="rec" className="sr-only" />
                       <Label htmlFor="rec" className="cursor-pointer font-bold text-xs uppercase tracking-tight">Soy Empresa</Label>
                     </div>
@@ -114,52 +100,25 @@ export default function AuthPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Nombre Completo</Label>
-                  <Input 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Tu nombre" 
-                    className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
-                  />
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" />
                 </div>
               </div>
             )}
-
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Email</Label>
-              <Input 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email" 
-                required
-                placeholder="name@example.com" 
-                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
-              />
+              <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="name@example.com" className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" />
             </div>
             <div className="space-y-2">
               <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400 ml-1">Contraseña</Label>
-              <Input 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password" 
-                required
-                placeholder="••••••••" 
-                className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" 
-              />
+              <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required placeholder="••••••••" className="bg-gray-50 border-none h-14 rounded-2xl px-5 focus-visible:ring-1" />
             </div>
-
-            <Button 
-              type="submit"
-              disabled={loading}
-              className="w-full h-14 text-lg font-bold rounded-2xl bg-brand-blue hover:bg-brand-blue/90 shadow-apple transition-all mt-4"
-            >
+            <Button type="submit" disabled={loading} className="w-full h-14 text-lg font-bold rounded-2xl bg-brand-blue hover:bg-brand-blue/90 shadow-apple transition-all mt-4">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (mode === "login" ? "Acceder" : "Crear Cuenta")}
             </Button>
           </form>
 
           <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-100"></div>
-            </div>
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100" /></div>
             <div className="relative flex justify-center text-[10px] uppercase">
               <span className="bg-white px-4 font-bold tracking-widest text-gray-300">O continúa con</span>
             </div>
@@ -175,10 +134,7 @@ export default function AuthPage() {
           </div>
 
           <div className="text-center">
-            <button
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
-              className="text-sm font-bold text-gray-400 hover:text-brand-blue transition-colors"
-            >
+            <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="text-sm font-bold text-gray-400 hover:text-brand-blue transition-colors">
               {mode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
             </button>
           </div>
@@ -186,8 +142,4 @@ export default function AuthPage() {
       </Card>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }
