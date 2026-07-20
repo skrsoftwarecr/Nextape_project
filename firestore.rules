@@ -1,0 +1,57 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regla de utilidad para verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Regla para verificar si el usuario es dueño del documento
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Perfiles de usuario
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Habilidades y Scores
+    match /user_skill_scores/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Roadmaps personalizados
+    match /user_roadmaps/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Intentos de evaluación
+    match /assessment_attempts/{attemptId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow list: if isAuthenticated() && request.query.limit <= 100;
+    }
+    
+    // Trabajos (Lectura pública, escritura denegada)
+    match /jobs/{jobId} {
+      allow read: if true;
+      allow list: if true;
+      allow write: if false;
+    }
+    
+    // Preguntas y Bancos de Exámenes
+    match /questions/{qId} {
+      allow read: if isAuthenticated();
+      allow list: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Match de candidatos (Engine)
+    match /candidate_matches/{matchId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.recruiterId == request.auth.uid);
+      allow write: if false; // Solo vía Admin/Server
+    }
+  }
+}

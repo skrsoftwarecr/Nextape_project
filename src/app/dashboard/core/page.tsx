@@ -1,0 +1,132 @@
+
+"use client";
+
+import { useEffect, useState } from "react";
+import { Fingerprint, Zap, Target, Activity, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { auth } from "@/lib/firebase/client";
+import { SkillsService } from "@/services/skills.service";
+
+export default function CorePage() {
+  const [skills, setSkills] = useState<{name: string, value: number}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [grade, setGrade] = useState("C");
+
+  useEffect(() => {
+    const loadCoreData = async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      try {
+        const skillData = await SkillsService.getSkills(user.uid);
+        const scores = skillData?.scores || {};
+        const formattedSkills = Object.entries(scores).map(([name, value]) => ({
+          name: name.toUpperCase(),
+          value: value as number
+        }));
+        
+        setSkills(formattedSkills);
+
+        const avg = formattedSkills.length > 0 
+          ? formattedSkills.reduce((acc, curr) => acc + curr.value, 0) / formattedSkills.length
+          : 0;
+        
+        if (avg > 95) setGrade("S");
+        else if (avg > 90) setGrade("A+");
+        else if (avg > 80) setGrade("A");
+        else if (avg > 60) setGrade("B");
+        else setGrade("C");
+
+      } catch (error) {
+        console.error("Error loading CORE data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCoreData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-blue" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-12">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 bg-brand-blue/10 text-brand-blue px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+            <Activity className="h-3 w-3" /> Identidad Verificada
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight text-black italic">CORE.</h1>
+          <p className="text-gray-500 font-medium text-sm">Tu representación técnica verificada mediante simulación técnica.</p>
+        </div>
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-50 text-center min-w-[200px]">
+          <span className="text-6xl font-black tracking-tighter text-brand-blue leading-none italic">{grade}</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] block mt-3 text-gray-300">Technical Grade</span>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2 bg-white p-12 rounded-[3rem] shadow-apple border border-gray-50 space-y-12">
+           <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center">
+                 <Fingerprint className="h-6 w-6 text-brand-blue" />
+              </div>
+              <h2 className="text-2xl font-bold italic tracking-tight">Technical DNA.</h2>
+           </div>
+           
+           <div className="space-y-10">
+              {skills.length > 0 ? skills.map(skill => (
+                <div key={skill.name} className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <p className="font-bold text-sm uppercase tracking-widest text-black">{skill.name}</p>
+                    <span className="font-black text-xl text-brand-blue italic">{skill.value}%</span>
+                  </div>
+                  <div className="h-3 rounded-full bg-gray-50 overflow-hidden border border-gray-100">
+                    <div 
+                      className="h-full bg-brand-blue rounded-full transition-all duration-1000 ease-out" 
+                      style={{ width: `${skill.value}%` }}
+                    />
+                  </div>
+                </div>
+              )) : (
+                <div className="py-12 text-center text-gray-400 italic">
+                  Tu DNA técnico está vacío. Completa una simulación en "The LINE" para generar datos.
+                </div>
+              )}
+           </div>
+        </div>
+
+        <div className="space-y-8">
+           <Card className="rounded-[2.5rem] border-none shadow-apple p-8 space-y-6">
+              <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center">
+                 <Zap className="h-6 w-6 text-brand-blue" />
+              </div>
+              <div className="space-y-2">
+                 <h4 className="font-bold text-xl">Potencial.</h4>
+                 <p className="text-sm text-gray-400 font-medium leading-relaxed italic">
+                   {grade === "C" ? "Necesitas más datos para calcular tu percentil." : `Tu nivel actual es superior al promedio en ${grade}.`}
+                 </p>
+              </div>
+           </Card>
+
+           <Card className="rounded-[2.5rem] border-none shadow-apple p-8 space-y-6 bg-black text-white">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-brand-blue">
+                 <Target className="h-6 w-6" />
+              </div>
+              <div className="space-y-2">
+                 <h4 className="font-bold text-xl">Visibilidad.</h4>
+                 <p className="text-sm text-gray-400 font-medium leading-relaxed">Tu perfil es actualmente consultable por empresas registradas en Nextape.</p>
+              </div>
+           </Card>
+        </div>
+      </div>
+    </div>
+  );
+}

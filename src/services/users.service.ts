@@ -1,0 +1,8 @@
+
+import { getDocById, setDocById } from "@/lib/firebase/firestore";
+import { UserProfile } from "@/types/user.types";
+
+export const UserService = {
+  getUser: (uid: string) => getDocById<UserProfile>("users", uid),
+  saveUser: (uid: string, profile: Partial<UserProfile>) => setDocById("users", uid, profile)
+};
