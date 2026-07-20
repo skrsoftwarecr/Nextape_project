@@ -1,53 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { ArrowRight, Briefcase, Target, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { auth } from "@/lib/firebase/client";
 import { JobService } from "@/services/jobs.service";
 import { SkillsService } from "@/services/skills.service";
+import { useAuthUser } from "@/hooks/use-auth-user";
 
 export default function CompatibilityPage() {
+  const { user, authLoading } = useAuthUser();
   const [matches, setMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [avgMatch, setAvgMatch] = useState(0);
 
-  useEffect(() => {
-    const calculateLiveCompatibility = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+  const calculateLiveCompatibility = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const [jobs, skillData] = await Promise.all([
+        JobService.getLatestJobs(),
+        SkillsService.getSkills(user.uid)
+      ]);
 
-      try {
-        const [jobs, skillData] = await Promise.all([
-          JobService.getLatestJobs(),
-          SkillsService.getSkills(user.uid)
-        ]);
+      const userScores = skillData?.scores || {};
+      const calculated = jobs.map(job => {
+        const score = JobService.calculateMatch(job.requiredSkills || [], userScores);
+        return {
+          ...job,
+          matchScore: score
+        };
+      }).sort((a, b) => b.matchScore - a.matchScore);
 
-        const userScores = skillData?.scores || {};
-        const calculated = jobs.map(job => {
-          const score = JobService.calculateMatch(job.requiredSkills || [], userScores);
-          return {
-            ...job,
-            matchScore: score
-          };
-        }).sort((a, b) => b.matchScore - a.matchScore);
+      setMatches(calculated);
 
-        setMatches(calculated);
-        
-        if (calculated.length > 0) {
-          const sum = calculated.reduce((acc, curr) => acc + curr.matchScore, 0);
-          setAvgMatch(Number((sum / calculated.length / 10).toFixed(1)));
-        }
-      } catch (error) {
-        console.error("Error in compatibility analysis:", error);
-      } finally {
-        setLoading(false);
+      if (calculated.length > 0) {
+        const sum = calculated.reduce((acc, curr) => acc + curr.matchScore, 0);
+        setAvgMatch(Number((sum / calculated.length / 10).toFixed(1)));
+      } else {
+        setAvgMatch(0);
       }
-    };
+    } catch (error) {
+      console.error("Error in compatibility analysis:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     calculateLiveCompatibility();
-  }, []);
+  }, [user, authLoading, calculateLiveCompatibility]);
 
   if (loading) {
     return (
@@ -64,8 +71,13 @@ export default function CompatibilityPage() {
           <h1 className="text-4xl font-bold tracking-tight text-black italic">Compatibility Engine.</h1>
           <p className="text-gray-500 font-medium text-sm">Análisis de brecha técnica basado en tu CORE real vs mercado.</p>
         </div>
-        <Button className="h-14 px-8 bg-brand-blue rounded-2xl font-bold uppercase tracking-widest text-[10px] shadow-apple hover:scale-105 transition-all text-white">
-          <Zap className="mr-2 h-4 w-4" /> Recalcular Auditoría
+        <Button
+          onClick={() => calculateLiveCompatibility()}
+          disabled={loading}
+          className="h-14 px-8 bg-brand-blue rounded-2xl font-bold uppercase tracking-widest text-[10px] shadow-apple hover:scale-105 transition-all text-white disabled:opacity-60"
+        >
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+          Recalcular Auditoría
         </Button>
       </header>
 
@@ -120,12 +132,12 @@ export default function CompatibilityPage() {
                     </div>
                  </div>
 
-                 <div className="pt-8 border-t border-gray-50 flex justify-between items-center">
+                 <Link href={`/dashboard/line?jobId=${job.id}`} className="pt-8 border-t border-gray-50 flex justify-between items-center">
                     <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors">
                        <Briefcase className="h-4 w-4" /> Aplicar con Identity
                     </div>
                     <ArrowRight className="h-6 w-6 text-brand-blue group-hover:translate-x-2 transition-transform" />
-                 </div>
+                 </Link>
               </div>
             )) : (
               <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border border-dashed text-gray-400 italic">

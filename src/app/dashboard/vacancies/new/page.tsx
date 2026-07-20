@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, Sparkles, Loader2, ArrowLeft, Target, Terminal } from "lucide-react";
 import { auth, db } from "@/lib/firebase/client";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { JobService } from "@/services/jobs.service";
+import { apiPost } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export default function NewVacancyPage() {
@@ -57,10 +57,9 @@ export default function NewVacancyPage() {
         description: "Iniciando diseño de simulación por IA..." 
       });
 
-      // Disparamos la generación de IA para "The LINE"
-      // Nota: Aunque el guideline pide evitar await en mutaciones para optimismo,
-      // aquí la empresa espera la confirmación de la prueba generada.
-      await JobService.generateJobAssessment(docRef.id, skillsArray, formData.level);
+      // Generación de la prueba EN SERVIDOR: guarda las preguntas públicas (sin la respuesta
+      // correcta) en la vacante y la clave en una colección protegida. Ver /api/jobs/assessment.
+      await apiPost("/api/jobs/assessment", { jobId: docRef.id });
 
       toast({ 
         title: "¡Éxito!", 

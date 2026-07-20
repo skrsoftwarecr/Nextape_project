@@ -10,6 +10,12 @@ export interface Question {
   tag: string;
 }
 
+/**
+ * Pregunta expuesta al cliente: SIN la respuesta correcta (`correctIndex`).
+ * La clave de respuestas nunca se envía al navegador; el grading ocurre en servidor.
+ */
+export type PublicQuestion = Omit<Question, "correctIndex">;
+
 export interface JobOpportunity {
   id?: string;
   title: string;

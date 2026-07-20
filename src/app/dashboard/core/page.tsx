@@ -5,19 +5,24 @@ import { useEffect, useState } from "react";
 import { Fingerprint, Zap, Target, Activity, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { auth } from "@/lib/firebase/client";
 import { SkillsService } from "@/services/skills.service";
+import { useAuthUser } from "@/hooks/use-auth-user";
+import { getTechnicalGrade } from "@/lib/grading";
 
 export default function CorePage() {
+  const { user, authLoading } = useAuthUser();
   const [skills, setSkills] = useState<{name: string, value: number}[]>([]);
   const [loading, setLoading] = useState(true);
-  const [grade, setGrade] = useState("C");
+  const [grade, setGrade] = useState("N/A");
 
   useEffect(() => {
-    const loadCoreData = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    const loadCoreData = async () => {
       try {
         const skillData = await SkillsService.getSkills(user.uid);
         const scores = skillData?.scores || {};
@@ -25,19 +30,9 @@ export default function CorePage() {
           name: name.toUpperCase(),
           value: value as number
         }));
-        
+
         setSkills(formattedSkills);
-
-        const avg = formattedSkills.length > 0 
-          ? formattedSkills.reduce((acc, curr) => acc + curr.value, 0) / formattedSkills.length
-          : 0;
-        
-        if (avg > 95) setGrade("S");
-        else if (avg > 90) setGrade("A+");
-        else if (avg > 80) setGrade("A");
-        else if (avg > 60) setGrade("B");
-        else setGrade("C");
-
+        setGrade(getTechnicalGrade(scores));
       } catch (error) {
         console.error("Error loading CORE data:", error);
       } finally {
@@ -46,7 +41,7 @@ export default function CorePage() {
     };
 
     loadCoreData();
-  }, []);
+  }, [user, authLoading]);
 
   if (loading) {
     return (
@@ -111,7 +106,7 @@ export default function CorePage() {
               <div className="space-y-2">
                  <h4 className="font-bold text-xl">Potencial.</h4>
                  <p className="text-sm text-gray-400 font-medium leading-relaxed italic">
-                   {grade === "C" ? "Necesitas más datos para calcular tu percentil." : `Tu nivel actual es superior al promedio en ${grade}.`}
+                   {grade === "C" || grade === "N/A" ? "Necesitas más datos para calcular tu percentil." : `Tu nivel actual es superior al promedio en ${grade}.`}
                  </p>
               </div>
            </Card>

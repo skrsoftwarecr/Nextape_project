@@ -16,31 +16,53 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if isOwner(userId);
     }
-    
-    // Habilidades y Scores
+
+    // Habilidades y Scores (el "CORE" / DNA técnico).
+    // ✅ INTEGRIDAD (B2): el DNA es de SOLO LECTURA para el cliente. La escritura ocurre
+    // únicamente en servidor con el Admin SDK (POST /api/line/submit), que bypassa estas reglas.
+    // Así el usuario no puede falsificar su propio DNA desde el navegador.
     match /user_skill_scores/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow write: if false;
     }
-    
+
     // Roadmaps personalizados
     match /user_roadmaps/{userId} {
       allow read, write: if isOwner(userId);
     }
-    
-    // Intentos de evaluación
+
+    // Intentos de evaluación.
+    // Lectura SOLO del dueño (una query de lista debe filtrar por `userId`). La creación ocurre
+    // solo en servidor (Admin SDK); el cliente no crea intentos.
     match /assessment_attempts/{attemptId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
-      allow list: if isAuthenticated() && request.query.limit <= 100;
+      allow write: if false;
     }
-    
-    // Trabajos (Lectura pública, escritura denegada)
+
+    // Sesiones de "The LINE" y claves de respuestas de vacantes: SERVER-ONLY.
+    // Contienen `correctIndex`; el cliente nunca debe leerlas ni escribirlas.
+    // El Admin SDK bypassa estas reglas.
+    match /line_sessions/{sessionId} {
+      allow read, write: if false;
+    }
+    match /job_answer_keys/{jobId} {
+      allow read, write: if false;
+    }
+
+    // Trabajos / Vacantes.
+    // Lectura pública. Escritura solo del reclutador DUEÑO (`createdBy`), sin borrado desde
+    // cliente y sin poder reasignar la propiedad. Esto desbloquea la creación de vacantes y su
+    // actualización con la prueba generada por IA. (docs/TECH_DEBT B1)
     match /jobs/{jobId} {
       allow read: if true;
       allow list: if true;
-      allow write: if false;
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated()
+                    && resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if false;
     }
-    
+
     // Preguntas y Bancos de Exámenes
     match /questions/{qId} {
       allow read: if isAuthenticated();
@@ -48,7 +70,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Match de candidatos (Engine)
+    // Match de candidatos (Engine). Escritura solo vía servidor/Admin.
     match /candidate_matches/{matchId} {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.recruiterId == request.auth.uid);
       allow write: if false; // Solo vía Admin/Server

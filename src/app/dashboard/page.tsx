@@ -6,14 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, Fingerprint, Target, Users, Zap, Loader2, Briefcase, PlusCircle, Activity } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { auth, db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase/client";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { SkillsService } from "@/services/skills.service";
 import { JobService } from "@/services/jobs.service";
 import { UserService } from "@/services/users.service";
 import { UserProfile } from "@/types/user.types";
+import { useAuthUser } from "@/hooks/use-auth-user";
+import { calculateAverageScore } from "@/lib/grading";
 
 export default function DashboardPage() {
+  const { user, authLoading } = useAuthUser();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setMetrics] = useState({
@@ -26,10 +29,13 @@ export default function DashboardPage() {
   const [topMatches, setTopMatches] = useState<any[]>([]);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    const loadDashboardData = async () => {
       try {
         const userData = await UserService.getUser(user.uid);
         setProfile(userData as UserProfile);
@@ -37,18 +43,16 @@ export default function DashboardPage() {
         if (userData?.role === "recruiter") {
           const qJobs = query(collection(db, "jobs"), where("createdBy", "==", user.uid));
           const jobsSnap = await getDocs(qJobs);
-          
+
           setMetrics(prev => ({
             ...prev,
             activeVacancies: jobsSnap.size,
-            totalApplicants: 0 
+            totalApplicants: 0
           }));
         } else {
           const skillData = await SkillsService.getSkills(user.uid);
           const scores = skillData?.scores || {};
-          const avgScore = Object.values(scores).length > 0 
-            ? Math.round(Object.values(scores).reduce((a: any, b: any) => a + (b as number), 0) / Object.values(scores).length)
-            : 0;
+          const avgScore = Math.round(calculateAverageScore(scores) ?? 0);
 
           const qAttempts = query(collection(db, "assessment_attempts"), where("userId", "==", user.uid));
           const attemptsSnap = await getDocs(qAttempts);
@@ -76,7 +80,7 @@ export default function DashboardPage() {
     };
 
     loadDashboardData();
-  }, []);
+  }, [user, authLoading]);
 
   if (loading) {
     return (

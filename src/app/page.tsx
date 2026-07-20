@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/auth/AuthModal";
 import Link from "next/link";
-import { 
-  Zap, 
-  XCircle, 
+import {
+  Zap,
+  XCircle,
   Cpu,
-  ArrowRight,
-  ChevronRight
+  Terminal,
+  Fingerprint,
+  Target
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -70,15 +71,16 @@ export default function Home() {
             <p className="text-base md:text-xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed px-4">
               Validamos habilidades técnicas reales a través de simulaciones generadas por IA. La confianza que necesitas para contratar developers de élite.
             </p>
-            <div className="flex flex-col sm:row gap-4 justify-center pt-8 px-6 max-w-lg mx-auto">
-              <Button 
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 px-6 max-w-lg mx-auto">
+              <Button
                 onClick={() => setIsAuthModalOpen(true)}
                 className="bg-brand-blue text-white hover:bg-brand-blue/90 h-16 px-12 rounded-2xl text-sm font-bold shadow-apple-lg uppercase tracking-widest w-full transition-transform hover:scale-[1.02]"
               >
                 Ingresar como Candidato
               </Button>
-              <Button 
+              <Button
                 variant="outline"
+                onClick={() => setIsAuthModalOpen(true)}
                 className="border-gray-200 h-16 px-12 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all bg-white text-black uppercase tracking-widest w-full"
               >
                 Soy Reclutador / Empresa
@@ -119,6 +121,36 @@ export default function Home() {
                   <p className="text-gray-400 font-medium leading-relaxed max-w-sm">Nextape filtra el ruido y nos entrega solo el DNA técnico que nuestro stack necesita.</p>
                   <div className="absolute -bottom-12 -right-12 w-64 h-64 bg-brand-blue/10 rounded-full blur-3xl" />
                </div>
+            </div>
+          </div>
+        </section>
+
+        {/* How it works Section */}
+        <section id="how-it-works" className="py-24 md:py-40 px-6">
+          <div className="max-w-7xl mx-auto space-y-16">
+            <div className="text-center space-y-4 max-w-2xl mx-auto">
+              <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-black italic">Cómo funciona.</h2>
+              <p className="text-gray-500 font-medium leading-relaxed">
+                Tres pasos para convertir habilidad real en un perfil que las empresas pueden verificar.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { icon: Terminal, step: "01", title: "The LINE", text: "Resuelve simulaciones técnicas generadas por IA sobre tu stack: anomalías de producción, no preguntas de sintaxis." },
+                { icon: Fingerprint, step: "02", title: "CORE", text: "Cada resultado construye tu DNA técnico verificado: una huella de habilidades medida, no declarada." },
+                { icon: Target, step: "03", title: "Match", text: "Tu DNA se compara con las vacantes para calcular tu compatibilidad real con cada posición." }
+              ].map((item) => (
+                <div key={item.step} className="bg-white p-10 rounded-[2.5rem] shadow-apple border border-gray-50 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center">
+                      <item.icon className="h-6 w-6 text-brand-blue" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">{item.step}</span>
+                  </div>
+                  <h3 className="text-2xl font-bold italic">{item.title}</h3>
+                  <p className="text-gray-400 text-sm font-medium leading-relaxed">{item.text}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>

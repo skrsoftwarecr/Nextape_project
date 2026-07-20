@@ -3,22 +3,27 @@
 import { useEffect, useState } from "react";
 import { Fingerprint, Zap, Target, Activity, Loader2, User as UserIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { auth } from "@/lib/firebase/client";
 import { SkillsService } from "@/services/skills.service";
 import { UserService } from "@/services/users.service";
 import { UserProfile } from "@/types/user.types";
+import { useAuthUser } from "@/hooks/use-auth-user";
+import { getTechnicalGrade } from "@/lib/grading";
 
 export default function ProfilePage() {
+  const { user, authLoading } = useAuthUser();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [skills, setSkills] = useState<{name: string, value: number}[]>([]);
   const [loading, setLoading] = useState(true);
   const [grade, setGrade] = useState("N/A");
 
   useEffect(() => {
-    const loadProfileData = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    const loadProfileData = async () => {
       try {
         const [userData, skillData] = await Promise.all([
           UserService.getUser(user.uid),
@@ -26,19 +31,14 @@ export default function ProfilePage() {
         ]);
 
         setProfile(userData);
-        
+
         if (skillData?.scores) {
           const formatted = Object.entries(skillData.scores).map(([name, val]) => ({
             name: name.toUpperCase(),
             value: val as number
           }));
           setSkills(formatted);
-
-          const avg = formatted.reduce((acc, curr) => acc + curr.value, 0) / formatted.length;
-          if (avg > 90) setGrade("S");
-          else if (avg > 80) setGrade("A");
-          else if (avg > 60) setGrade("B");
-          else setGrade("C");
+          setGrade(getTechnicalGrade(skillData.scores));
         }
       } catch (error) {
         console.error("Error loading profile:", error);
@@ -48,7 +48,7 @@ export default function ProfilePage() {
     };
 
     loadProfileData();
-  }, []);
+  }, [user, authLoading]);
 
   if (loading) {
     return (

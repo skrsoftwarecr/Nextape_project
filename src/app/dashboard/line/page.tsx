@@ -1,81 +1,82 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Terminal, Cpu, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { JobService } from "@/services/jobs.service";
-import { SkillsService } from "@/services/skills.service";
-import { auth } from "@/lib/firebase/client";
-import { generateQuestions } from "@/ai/flows/generate-assessment-flow";
+import { apiPost } from "@/lib/api";
+import type { PublicQuestion } from "@/types/job.types";
 
 function LineContent() {
   const searchParams = useSearchParams();
   const jobId = searchParams.get("jobId");
   
   const [status, setStatus] = useState<"idle" | "loading" | "active" | "finished">("idle");
-  const [questions, setQuestions] = useState<any[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<PublicQuestion[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
   const [score, setScore] = useState(0);
   const [specialty, setSpecialty] = useState("frontend");
   const [difficulty, setLevel] = useState("senior");
+  const [error, setError] = useState<string | null>(null);
 
   const startSimulation = async () => {
     setStatus("loading");
+    setError(null);
+    setScore(0);
+    setAnswers([]);
+    setCurrentQIndex(0);
     try {
-      let questionsToUse = [];
-      if (jobId) {
-        const job = await JobService.getJob(jobId);
-        if (job?.assessmentQuestions) {
-          questionsToUse = job.assessmentQuestions;
-        } else {
-          // Si el trabajo no tiene preguntas, las generamos al vuelo
-          const result = await generateQuestions({ 
-            stack: job?.requiredSkills || ["react", "nextjs"], 
-            level: "senior",
-            count: 5 
-          });
-          questionsToUse = result.questions;
-        }
-      } else {
-        // Simulación general
-        const stackMap: any = {
-          frontend: ["react", "nextjs", "typescript", "tailwind"],
-          backend: ["node.js", "postgresql", "docker", "redis"],
-          devops: ["kubernetes", "ci-cd", "aws", "terraform"]
-        };
-        const result = await generateQuestions({ 
-          stack: stackMap[specialty], 
-          level: difficulty, 
-          count: 5 
-        });
-        questionsToUse = result.questions;
+      // Las preguntas se generan EN SERVIDOR y llegan SIN la respuesta correcta.
+      const payload = jobId ? { jobId } : { specialty, level: difficulty };
+      const data = await apiPost<{ sessionId: string; questions: PublicQuestion[] }>(
+        "/api/line/start",
+        payload
+      );
+
+      if (!data.questions || data.questions.length === 0) {
+        setError("No se pudieron generar las preguntas. Inténtalo de nuevo en unos segundos.");
+        setStatus("idle");
+        return;
       }
-      setQuestions(questionsToUse);
+
+      setSessionId(data.sessionId);
+      setQuestions(data.questions);
       setStatus("active");
-    } catch (error) {
-      console.error("Simulation failed to start:", error);
+    } catch (err) {
+      console.error("Simulation failed to start:", err);
+      setError("Error al iniciar la simulación. Revisa tu conexión e inténtalo de nuevo.");
+      setStatus("idle");
+    }
+  };
+
+  const finishSimulation = async (finalAnswers: number[]) => {
+    setStatus("loading");
+    try {
+      // La corrección y la escritura del DNA ocurren EN SERVIDOR (no falsificable en cliente).
+      const data = await apiPost<{ overall: number }>("/api/line/submit", {
+        sessionId,
+        answers: finalAnswers,
+      });
+      setScore(data.overall);
+      setStatus("finished");
+    } catch (err) {
+      console.error("Failed to submit simulation:", err);
+      setError("No se pudo calcular el resultado. Inténtalo de nuevo.");
       setStatus("idle");
     }
   };
 
   const handleAnswer = async (index: number) => {
-    const isCorrect = index === questions[currentQIndex].correctIndex;
-    if (isCorrect) setScore(s => s + 20);
+    const updatedAnswers = [...answers, index];
+    setAnswers(updatedAnswers);
 
     if (currentQIndex < questions.length - 1) {
-      setCurrentQIndex(i => i + 1);
+      setCurrentQIndex((i) => i + 1);
     } else {
-      // Fin de simulación - Persistir en CORE
-      const finalScore = score + (isCorrect ? 20 : 0);
-      const user = auth.currentUser;
-      if (user) {
-        // Actualizamos la skill principal del track
-        const mainSkill = questions[0].tag || specialty;
-        await SkillsService.updateSkillScore(user.uid, mainSkill, finalScore);
-      }
-      setStatus("finished");
+      await finishSimulation(updatedAnswers);
     }
   };
 
@@ -166,7 +167,13 @@ function LineContent() {
                 </>
               )}
 
-              <Button 
+              {error && (
+                <div className="flex items-center gap-2 text-brand-red text-xs font-bold bg-brand-red/5 p-4 rounded-xl">
+                  <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+                </div>
+              )}
+
+              <Button
                 onClick={startSimulation}
                 className="w-full h-16 bg-black text-white rounded-2xl text-base font-bold shadow-apple uppercase tracking-widest hover:scale-[1.02] transition-transform"
               >

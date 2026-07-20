@@ -7,19 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { JobService } from "@/services/jobs.service";
 import { SkillsService } from "@/services/skills.service";
-import { auth } from "@/lib/firebase/client";
+import { useAuthUser } from "@/hooks/use-auth-user";
 import Link from "next/link";
 
 export default function JobsPage() {
+  const { user, authLoading } = useAuthUser();
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const loadJobs = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
+    const loadJobs = async () => {
       try {
         const [jobsList, skillData] = await Promise.all([
           JobService.getLatestJobs(),
@@ -41,11 +45,11 @@ export default function JobsPage() {
     };
 
     loadJobs();
-  }, []);
+  }, [user, authLoading]);
 
-  const filteredJobs = jobs.filter(job => 
-    job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.company.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredJobs = jobs.filter(job =>
+    (job.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (job.company || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
