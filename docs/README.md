@@ -14,6 +14,8 @@ agentes de IA + humanos). Mantener actualizada cuando cambie el código.
 | [FRONTEND.md](./FRONTEND.md) | Rutas, layout/navegación, sistema de diseño, estado, código muerto, bugs de UI. |
 | [TECH_DEBT.md](./TECH_DEBT.md) | Backlog consolidado de inconsistencias/bugs por prioridad (🔴🟠🟡). |
 | [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) | Checklist por fases para llevar a producción. |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | **Despliegue en Netlify + Firebase**: variables de entorno, service account, reglas, checklist. Paso a paso. |
+| [CHANGELOG_FIXES.md](./CHANGELOG_FIXES.md) | Registro de las correcciones aplicadas (rama `fix/system-hardening`). |
 | [blueprint.md](./blueprint.md) | Blueprint original del equipo (**visión/intención**). ⚠️ Difiere del código en varios puntos; el código manda. |
 
 ## Cómo usar esta documentación

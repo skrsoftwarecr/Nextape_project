@@ -10,6 +10,7 @@ import { getDocById, setDocById } from "@/lib/firebase/firestore";
 import { generateRoadmap } from "@/ai/flows/generate-roadmap-flow";
 import { SkillsService } from "@/services/skills.service";
 import { onAuthStateChanged, User } from "firebase/auth";
+import { Timestamp } from "firebase/firestore";
 
 export default function RoadmapPage() {
   const [steps, setSteps] = useState<any[]>([]);
@@ -64,7 +65,7 @@ export default function RoadmapPage() {
       const roadmapData = {
         steps: result.steps,
         summary: result.summary,
-        updatedAt: new Date()
+        updatedAt: Timestamp.now()
       };
 
       await setDocById("user_roadmaps", user.uid, roadmapData);

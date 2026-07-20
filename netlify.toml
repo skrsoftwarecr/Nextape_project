@@ -1,0 +1,12 @@
+# Configuración de despliegue en Netlify para NEXTAPE (Next.js 15 App Router).
+# El plugin oficial de Next.js hace que las rutas SSR y los route handlers (src/app/api/*)
+# se ejecuten como Netlify Functions. Netlify instala el plugin automáticamente al detectarlo aquí.
+
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

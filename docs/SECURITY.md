@@ -62,10 +62,12 @@ partes del código asumen colecciones sin regla (`core`).
 - **Config web de Firebase hardcodeada** en `src/lib/firebase/client.ts` (apiKey, appId, etc.).
   Esto es aceptable para Firebase web (no es secreto), pero **la seguridad depende enteramente de las
   reglas** — que hoy tienen agujeros (arriba).
-- **API Key de Google AI (Gemini):** los flows Genkit (`'use server'`) requieren credencial de
-  `@genkit-ai/google-genai` en el **servidor**. No está en el repo (correcto: `.env` está en `.gitignore`),
-  pero **`apphosting.yaml` no declara ninguna variable/secreto** → en producción App Hosting los flows
-  de IA fallarán salvo que se configure el secreto (`GEMINI_API_KEY`/`GOOGLE_API_KEY`) en el backend.
+- **API Key de Google AI (Gemini):** la IA corre en **servidor** (route handlers + flows Genkit) y
+  requiere `GEMINI_API_KEY`. En el modelo real (Netlify) va como **variable de entorno de Netlify**
+  (Functions). Sin ella, `/api/line/start`, `/api/jobs/assessment` y el roadmap fallan. Ver [DEPLOYMENT](./DEPLOYMENT.md).
+- **Credenciales del Admin SDK:** los route handlers escriben datos de confianza con
+  `firebase-admin`. En Netlify **no hay ADC**, así que se requiere `FIREBASE_SERVICE_ACCOUNT` (JSON del
+  service account) como variable de entorno de Netlify. Es un **secreto**: nunca commitear.
 - `next.config.ts` fija `typescript.ignoreBuildErrors: true` y `eslint.ignoreDuringBuilds: true`
   → 🔴 se puede desplegar código con errores de tipos/lint. Riesgo de seguridad y calidad.
 

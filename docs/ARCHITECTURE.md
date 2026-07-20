@@ -22,7 +22,7 @@ genera **roadmaps** de mejora y calcula **compatibilidad** con vacantes. Dos rol
 | IA | **Genkit 1.28** + `@genkit-ai/google-genai` (**Gemini 1.5 Flash**) |
 | Formularios | react-hook-form + zod + `@hookform/resolvers` |
 | Gráficos | recharts |
-| Hosting | **Firebase App Hosting** (`apphosting.yaml`) |
+| Hosting | **Netlify** (`netlify.toml` + `@netlify/plugin-nextjs`); route handlers `/api/*` = Netlify Functions. Firebase solo Auth+Firestore. Ver [DEPLOYMENT](./DEPLOYMENT.md). |
 | Entorno dev | Firebase Studio / Project IDX (`.idx/dev.nix`, Node 22) — usa backends de **producción** |
 | Dev server | `next dev --turbopack -p 9002` |
 
