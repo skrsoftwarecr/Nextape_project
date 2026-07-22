@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
 import { gradeAnswers } from "@/lib/server/assessment";
+import { calculateMatch } from "@/lib/match";
 import type { Question } from "@/types/job.types";
 
 export const runtime = "nodejs";
@@ -74,6 +75,62 @@ export async function POST(req: NextRequest) {
       startedAt: session.createdAt ?? FieldValue.serverTimestamp(),
       completedAt: FieldValue.serverTimestamp(),
     });
+
+    // Si la simulación era la prueba de una vacante concreta, registramos el candidato para el
+    // reclutador dueño (loop developer→recruiter). Cierra el ciclo: la vacante ve aplicantes reales
+    // y `/candidates` puede rankear por DNA. Tomar la prueba de una vacante = postular = consentir
+    // compartir el resultado con ese reclutador. Es best-effort: un fallo aquí no invalida el intento.
+    const jobId: string | null = session.jobId ?? null;
+    if (jobId) {
+      try {
+        const jobSnap = await adminDb().collection("jobs").doc(jobId).get();
+        const job = jobSnap.data();
+        if (job && job.createdBy) {
+          const requiredSkills: string[] = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
+          const userSnap = await adminDb().collection("users").doc(uid).get();
+          const candidateName: string = userSnap.data()?.name || userSnap.data()?.displayName || "Candidato";
+
+          // Snapshot de los scores del candidato en las skills que pide la vacante.
+          const skillsSnapshot: Record<string, number> = {};
+          for (const skill of requiredSkills) {
+            const key = skill.toLowerCase();
+            skillsSnapshot[key] = merged[key] ?? 0;
+          }
+          const matchPercent = calculateMatch(requiredSkills, merged);
+
+          const matchId = `${uid}_${jobId}`;
+          const matchRef = adminDb().collection("candidate_matches").doc(matchId);
+          const matchSnap = await matchRef.get();
+          const isNewApplicant = !matchSnap.exists;
+          const bestScore = Math.max(matchSnap.data()?.score ?? 0, overall);
+
+          await matchRef.set(
+            {
+              userId: uid,
+              recruiterId: job.createdBy,
+              jobId,
+              jobTitle: job.title ?? "",
+              candidateName,
+              score: bestScore,
+              matchPercent,
+              skills: skillsSnapshot,
+              completedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          // Solo la primera vez que este candidato aplica a esta vacante cuenta como aplicante nuevo.
+          if (isNewApplicant) {
+            await adminDb()
+              .collection("jobs")
+              .doc(jobId)
+              .update({ applicantsCount: FieldValue.increment(1) });
+          }
+        }
+      } catch (matchErr) {
+        console.error("[line/submit] candidate_match error:", matchErr);
+      }
+    }
 
     // La sesión es de un solo uso.
     await sessionRef.delete();

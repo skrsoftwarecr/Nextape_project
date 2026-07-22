@@ -68,14 +68,14 @@ funcionaban en cliente; ahora dependen del servidor).
 
 Ordenado por prioridad. Cada tarea dice qué agente/área encaja (ver `.claude/agents/`) y por dónde empezar.
 
-### 🔴 Motor de matching de candidatos (A4) — *backend + base de datos*
-Hoy, cuando un candidato hace la prueba de una vacante, se actualiza su DNA pero **no queda registrado como
-aplicante**, así que el reclutador no ve a nadie (`applicantsCount` siempre 0, la colección
-`candidate_matches` está inerte).
-- Diseñar el flujo en **servidor** (mismo patrón que `line/submit`): al terminar una prueba con `jobId`,
-  escribir/actualizar `candidate_matches` con el % de match y sumar `applicantsCount`.
-- Alinear el tipo `CompatibilityMatch` con la regla (la regla usa `recruiterId`, que no existe en el tipo).
-- Referencias: `src/app/api/line/submit/route.ts`, `firestore.rules`, `docs/DATABASE.md`, `docs/TECH_DEBT.md` (A4).
+### ✅ Motor de matching de candidatos (A4) — *resuelto (2026-07-22)*
+Cerrado el loop developer→recruiter. Al hacer la prueba de una vacante (con `jobId`), `/api/line/submit`
+escribe/actualiza `candidate_matches` en **servidor** (Admin SDK) con el `score` de The LINE, `matchPercent`
+y snapshot de `skills`, y suma `applicantsCount` la primera vez. El tipo pasó a `CandidateMatch` (con
+`recruiterId`, ya alineado con la regla) y el reclutador ve el ranking en `/dashboard/candidates`
+(`CompatibilityService.getMatchesForRecruiter`).
+- Referencias: `src/app/api/line/submit/route.ts`, `firestore.rules`, `docs/CHANGELOG_FIXES.md` (Fase 8),
+  `docs/DATABASE.md`, `docs/TECH_DEBT.md` (A4).
 
 ### 🟠 Tests de reglas con el emulador en CI — *QA*
 Ya dejé los tests escritos en `src/lib/firebase/rules.test.ts` (se saltan si no hay emulador).

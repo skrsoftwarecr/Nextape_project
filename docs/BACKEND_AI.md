@@ -18,7 +18,7 @@ NEXTAPE tiene una **capa de confianza en servidor** sobre Firebase:
 | Endpoint | Qué hace |
 |---|---|
 | `POST /api/line/start` | Genera preguntas (o carga la clave de una vacante), crea `line_sessions` (server-only) y devuelve preguntas **sin `correctIndex`** (`PublicQuestion`). |
-| `POST /api/line/submit` | Corrige contra la clave de la sesión, escribe el DNA (`user_skill_scores`, mejor score/skill) y el intento (`assessment_attempts`) con Admin SDK, borra la sesión. |
+| `POST /api/line/submit` | Corrige contra la clave de la sesión, escribe el DNA (`user_skill_scores`, mejor score/skill) y el intento (`assessment_attempts`) con Admin SDK, borra la sesión. Si la sesión tiene `jobId` (postulación a una vacante), además escribe/actualiza `candidate_matches/{userId_jobId}` e incrementa `jobs.applicantsCount` la primera vez (best-effort). |
 | `POST /api/jobs/assessment` | (Reclutador dueño) genera la prueba de una vacante: preguntas públicas sin clave en `jobs`, clave en `job_answer_keys` (server-only). |
 
 Todos verifican el ID token con `verifyRequestUid` (Admin). Nunca confían en un `uid` del body.
@@ -87,9 +87,9 @@ la lógica de datos desde componentes.
 |---|---|---|
 | `UserService` | `getUser`, `saveUser` | `users` |
 | `SkillsService` | `getSkills` (solo lectura) | `user_skill_scores` |
-| `JobService` | `getLatestJobs`, `getJob`, `calculateMatch` | `jobs` |
+| `JobService` | `getLatestJobs`, `getJob`, `getJobsByRecruiter`, `calculateMatch` | `jobs` |
 | `AssessmentService` | `getSession` (solo lectura) | `assessment_attempts` |
-| `CompatibilityService` | `getMatch` | `candidate_matches` (hoy sin escritor, A4) |
+| `CompatibilityService` | `getMatchesForRecruiter` | `candidate_matches` (escritor: `/api/line/submit`) |
 
 `calculateMatch` es una función pura en `src/lib/match.ts` (reexportada por `JobService`).
 

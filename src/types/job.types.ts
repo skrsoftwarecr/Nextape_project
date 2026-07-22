@@ -34,10 +34,27 @@ export interface JobOpportunity {
   applicantsCount?: number;
 }
 
-export interface CompatibilityMatch {
+/**
+ * Registro de un candidato que completó la prueba (The LINE) de una vacante concreta.
+ * Vive en `candidate_matches` (escritura SOLO servidor, Admin SDK). La regla de Firestore
+ * permite leerlo al propio candidato (`userId`) o al reclutador dueño de la vacante (`recruiterId`).
+ * doc id = `${userId}_${jobId}` (un registro por candidato y vacante; se conserva el mejor `score`).
+ */
+export interface CandidateMatch {
+  /** uid del candidato. */
   userId: string;
+  /** uid del reclutador dueño de la vacante (denormalizado para la regla de lectura). */
+  recruiterId: string;
   jobId: string;
-  percentage: number;
-  breakdown: { [skill: string]: number };
-  calculatedAt: FirestoreTimestamp;
+  /** Título de la vacante, denormalizado para el listado de candidatos. */
+  jobTitle: string;
+  /** Nombre del candidato, denormalizado para el listado. */
+  candidateName: string;
+  /** Resultado de The LINE para esta vacante (0–100). Se conserva el mejor. */
+  score: number;
+  /** Afinidad DNA ↔ `requiredSkills` de la vacante (0–100). */
+  matchPercent: number;
+  /** Snapshot de los scores del candidato en las skills que pide la vacante. */
+  skills: Record<string, number>;
+  completedAt: FirestoreTimestamp;
 }

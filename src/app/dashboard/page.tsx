@@ -43,11 +43,15 @@ export default function DashboardPage() {
         if (userData?.role === "recruiter") {
           const qJobs = query(collection(db, "jobs"), where("createdBy", "==", user.uid));
           const jobsSnap = await getDocs(qJobs);
+          const totalApplicants = jobsSnap.docs.reduce(
+            (sum, d) => sum + (d.data().applicantsCount || 0),
+            0
+          );
 
           setMetrics(prev => ({
             ...prev,
             activeVacancies: jobsSnap.size,
-            totalApplicants: 0
+            totalApplicants
           }));
         } else {
           const skillData = await SkillsService.getSkills(user.uid);

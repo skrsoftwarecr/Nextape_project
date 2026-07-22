@@ -43,7 +43,8 @@ cliente, o exponer una clave de respuestas). Minimiza lo que el cliente puede es
   o mover a servidor — 🔴.
 - `storage` `read:if true` (todos los archivos públicos) — 🔴; validar tipo/tamaño.
 - `users` owner-only-read: rompe el journey de reclutador (¿lectura selectiva de perfiles?). Decidir.
-- `candidate_matches` regla usa `recruiterId` inexistente.
+- `candidate_matches`: ✅ alineado (A4). El tipo `CandidateMatch` ya incluye `recruiterId`; lo escribe el
+  servidor (`/api/line/submit`, Admin SDK); la regla (`read if userId==uid || recruiterId==uid`, `write:false`) es funcional.
 - Colección `core` sin regla (rota).
 - `projectId` distinto entre `client.ts` y `.firebaserc` → las reglas podrían no aplicar al proyecto real.
 - `next.config.ts` ignora errores de build (riesgo de desplegar código roto).

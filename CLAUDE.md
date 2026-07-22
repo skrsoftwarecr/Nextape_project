@@ -136,9 +136,10 @@ En [`.claude/agents/`](./.claude/agents/) hay agentes por área. Úsalos (o dele
 
 MVP saneado en la rama **`fix/system-hardening`** (ver [`docs/CHANGELOG_FIXES.md`](./docs/CHANGELOG_FIXES.md)).
 Ya resuelto: código muerto eliminado, tipos consolidados, bugs de runtime/lógica, **scoring/DNA movido a
-servidor (integridad, B2)**, reglas endurecidas, build/typecheck/lint/tests en verde y CI configurado.
+servidor (integridad, B2)**, reglas endurecidas, **motor de matching / cierre del loop reclutador
+(`candidate_matches`, A4)**, build/typecheck/lint/tests en verde y CI configurado.
 `typecheck` + `lint` + `test` pasan; `build` OK.
 
 **Pendiente** (ver [`docs/TECH_DEBT.md`](./docs/TECH_DEBT.md) / [`docs/PRODUCTION_READINESS.md`](./docs/PRODUCTION_READINESS.md)):
-configurar el **secreto de Gemini** y las **credenciales del Admin SDK** en hosting; el **motor de matching**
-(`candidate_matches`, A4); probar el pipeline end-to-end en staging; reducir warnings de ESLint.
+configurar el **secreto de Gemini** y las **credenciales del Admin SDK** en hosting; probar el pipeline
+end-to-end en staging; reducir warnings de ESLint.

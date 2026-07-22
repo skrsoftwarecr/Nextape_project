@@ -9,7 +9,7 @@
   reglas `jobs`/`attempts`/`storage`).
 - ✅ **Verificado:** `npm run typecheck` limpio y `npm run build` correcto (16/16 rutas, con type-check activo).
 - ⏳ **Falta lo pesado (requiere decisión/infra):** scoring/DNA en servidor (integridad, B2), proyecto
-  Firebase canónico + `GROQ_API_KEY` (B3/B4), motor de matching (A4), **ESLint + CI**, y **tests**.
+  Firebase canónico + `GROQ_API_KEY` (B3/B4), **ESLint + CI**, y **tests**. ✅ Motor de matching (A4) ya implementado.
 
 ## Fase 0 — Higiene del repo (rápido, sin riesgo)
 - [ ] Borrar `estructura.txt`, `tailwing.config.ts`, `.modified` y añadir patrones a `.gitignore` (R1–R3).
@@ -24,7 +24,8 @@
 - [ ] Escribir `user_skill_scores` **solo desde servidor** (Admin SDK); regla `write: if false` para clientes (B2).
 - [ ] Persistir `assessment_attempts` por intento e implementar el promedio histórico si se mantiene esa promesa (A5, A6).
 - [ ] Habilitar creación de `jobs` para reclutadores (regla por `createdBy` o Cloud Function) (B1).
-- [ ] Definir o eliminar el flujo `candidate_matches` (matching en servidor) (A4).
+- [x] Definir o eliminar el flujo `candidate_matches` (matching en servidor) (A4). ✅ Implementado:
+      `/api/line/submit` escribe `candidate_matches` al postular con The LINE; `/dashboard/candidates` rankea.
 
 ## Fase 2 — Seguridad 🔴
 - [ ] Cerrar `assessment_attempts` `list` por `userId` (B8).

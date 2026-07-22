@@ -1,6 +1,6 @@
 import { queryCollection, getDocById } from "@/lib/firebase/firestore";
 import { JobOpportunity } from "@/types/job.types";
-import { orderBy, limit } from "firebase/firestore";
+import { orderBy, limit, where } from "firebase/firestore";
 import { calculateMatch } from "@/lib/match";
 
 export const JobService = {
@@ -13,6 +13,12 @@ export const JobService = {
    * Obtiene una vacante por ID.
    */
   getJob: (jobId: string) => getDocById<JobOpportunity>("jobs", jobId),
+
+  /**
+   * Vacantes creadas por un reclutador (para sus paneles de gestión y candidatos).
+   */
+  getJobsByRecruiter: (uid: string) =>
+    queryCollection<JobOpportunity>("jobs", where("createdBy", "==", uid), orderBy("postedAt", "desc")),
 
   /**
    * Calcula el match score basado en el DNA técnico del usuario (ver `src/lib/match.ts`).

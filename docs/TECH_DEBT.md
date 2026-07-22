@@ -8,16 +8,16 @@
 
 Ver detalle en [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md).
 
-- ✅ **Resueltos:** **B1, B2, B5, B6, B7, B8**, C1(modelo IA doc), **C3**, **A1, A2, A3, A5, A7**, **R1–R7**,
+- ✅ **Resueltos:** **B1, B2, B5, B6, B7, B8**, C1(modelo IA doc), **C3**, **A1, A2, A3, A4, A5, A7**, **R1–R7**,
   y **B3** en su mayoría (proyecto canónico `studio-...` fijado + config por env; falta solo el secreto de
   Gemini en hosting). Además: bugs de landing, botones no-op, hook de auth, util de grading, `ui/calendar`
   muerto, script de build no multiplataforma. **Integridad (B2): scoring/DNA movido a servidor** (Admin SDK,
   route handlers `/api/*`); el DNA ya **no es falsificable en cliente** y el `correctIndex` no sale al navegador.
 - ✅ **Calidad/CI:** ESLint configurado (0 errores), tests con Vitest (14 pasan; reglas listas para emulador),
   CI en GitHub Actions (typecheck+lint+test+build).
-- ⏳ **Pendientes:** `GROQ_API_KEY` + credenciales Admin en Netlify; **A4** (motor de matching
-  `candidate_matches`); **A6** (media de últimos 3 intentos, si se mantiene); reducir 24 warnings de ESLint;
-  correr los tests de reglas contra el emulador en CI; visibilidad de `users` para reclutadores (C2).
+- ⏳ **Pendientes:** `GROQ_API_KEY` + credenciales Admin en Netlify; **A6** (media de últimos 3 intentos,
+  si se mantiene); reducir 24 warnings de ESLint; correr los tests de reglas contra el emulador en CI;
+  visibilidad de `users` para reclutadores (C2).
 
 ## 🔴 Bloqueadores de producción
 
@@ -39,7 +39,7 @@ Ver detalle en [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md).
 | A1 | **Dos `UserProfile` incompatibles**: `types/index.ts` (legacy: username/grade/skills) vs `types/user.types.ts` (real). | `types/index.ts`, `features/core/*` | Eliminar el legacy; migrar consumidores a `user.types.ts`. |
 | A2 | **Colección `core` fantasma**: `CoreService`/`useCore` leen/escriben `core`, sin regla (denegado) y usando el tipo legacy. Código muerto/roto. | `features/core/services/core.service.ts`, `features/core/hooks/useCore.ts` | Borrar el módulo o crear regla + tipo. El CORE real vive en `user_skill_scores`. |
 | A3 | **Dos arquitecturas a medias**: `src/features/*` (stubs vacíos) vs `src/services/*` (real). | `src/features/*` | Decidir una; hoy usar `services`. Borrar stubs `AuthService={}`, `useAssessment`, `CompatibilityEngine`. |
-| A4 | **`candidate_matches` inerte**: regla usa `recruiterId` (campo inexistente en el tipo) y nadie escribe la colección → `getMatch` siempre `null`. | `firestore.rules`, `types/job.types.ts`, `services/compatibility.service.ts` | Definir el flujo de matching en servidor y alinear tipo/regla, o eliminar. |
+| A4 | ✅ **Resuelto (2026-07-22).** El tipo pasó a `CandidateMatch` (con `recruiterId`, `score`, `matchPercent`, `skills` snapshot); `/api/line/submit` escribe `candidate_matches` al postular con The LINE (Admin SDK, conserva mejor `score`, incrementa `applicantsCount`); `CompatibilityService.getMatchesForRecruiter` + `/dashboard/candidates` rankean candidatos por vacante. La regla (ya usaba `recruiterId`) quedó alineada. | `types/job.types.ts`, `app/api/line/submit/route.ts`, `services/compatibility.service.ts`, `services/jobs.service.ts`, `dashboard/candidates/page.tsx` | — |
 | A5 | **`assessment_attempts` nunca se escribe**: The LINE salta esta colección → historial y métrica "Simulaciones" vacíos. | `dashboard/line/page.tsx`, `services/assessments.service.ts` | Persistir cada intento al terminar la simulación. |
 | A6 | **Media de últimos 3 intentos no implementada**: el blueprint la promete; el código sobrescribe el score. | `services/skills.service.ts` | Implementar histórico + promedio, o actualizar el blueprint. |
 | A7 | **The LINE solo guarda 1 skill** (`questions[0].tag`) aunque evalúe varias; y **sobrescribe** (reintento peor baja el score). | `dashboard/line/page.tsx` | Puntuar por tag y agregar (max/promedio) por skill. |

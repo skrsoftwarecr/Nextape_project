@@ -89,5 +89,6 @@ firebase deploy --only firestore:rules,storage:rules   # usa .firebaserc → stu
   Opcional: activar una **TTL policy** de Firestore sobre `createdAt` para limpiarlas.
 - **`apphosting.yaml`** y la sección `hosting` de `firebase.json` son restos de Firebase Hosting; con
   Netlify no se usan y pueden eliminarse para evitar confusión.
-- **Pendiente (A4)**: el ranking de candidatos por vacante aún no existe; hoy tomar una prueba de una
-  vacante actualiza el DNA del candidato pero no lo registra como aplicante (ver docs/TECH_DEBT.md).
+- **Ranking de candidatos (A4, resuelto)**: tomar The LINE de una vacante ahora, además de actualizar el
+  DNA del candidato, lo registra como aplicante escribiendo `candidate_matches` e incrementando
+  `applicantsCount` (`/api/line/submit`, server-trust); el reclutador ve el ranking en `/dashboard/candidates`.

@@ -103,19 +103,25 @@ Tipo: `Question`. Reglas: lectura autenticada, escritura `if false`.
 - No hay servicio que lo consulte hoy; las preguntas viven embebidas en `jobs` o se generan al vuelo.
 
 ### `candidate_matches/{matchId}`  — Matches candidato↔vacante
-Tipo: [`CompatibilityMatch`](../src/types/job.types.ts). `matchId = ${uid}_${jobId}`.
+Tipo: [`CandidateMatch`](../src/types/job.types.ts). `matchId = ${uid}_${jobId}`.
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `userId` | string | |
+| `userId` | string | Candidato. |
+| `recruiterId` | string | Dueño de la vacante (denormalizado, `= job.createdBy`). La regla de lectura lo usa. |
 | `jobId` | string | |
-| `percentage` | number | |
-| `breakdown` | `{ [skill: string]: number }` | |
-| `calculatedAt` | Timestamp | |
+| `jobTitle` | string | Denormalizado desde `jobs`. |
+| `candidateName` | string | Denormalizado desde `users`. |
+| `score` | number | Resultado de The LINE (0–100). Se conserva el **mejor** entre intentos. |
+| `matchPercent` | number | Afinidad DNA↔`requiredSkills` (0–100), vía `calculateMatch`. |
+| `skills` | `Record<string, number>` | Snapshot de los scores del candidato en las skills de la vacante. |
+| `completedAt` | Timestamp | |
 
-- Leído por `CompatibilityService.getMatch`. Escritura `if false` (solo servidor/admin).
-- ⚠️ La regla referencia `resource.data.recruiterId`, pero el tipo **no tiene `recruiterId`**.
-  Ningún proceso escribe esta colección hoy → `getMatch` siempre devolverá `null`.
+- **Escritor:** `POST /api/line/submit` (Admin SDK) cuando la sesión de The LINE tiene `jobId`: tras calcular
+  el DNA, escribe/actualiza `candidate_matches/{userId_jobId}` (conserva el mejor `score`) e incrementa
+  `jobs.applicantsCount` solo la primera vez que el candidato aplica. Es best-effort (no invalida el intento).
+- **Lector:** `CompatibilityService.getMatchesForRecruiter(recruiterId)` (lee `where recruiterId == uid`).
+  Escritura `if false` para el cliente (solo Admin SDK).
 
 ### `user_roadmaps/{uid}`  — Roadmaps de aprendizaje
 - **Sí se usa** (aunque sin tipo dedicado). La página Roadmap lee `getDocById("user_roadmaps", uid)` y
@@ -137,7 +143,7 @@ Auth user (uid)
  ├─1:1─ user_skill_scores/{uid}    (DNA técnico: scores por skill)
  ├─1:1─ user_roadmaps/{uid}        (roadmap IA — sin persistencia confirmada)
  ├─1:N─ assessment_attempts/{id}   (userId == uid)  [hoy sin uso real]
- └─1:N─ candidate_matches/{uid_jobId} (userId == uid) [hoy sin escritor]
+ └─1:N─ candidate_matches/{uid_jobId} (userId == uid; recruiterId == job.createdBy)
 
 recruiter (uid)
  └─1:N─ jobs/{jobId}               (createdBy == uid)  [bloqueado por reglas]

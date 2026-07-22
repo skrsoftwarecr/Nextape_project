@@ -106,10 +106,13 @@ export default function JobsPage() {
                   ))}
                 </div>
 
-                <div className="pt-4 border-t border-gray-50 flex justify-between items-center">
+                <div className="pt-4 border-t border-gray-50 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                   <p className="text-[9px] font-medium text-gray-400 max-w-xs leading-tight">
+                     Al completar la prueba, tu resultado verificado se comparte con el reclutador de esta vacante.
+                   </p>
                    <Link href={`/dashboard/line?jobId=${job.id}`}>
                     <Button variant="ghost" className="text-brand-blue font-black italic tracking-tight hover:bg-brand-blue/5 h-12 px-6 rounded-xl">
-                      TOMAR PRUEBA ESPECÍFICA <ArrowRight className="ml-2 h-4 w-4" />
+                      POSTULAR CON THE LINE <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                    </Link>
                 </div>

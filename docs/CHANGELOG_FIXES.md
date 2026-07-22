@@ -3,6 +3,36 @@
 Registro de las correcciones aplicadas al sanear el sistema. Cada fase referencia los IDs de
 [`docs/TECH_DEBT.md`](./TECH_DEBT.md). Rama base: `migration`.
 
+## FASE 8 — Cierre del loop reclutador (A4) — 2026-07-22
+> Antes: el reclutador publicaba vacantes pero nunca podía ver ni rankear candidatos; `candidate_matches`
+> estaba inerte (sin escritor) y su regla referenciaba `recruiterId`, campo ausente en el tipo. Ahora el
+> loop developer→recruiter está **cerrado**.
+- **Tipo** (`types/job.types.ts`): `CompatibilityMatch` → **`CandidateMatch`** con `userId`, `recruiterId`
+  (denormalizado), `jobId`, `jobTitle`, `candidateName`, `score` (The LINE 0–100, se conserva el mejor),
+  `matchPercent` (afinidad DNA↔`requiredSkills` 0–100), `skills` (`Record<string,number>`, snapshot) y
+  `completedAt`. `doc id = ${userId}_${jobId}`.
+- **Escritor server-trust** (`app/api/line/submit/route.ts`): si la sesión de The LINE tiene `jobId`, tras
+  calcular el DNA escribe/actualiza `candidate_matches/{userId_jobId}` con Admin SDK (`recruiterId = job.createdBy`,
+  denormaliza `jobTitle`/`candidateName`, conserva el mejor `score`, calcula `matchPercent` con `calculateMatch`,
+  guarda snapshot de `skills`) e incrementa `jobs.applicantsCount` (`FieldValue.increment(1)`) **solo la primera
+  vez** que ese candidato aplica a la vacante. Best-effort (try/catch; un fallo no invalida el intento).
+- **Servicios** (`src/services/`): `CompatibilityService.getMatch` (muerto) → **`getMatchesForRecruiter(recruiterId)`**
+  (lee `candidate_matches where recruiterId == uid`; ordena en cliente por `score` para no depender de índice
+  compuesto). Nuevo **`JobService.getJobsByRecruiter(uid)`**.
+- **`/dashboard/candidates`**: reescrita. Lee matches reales vía servicios (ya **no** usa el SDK crudo de
+  Firestore), agrupa por vacante, rankea candidatos por su `score` de The LINE, muestra `matchPercent` y `skills`.
+  Stats reales (vacantes activas, aplicaciones totales, DNA verificados). Eliminado el copy deshonesto sobre
+  "el ranking… se activará cuando el pipeline… esté disponible".
+- **Dashboard reclutador** (`dashboard/page.tsx`): "Candidatos en Pipeline" ahora suma el `applicantsCount`
+  real de las vacantes (antes hardcodeado a 0).
+- **Jobs (developer)** (`dashboard/jobs/page.tsx`): la CTA "TOMAR PRUEBA ESPECÍFICA" → "POSTULAR CON THE LINE",
+  con microcopy honesto: al completar la prueba, el resultado verificado se comparte con el reclutador de la vacante.
+- **Regla** `candidate_matches` (`firestore.rules`): **sin cambios** (ya era correcta: `allow read if userId==uid
+  || recruiterId==uid`, `write:false`); ahora el `recruiterId` que referenciaba sí existe en el documento.
+- **Privacidad/consentimiento:** tomar The LINE de una vacante concreta = postular = consentir compartir ese
+  resultado con el reclutador dueño de esa vacante, que solo ve candidatos de **sus** vacantes (`recruiterId==uid`).
+- **Verificación:** `npm run typecheck` ✅ · `npm run lint` ✅ · `npm run build` ✅.
+
 ## FASE 1 — Código muerto y basura (devops-firebase / code-reviewer)
 - **R1** Eliminado `estructura.txt` (1.8 MB, volcado de `ls -R` con `node_modules`).
 - **R2** Eliminado `tailwing.config.ts` (duplicado idéntico por typo de `tailwind.config.ts`).
@@ -143,9 +173,8 @@ Registro de las correcciones aplicadas al sanear el sistema. Cada fase referenci
 
 ## Pendiente (siguiente)
 - **B3/B4** Configurar `GROQ_API_KEY` + `FIREBASE_SERVICE_ACCOUNT` en Netlify (ver DEPLOYMENT).
-- **A4** Motor de matching `candidate_matches` (ranking real de candidatos) — mismo patrón server-trust.
-- **#4** Migrar el SDK crudo de Firestore de 4 páginas (`dashboard`, `vacancies`, `vacancies/new`,
-  `candidates`) a métodos de `JobService` (regla CLAUDE.md §4.2.7).
+- **#4** Migrar el SDK crudo de Firestore de las páginas restantes (`dashboard`, `vacancies`, `vacancies/new`)
+  a métodos de `JobService` (regla CLAUDE.md §4.2.7). `candidates` ya migrado en la Fase 8.
 - **#10** Compartir el perfil entre `AuthGuard` y `DashboardShell` (evitar doble lectura y flash de nav).
 - **#13** CTAs de landing que preseleccionen rol/registro en el modal.
 - Reducir warnings de ESLint; tests de reglas con emulador en CI.

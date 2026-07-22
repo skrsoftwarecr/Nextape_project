@@ -38,7 +38,7 @@ Helpers: `isAuthenticated()`, `isOwner(userId)`.
 | `job_answer_keys/{jobId}` | — | — (`if false`) | ✅ Server-only. Clave de respuestas de la prueba de una vacante. Solo Admin. |
 | `jobs/{jobId}` | público | **owner (`createdBy`)** | ✅ **(B1)** El reclutador dueño crea/edita; sin borrado; sin reasignar `createdBy`. ✅ `assessmentQuestions` ahora se guarda **sin `correctIndex`**. |
 | `questions/{qId}` | autenticado | `if false` | ⚠️ Banco no usado activamente; contiene claves. Restringir si se usa. |
-| `candidate_matches/{id}` | `userId==uid \|\| recruiterId==uid` | `if false` | ⚠️ Regla usa `recruiterId`, campo inexistente; sin escritor → inerte (pendiente A4). |
+| `candidate_matches/{id}` | `userId==uid \|\| recruiterId==uid` | `if false` | ✅ **(A4)** El campo `recruiterId` ya existe en `CandidateMatch`; lo escribe el servidor (`/api/line/submit`, Admin SDK) al postular con The LINE. El reclutador solo lee matches de sus vacantes (`recruiterId==uid`). |
 | `core/{uid}` | — sin regla — | — sin regla — | ✅ Resuelto: el módulo `core` roto fue eliminado (el CORE real es `user_skill_scores`). |
 
 **Deny-by-default:** cualquier colección sin `match` explícito queda denegada (correcto), pero varias

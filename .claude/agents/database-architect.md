@@ -30,8 +30,9 @@ PK habitual = `uid` de Firebase Auth. Match `candidate_matches` usa id compuesto
 ## Inconsistencias del modelo que debes resolver/no propagar
 - **`core` es una colección fantasma** (usada por `features/core/*`, sin regla, con tipo legacy) → rota.
   El CORE real es `user_skill_scores`. Elimínala o formalízala, no construyas sobre ella.
-- **`candidate_matches`**: la regla referencia `recruiterId`, campo que **no existe** en `CompatibilityMatch`.
-  Alinea tipo↔regla o elimina la colección si no hay flujo de matching.
+- **`candidate_matches`**: ✅ resuelto (A4). El tipo es ahora `CandidateMatch` (incluye `recruiterId`, `score`,
+  `matchPercent`, `skills`); hay escritor server-trust (`/api/line/submit`, Admin SDK) y lector
+  (`CompatibilityService.getMatchesForRecruiter`). Tipo↔regla alineados.
 - **`user_roadmaps`** carece de tipo dedicado (usa objetos ad-hoc `{steps, summary, updatedAt}`). Formalízalo.
 - **`assessment_attempts`** definido pero nunca escrito; decide si se usa (historial/promedio) o se retira.
 - Dos `UserProfile` en conflicto (ver regla 1).

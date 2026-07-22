@@ -121,7 +121,9 @@ fueron eliminados. **No reintroducir** `src/features` sin una decisión de equip
 2. `/dashboard/vacancies/new` → crea vacante (`jobs`) + IA genera "The LINE" de la vacante.
    ⚠️ **Bloqueado por reglas** (`jobs write: if false`).
 3. `/dashboard/vacancies` → listado.
-4. Candidatos rankeados por DNA → **no implementado** (ruta y colección `candidate_matches` inertes).
+4. `/dashboard/candidates` → candidatos rankeados por DNA → **implementado (A4)**: cuando un developer
+   postula tomando The LINE de una vacante, `/api/line/submit` escribe `candidate_matches` (server-trust);
+   la página agrupa por vacante y rankea a los candidatos por su `score` de The LINE, mostrando `matchPercent`.
 
 ## 7. Comandos
 

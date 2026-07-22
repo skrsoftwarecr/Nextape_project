@@ -4,17 +4,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Loader2, Briefcase, ShieldCheck, PlusCircle } from "lucide-react";
-import { db } from "@/lib/firebase/client";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { Users, Loader2, Briefcase, ShieldCheck, PlusCircle, Trophy } from "lucide-react";
 import { useAuthUser } from "@/hooks/use-auth-user";
-import type { JobOpportunity } from "@/types";
+import { JobService } from "@/services/jobs.service";
+import { CompatibilityService } from "@/services/compatibility.service";
+import type { JobOpportunity, CandidateMatch } from "@/types/job.types";
 
 type VacancyRow = JobOpportunity & { id: string };
 
 export default function CandidatesPage() {
   const { user, authLoading } = useAuthUser();
   const [vacancies, setVacancies] = useState<VacancyRow[]>([]);
+  const [matches, setMatches] = useState<CandidateMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,23 +25,22 @@ export default function CandidatesPage() {
       return;
     }
 
-    const fetchVacancies = async () => {
+    const fetchData = async () => {
       try {
-        const q = query(
-          collection(db, "jobs"),
-          where("createdBy", "==", user.uid),
-          orderBy("postedAt", "desc")
-        );
-        const snap = await getDocs(q);
-        setVacancies(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as VacancyRow)));
+        const [jobs, candidateMatches] = await Promise.all([
+          JobService.getJobsByRecruiter(user.uid),
+          CompatibilityService.getMatchesForRecruiter(user.uid),
+        ]);
+        setVacancies(jobs as VacancyRow[]);
+        setMatches(candidateMatches);
       } catch (error) {
-        console.error("Error fetching vacancies for candidates view:", error);
+        console.error("Error fetching candidates data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVacancies();
+    fetchData();
   }, [user, authLoading]);
 
   if (loading) {
@@ -51,7 +51,18 @@ export default function CandidatesPage() {
     );
   }
 
-  const totalApplicants = vacancies.reduce((sum, v) => sum + (v.applicantsCount || 0), 0);
+  // Candidatos verificados = personas distintas que han completado una prueba de mis vacantes.
+  const verifiedCandidates = new Set(matches.map((m) => m.userId)).size;
+  // Candidatos por vacante, rankeados por su resultado en The LINE.
+  const matchesByJob = new Map<string, CandidateMatch[]>();
+  for (const m of matches) {
+    const list = matchesByJob.get(m.jobId) ?? [];
+    list.push(m);
+    matchesByJob.set(m.jobId, list);
+  }
+  for (const list of matchesByJob.values()) {
+    list.sort((a, b) => b.score - a.score);
+  }
 
   return (
     <div className="space-y-12">
@@ -70,12 +81,12 @@ export default function CandidatesPage() {
         </div>
         <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-50">
           <Users className="h-5 w-5 text-brand-green mb-4" />
-          <span className="text-4xl font-black italic tracking-tighter">{totalApplicants}</span>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">Aplicantes totales</p>
+          <span className="text-4xl font-black italic tracking-tighter">{matches.length}</span>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">Aplicaciones totales</p>
         </div>
         <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-50">
           <ShieldCheck className="h-5 w-5 text-brand-purple mb-4" />
-          <span className="text-4xl font-black italic tracking-tighter">—</span>
+          <span className="text-4xl font-black italic tracking-tighter">{verifiedCandidates}</span>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">DNA verificados</p>
         </div>
       </div>
@@ -97,32 +108,66 @@ export default function CandidatesPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {vacancies.map((job) => (
-            <div key={job.id} className="bg-white rounded-[2.5rem] p-8 md:p-10 border border-gray-50 shadow-apple space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold italic leading-none">{job.title}</h2>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {(job.requiredSkills || []).map((s) => (
-                      <Badge key={s} className="bg-brand-blue/5 text-brand-blue border-none rounded-full py-1.5 px-4 text-[8px] font-bold uppercase tracking-widest">
-                        {s}
-                      </Badge>
-                    ))}
+          {vacancies.map((job) => {
+            const jobMatches = matchesByJob.get(job.id) ?? [];
+            return (
+              <div key={job.id} className="bg-white rounded-[2.5rem] p-8 md:p-10 border border-gray-50 shadow-apple space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-bold italic leading-none">{job.title}</h2>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {(job.requiredSkills || []).map((s) => (
+                        <Badge key={s} className="bg-brand-blue/5 text-brand-blue border-none rounded-full py-1.5 px-4 text-[8px] font-bold uppercase tracking-widest">
+                          {s}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-3xl font-black italic tracking-tighter">{jobMatches.length}</span>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Candidatos</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-3xl font-black italic tracking-tighter">{job.applicantsCount || 0}</span>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Aplicantes</p>
-                </div>
+
+                {jobMatches.length === 0 ? (
+                  <div className="pt-6 border-t border-gray-50">
+                    <p className="text-sm text-gray-400 font-medium flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-gray-300" />
+                      Aún nadie ha completado la prueba de esta vacante. Los candidatos aparecerán aquí rankeados por su DNA.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="pt-6 border-t border-gray-50 space-y-3">
+                    {jobMatches.map((m, idx) => (
+                      <div key={m.userId} className="flex items-center gap-4 bg-gray-50 rounded-2xl p-4 md:p-5">
+                        <div className="flex items-center justify-center h-9 w-9 shrink-0 rounded-full bg-white shadow-apple text-sm font-black italic text-gray-400">
+                          {idx === 0 ? <Trophy className="h-4 w-4 text-brand-orange" /> : idx + 1}
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <p className="font-bold italic leading-tight truncate">{m.candidateName}</p>
+                          <div className="flex flex-wrap gap-1.5 pt-1.5">
+                            {Object.entries(m.skills || {}).map(([skill, val]) => (
+                              <Badge key={skill} className="bg-white text-gray-500 border-none rounded-full py-1 px-3 text-[8px] font-bold uppercase tracking-widest">
+                                {skill} {val}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-2xl font-black italic tracking-tighter text-brand-blue">{m.score}%</div>
+                          <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400">The LINE</p>
+                        </div>
+                        <div className="text-right shrink-0 hidden sm:block border-l border-gray-200 pl-4">
+                          <div className="text-2xl font-black italic tracking-tighter">{m.matchPercent}%</div>
+                          <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400">Afinidad CORE</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="pt-6 border-t border-gray-50">
-                <p className="text-sm text-gray-400 font-medium flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-gray-300" />
-                  El ranking por DNA verificado se activará cuando el pipeline de evaluación en servidor esté disponible.
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
