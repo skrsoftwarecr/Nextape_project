@@ -15,8 +15,8 @@ Roles: `developer` y `recruiter`.
 - **Jobs / Compatibility**: match entre `job.requiredSkills` y el DNA del usuario.
 
 **Stack:** Next.js 15 (App Router) · React 19 · TypeScript (strict) · Firebase (Auth/Firestore/Storage,
-Web SDK) · Genkit 1.28 + `@genkit-ai/google-genai` (**Gemini 1.5 Flash**) · Tailwind 3 + shadcn/ui.
-Hosting: Firebase App Hosting. Dev env: Firebase Studio / Project IDX (usa backends de **producción**).
+Web SDK) · Genkit 1.28 + **`genkitx-groq`** (proveedor **Groq**, modelo `llama-3.3-70b-versatile`) · Tailwind 3 + shadcn/ui.
+Hosting: **Netlify** (Firebase solo Auth+DB). Dev env: Firebase Studio / Project IDX (usa backends de **producción**).
 
 **Arquitectura en una frase:** monolito modular sobre Firebase (cliente) **+ una capa de confianza en
 servidor** (route handlers `src/app/api/*` con Firebase Admin SDK) para todo lo sensible: scoring/DNA y
@@ -93,7 +93,8 @@ Estas reglas son **vinculantes**. Si una tarea requiere romper una, **detente y 
     Consúmelos vía el wrapper `export async function`.
 12. **Nunca importes el Firebase Web SDK dentro de un archivo `'use server'`.** Si un flow necesita
     escribir datos de forma confiable, usa Admin SDK en servidor, no el Web SDK del cliente.
-13. **Modelo IA = Gemini** (Google), no Anthropic. Mantén el modelo centralizado en `src/ai/genkit.ts`.
+13. **Proveedor IA = Groq** (plugin `genkitx-groq`), no Gemini ni Anthropic. Modelo y API key (`GROQ_API_KEY`)
+    centralizados en `src/ai/genkit.ts` (`GROQ_MODEL`). Genera JSON con `generateJson` (parseo + validación Zod).
 
 ### 4.4 Frontend
 14. **Consume `src/services/*`**, reutiliza `components/ui/*` (shadcn) y las utilidades de marca

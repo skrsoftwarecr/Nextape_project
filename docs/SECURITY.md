@@ -62,8 +62,8 @@ partes del código asumen colecciones sin regla (`core`).
 - **Config web de Firebase hardcodeada** en `src/lib/firebase/client.ts` (apiKey, appId, etc.).
   Esto es aceptable para Firebase web (no es secreto), pero **la seguridad depende enteramente de las
   reglas** — que hoy tienen agujeros (arriba).
-- **API Key de Google AI (Gemini):** la IA corre en **servidor** (route handlers + flows Genkit) y
-  requiere `GEMINI_API_KEY`. En el modelo real (Netlify) va como **variable de entorno de Netlify**
+- **API Key de Groq (IA):** la IA corre en **servidor** (route handlers + flows Genkit con `genkitx-groq`) y
+  requiere `GROQ_API_KEY`. En el modelo real (Netlify) va como **variable de entorno de Netlify**
   (Functions). Sin ella, `/api/line/start`, `/api/jobs/assessment` y el roadmap fallan. Ver [DEPLOYMENT](./DEPLOYMENT.md).
 - **Credenciales del Admin SDK:** los route handlers escriben datos de confianza con
   `firebase-admin`. En Netlify **no hay ADC**, así que se requiere `FIREBASE_SERVICE_ACCOUNT` (JSON del
@@ -87,7 +87,7 @@ El valor central de NEXTAPE es el **"DNA técnico verificado"**. La integridad e
 
 > Resultado: el DNA **no es falsificable desde el cliente** y las respuestas correctas nunca salen al
 > navegador. Requisito operativo: credenciales del Admin SDK (ADC o `FIREBASE_SERVICE_ACCOUNT`) y la
-> API key de Gemini configuradas en el servidor. Ver `docs/PRODUCTION_READINESS.md`.
+> API key de Groq configuradas en el servidor. Ver `docs/PRODUCTION_READINESS.md`.
 
 ## 6. Checklist de seguridad antes de producción
 
@@ -98,6 +98,6 @@ El valor central de NEXTAPE es el **"DNA técnico verificado"**. La integridad e
 - [ ] Storage: restringir lectura; validar `contentType` y tamaño.
 - [ ] Verificar el `role` (evitar auto-asignación de `recruiter` sin validación).
 - [ ] Unificar `projectId` (client vs `.firebaserc`) y confirmar a qué proyecto se despliegan las reglas.
-- [ ] Configurar secreto de Gemini en App Hosting.
+- [ ] Configurar `GROQ_API_KEY` (IA) como variable de entorno en Netlify.
 - [ ] Quitar `ignoreBuildErrors`/`ignoreDuringBuilds` antes de release.
 - [ ] Eliminar la colección/servicio `core` roto o crear su regla.

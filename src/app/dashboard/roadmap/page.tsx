@@ -89,7 +89,7 @@ export default function RoadmapPage() {
     <div className="space-y-12">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-black italic">Personal Roadmap.</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-black italic">Roadmap Personal.</h1>
           <p className="text-gray-500 font-medium">Tu ruta crítica hacia la maestría técnica generada por IA.</p>
         </div>
         <Button 

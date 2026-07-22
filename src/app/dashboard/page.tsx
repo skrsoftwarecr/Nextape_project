@@ -95,7 +95,7 @@ export default function DashboardPage() {
       <div className="space-y-12">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-black italic">Recruiter Engine.</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-black italic">Panel de Reclutador.</h1>
             <p className="text-gray-500 font-medium text-sm">Gestión de talento verificado por simulación neural.</p>
           </div>
           <Link href="/dashboard/vacancies/new">
@@ -161,15 +161,15 @@ export default function DashboardPage() {
         </div>
         <div className="bg-white shadow-apple px-6 py-3 rounded-full border border-gray-100 text-[10px] font-bold flex items-center gap-3">
           <div className="w-2 h-2 bg-brand-green rounded-full animate-pulse" />
-          ESTADO: CORE_SYNCRONIZED
+          ESTADO: CORE SINCRONIZADO
         </div>
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: "DNA Integrity", value: `${stats.dnaIntegrity}%`, color: "bg-brand-blue" },
+          { label: "Integridad del DNA", value: `${stats.dnaIntegrity}%`, color: "bg-brand-blue" },
           { label: "Simulaciones", value: stats.assessmentsCount.toString(), color: "bg-brand-green" },
-          { label: "Core Sync", value: "Live", color: "bg-brand-purple" },
+          { label: "Sinc. CORE", value: "En vivo", color: "bg-brand-purple" },
           { label: "Oportunidades", value: stats.jobsMatchCount.toString(), color: "bg-brand-orange" }
         ].map((m, idx) => (
           <Card key={idx} className="border-none shadow-apple rounded-[2rem] overflow-hidden bg-white group hover:shadow-apple-lg transition-all border border-gray-50/50">
@@ -187,7 +187,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-xl font-bold tracking-tight text-black italic">Matches de Alta Prioridad.</h2>
+            <h2 className="text-xl font-bold tracking-tight text-black italic">Coincidencias de Alta Prioridad.</h2>
             <Link href="/dashboard/jobs" className="text-brand-blue text-[10px] font-bold uppercase tracking-widest hover:underline flex items-center gap-2">
               Ver todos <ArrowUpRight className="h-3 w-3" />
             </Link>
@@ -209,7 +209,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-5xl font-black text-brand-blue tracking-tighter italic">{job.score}%</div>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-300">CORE Affinity</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gray-300">Afinidad CORE</span>
                 </div>
               </div>
             )) : (
@@ -221,7 +221,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-8">
-          <h2 className="text-xl font-bold tracking-tight px-2 italic text-black">Technical Fingerprint.</h2>
+          <h2 className="text-xl font-bold tracking-tight px-2 italic text-black">Huella Técnica.</h2>
           <div className="bg-gray-950 rounded-[2.5rem] p-10 text-white space-y-8 shadow-apple-lg relative overflow-hidden group">
             <div className="relative z-10 space-y-6">
               <div className="w-12 h-12 bg-brand-blue/20 rounded-2xl flex items-center justify-center">

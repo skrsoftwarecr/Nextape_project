@@ -19,7 +19,7 @@ genera **roadmaps** de mejora y calcula **compatibilidad** con vacantes. Dos rol
 | UI | **shadcn/ui** (Radix + CVA) + **Tailwind CSS 3** |
 | 3D | three.js + `@react-three/fiber` + `@react-three/drei` (`public/models/laptop.glb`) |
 | Auth/DB/Storage | **Firebase** Web SDK v11 (Auth, Firestore, Storage) |
-| IA | **Genkit 1.28** + `@genkit-ai/google-genai` (**Gemini 1.5 Flash**) |
+| IA | **Genkit 1.28** + **`genkitx-groq`** — proveedor **Groq**, modelo `llama-3.3-70b-versatile` (open-source, bajo coste) |
 | Formularios | react-hook-form + zod + `@hookform/resolvers` |
 | Gráficos | recharts |
 | Hosting | **Netlify** (`netlify.toml` + `@netlify/plugin-nextjs`); route handlers `/api/*` = Netlify Functions. Firebase solo Auth+Firestore. Ver [DEPLOYMENT](./DEPLOYMENT.md). |
@@ -46,7 +46,7 @@ genera **roadmaps** de mejora y calcula **compatibilidad** con vacantes. Dos rol
                │ read (rules)                          │ POST /api/* (Bearer token)
                ▼                                        ▼
         Firebase (Auth/Firestore)          Route handlers (Node) ── Admin SDK ─► Firestore
-                                            └── ai/flows (Genkit) ─► Gemini 1.5
+                                            └── ai/flows (Genkit) ─► Groq (Llama 3.3 70b)
                ▲ writes de confianza (DNA, intentos, claves) SOLO desde aquí ─────┘
 ```
 
@@ -94,26 +94,24 @@ fueron eliminados. **No reintroducir** `src/features` sin una decisión de equip
 ## 5. Mapa de rutas
 
 **Públicas:** `/`, `/auth`
+**API (route handlers, server-trust):** `/api/line/start`, `/api/line/submit`, `/api/jobs/assessment`
 **Dashboard (protegidas por `AuthGuard`):**
 `/dashboard`, `/dashboard/line`, `/dashboard/core`, `/dashboard/roadmap`, `/dashboard/jobs`,
-`/dashboard/compatibility`, `/dashboard/profile`, `/dashboard/digital-twin`,
+`/dashboard/compatibility`, `/dashboard/profile`, `/dashboard/candidates`,
 `/dashboard/vacancies`, `/dashboard/vacancies/new`.
 
 **Navegación por role** (`DashboardShell`):
-- **developer:** Panel, The LINE, CORE, Roadmap, Jobs, Compatibilidad, Perfil.
+- **developer:** Panel, The LINE, CORE, Roadmap, Empleos, Compatibilidad, Perfil.
 - **recruiter:** Resumen, Mis Vacantes, Publicar, **Candidatos**.
-- ⚠️ El menú enlaza `/dashboard/candidates`, **ruta que no existe** → enlace roto.
-- ⚠️ Existen rutas **top-level duplicadas** (`/line`, `/jobs`, `/roadmap`, `/profile`,
-  `/compatibility`, `/digital-twin`) fuera de `/dashboard` y sin `AuthGuard`. Ver FRONTEND para cuáles
-  están activas vs muertas.
+- ✅ Las rutas top-level muertas y `dashboard/digital-twin` fueron eliminadas; `/dashboard/candidates` existe.
 
 ## 6. Flujos principales (user journeys)
 
 ### Developer
 1. Landing → `AuthModal` (registro con role=developer).
 2. `/dashboard` → resumen del DNA.
-3. `/dashboard/line` → elige especialidad+nivel → IA genera 5 preguntas → responde →
-   **score calculado en cliente** → persiste en `user_skill_scores` (CORE).
+3. `/dashboard/line` → elige especialidad+nivel → `/api/line/start` (IA genera 5 preguntas, sin la
+   respuesta) → responde → `/api/line/submit` (**score calculado y escrito EN SERVIDOR** con Admin SDK) → CORE.
 4. `/dashboard/core` → visualiza DNA técnico.
 5. `/dashboard/roadmap` → IA genera plan según skills/gaps.
 6. `/dashboard/jobs` → match% = `calculateMatch(job.requiredSkills, user.scores)`.

@@ -63,7 +63,7 @@ export default function CorePage() {
         </div>
         <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-50 text-center min-w-[200px]">
           <span className="text-6xl font-black tracking-tighter text-brand-blue leading-none italic">{grade}</span>
-          <span className="text-[9px] font-bold uppercase tracking-[0.3em] block mt-3 text-gray-300">Technical Grade</span>
+          <span className="text-[9px] font-bold uppercase tracking-[0.3em] block mt-3 text-gray-300">Grado Técnico</span>
         </div>
       </header>
 
@@ -73,7 +73,7 @@ export default function CorePage() {
               <div className="w-12 h-12 bg-brand-blue/10 rounded-2xl flex items-center justify-center">
                  <Fingerprint className="h-6 w-6 text-brand-blue" />
               </div>
-              <h2 className="text-2xl font-bold italic tracking-tight">Technical DNA.</h2>
+              <h2 className="text-2xl font-bold italic tracking-tight">DNA Técnico.</h2>
            </div>
            
            <div className="space-y-10">
@@ -117,7 +117,7 @@ export default function CorePage() {
               </div>
               <div className="space-y-2">
                  <h4 className="font-bold text-xl">Visibilidad.</h4>
-                 <p className="text-sm text-gray-400 font-medium leading-relaxed">Tu perfil es actualmente consultable por empresas registradas en Nextape.</p>
+                 <p className="text-sm text-gray-400 font-medium leading-relaxed">Tu DNA está listo para compartirse con empresas cuando actives el emparejamiento con vacantes.</p>
               </div>
            </Card>
         </div>

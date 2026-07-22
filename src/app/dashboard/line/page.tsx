@@ -102,11 +102,11 @@ function LineContent() {
         </div>
         <div className="space-y-4">
           <h2 className="text-5xl font-black italic tracking-tighter">SIMULACIÓN COMPLETADA.</h2>
-          <p className="text-gray-500 font-medium">Tus resultados han sido integrados en tu CORE Identity.</p>
+          <p className="text-gray-500 font-medium">Tus resultados han sido integrados en tu identidad CORE.</p>
         </div>
         <div className="bg-white p-12 rounded-[3rem] shadow-apple border border-gray-50 inline-block">
           <span className="text-8xl font-black text-brand-blue tracking-tighter italic">{score}%</span>
-          <span className="block text-[10px] font-bold uppercase tracking-[0.4em] text-gray-300 mt-4">Verified Score</span>
+          <span className="block text-[10px] font-bold uppercase tracking-[0.4em] text-gray-300 mt-4">Puntuación Verificada</span>
         </div>
         <div className="pt-10">
           <Button onClick={() => window.location.href = "/dashboard/core"} className="h-16 px-12 bg-black text-white rounded-2xl font-bold uppercase tracking-widest shadow-apple-lg">Ir al CORE</Button>
@@ -145,22 +145,23 @@ function LineContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-apple-lg">
-                        <SelectItem value="frontend">Frontend Architecture</SelectItem>
-                        <SelectItem value="backend">Backend & Systems</SelectItem>
-                        <SelectItem value="devops">Cloud & DevOps</SelectItem>
+                        <SelectItem value="frontend">Arquitectura Frontend</SelectItem>
+                        <SelectItem value="backend">Backend y Sistemas</SelectItem>
+                        <SelectItem value="devops">Cloud y DevOps</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-3">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-300 ml-1">Nivel Target</label>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-300 ml-1">Nivel Objetivo</label>
                     <Select value={difficulty} onValueChange={setLevel}>
                       <SelectTrigger className="bg-gray-50 border-none h-16 rounded-2xl font-bold text-lg px-6">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-apple-lg">
-                        <SelectItem value="master">Nivel Maestro</SelectItem>
-                        <SelectItem value="expert">Nivel Experto</SelectItem>
-                        <SelectItem value="senior">Nivel Senior</SelectItem>
+                        <SelectItem value="junior">Junior</SelectItem>
+                        <SelectItem value="mid">Mid</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                        <SelectItem value="master">Master</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -224,12 +225,12 @@ function LineContent() {
           </div>
           <div className="flex gap-10">
             <div className="text-center">
-              <span className="block text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1">Latency</span>
+              <span className="block text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1">Latencia</span>
               <span className="text-xs font-mono">12ms</span>
             </div>
             <div className="text-center">
-              <span className="block text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1">Security</span>
-              <span className="text-xs font-mono text-brand-green">Encrypted</span>
+              <span className="block text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1">Seguridad</span>
+              <span className="text-xs font-mono text-brand-green">Cifrado</span>
             </div>
           </div>
         </div>

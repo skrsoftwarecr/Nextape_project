@@ -68,13 +68,13 @@ export default function ProfilePage() {
             </div>
             <div>
               <h1 className="text-4xl font-bold tracking-tight text-black italic leading-none">{profile?.displayName || "Candidato"}</h1>
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mt-2">{profile?.role} verified identity</p>
+              <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px] mt-2">{profile?.role === "recruiter" ? "Empresa" : "Desarrollador"} · identidad verificada</p>
             </div>
           </div>
         </div>
         <div className="bg-white p-10 rounded-[2.5rem] shadow-apple border border-gray-50 text-center min-w-[240px]">
           <span className="text-7xl font-black tracking-tighter text-brand-blue leading-none italic">{grade}</span>
-          <span className="text-[10px] font-bold uppercase tracking-[0.3em] block mt-4 text-gray-300">Technical Rank</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.3em] block mt-4 text-gray-300">Grado Técnico</span>
         </div>
       </header>
 
@@ -85,7 +85,7 @@ export default function ProfilePage() {
               <div className="p-4 bg-brand-blue/10 rounded-2xl">
                  <Zap className="h-7 w-7 text-brand-blue" />
               </div>
-              <h2 className="text-2xl font-bold text-black italic">Technical DNA</h2>
+              <h2 className="text-2xl font-bold text-black italic">DNA Técnico</h2>
             </div>
             
             <div className="space-y-10">
@@ -117,7 +117,7 @@ export default function ProfilePage() {
              <div className="space-y-4 relative z-10">
                 <h3 className="text-2xl font-bold tracking-tight italic">Estado del CORE.</h3>
                 <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                  Tu identidad técnica está activa y es consultable por empresas registradas. Los reclutadores ven tu DNA en tiempo real.
+                  Tu identidad técnica está activa. Cuando actives el emparejamiento con vacantes, tu DNA verificado podrá compartirse con las empresas.
                 </p>
              </div>
              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-brand-blue/10 rounded-full blur-3xl group-hover:scale-125 transition-transform" />

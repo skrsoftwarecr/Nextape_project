@@ -10,7 +10,7 @@ NEXTAPE tiene una **capa de confianza en servidor** sobre Firebase:
    (`src/lib/firebase/admin.ts`): todo lo sensible (scoring, corrección, escritura de DNA/intentos,
    generación de pruebas). El Admin SDK bypassa las reglas; por eso los datos "verificados" son
    `write:false` para el cliente.
-2. **Flows de Genkit** (`'use server'` en `src/ai/flows/*`): generación con Gemini, invocados desde los handlers.
+2. **Flows de Genkit** (`'use server'` en `src/ai/flows/*`): generación con Groq (Llama), invocados desde los handlers.
 3. **Firebase gestionado** (Auth + Firestore + Storage): el cliente **LEE** con el Web SDK (sujeto a reglas)
    y llama a la API con `apiPost` (`src/lib/api.ts`) adjuntando su Firebase ID token.
 
@@ -24,24 +24,28 @@ NEXTAPE tiene una **capa de confianza en servidor** sobre Firebase:
 Todos verifican el ID token con `verifyRequestUid` (Admin). Nunca confían en un `uid` del body.
 `src/lib/server/assessment.ts` contiene la lógica pura (`gradeAnswers`, `stripAnswerKey`, `SPECIALTY_STACKS`).
 
-## 2. Capa de IA — Genkit + Gemini
+## 2. Capa de IA — Genkit + Groq
 
 ### Configuración — `src/ai/genkit.ts`
 ```ts
+import groq from 'genkitx-groq';
+export const GROQ_MODEL = process.env.GROQ_MODEL ?? 'groq/llama-3.3-70b-versatile';
 export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-1.5-flash',
+  plugins: [groq({ apiKey: process.env.GROQ_API_KEY })],
+  model: GROQ_MODEL,
 });
 ```
-- Plugin `@genkit-ai/google-genai`. Modelo por defecto: **Gemini 1.5 Flash**.
-- ⚠️ `docs/blueprint.md` dice "Gemini 2.5 Flash"; el código usa 1.5. Alinear (ver TECH_DEBT).
-- Requiere credencial de Google AI en el **entorno del servidor** (`GEMINI_API_KEY` / `GOOGLE_API_KEY`).
-  No está configurada en `apphosting.yaml` → en producción los flows fallarían sin ese secreto.
+- Proveedor **Groq** (plugin de comunidad `genkitx-groq`). Modelo por defecto `llama-3.3-70b-versatile`,
+  sobreescribible con `GROQ_MODEL`. Se eligió por **coste** (Groq es mucho más barato/gratuito que Gemini).
+- API key en **`GROQ_API_KEY`** (secreto de servidor). En Netlify va como variable de entorno.
+- **Generación de JSON:** en vez del structured output nativo (poco fiable con Llama), se usa el helper
+  `src/ai/generate.ts` → `generateJson(prompt, zodSchema)`: llama al modelo, limpia fences de markdown,
+  `JSON.parse` y **valida con Zod** (con un reintento). Los flows usan un esquema *lenient* para tolerar
+  variaciones del modelo y luego normalizan a los tipos estrictos.
 
 ### Dev server — `src/ai/dev.ts`
 - Scripts: `genkit:dev` / `genkit:watch` (`genkit start -- tsx src/ai/dev.ts`).
-- ⚠️ `dev.ts` está **vacío** (solo un comentario). Debería importar los flows por efecto secundario
-  para que aparezcan en el Genkit Dev UI. Hoy no registra ninguno.
+- ✅ `dev.ts` registra los flows (import por efecto secundario) para el Genkit Dev UI.
 
 ### Flow: `generateQuestions` — `src/ai/flows/generate-assessment-flow.ts`
 - **Input** (`GenerateQuestionsInputSchema`): `{ stack: string[], level: string, count=5 }`.
@@ -76,20 +80,23 @@ import { z } from 'genkit';
 Wrappers finos sobre los helpers de Firestore y los flows de IA. **Punto de entrada preferente** para
 la lógica de datos desde componentes.
 
+> Los servicios de cliente son de **lectura**. Las escrituras de datos verificados (DNA, intentos,
+> claves) ocurren en los route handlers `/api/*` con Admin SDK (§1).
+
 | Servicio | Métodos | Colección / IA |
 |---|---|---|
 | `UserService` | `getUser`, `saveUser` | `users` |
-| `SkillsService` | `getSkills`, `updateSkillScore` | `user_skill_scores` |
-| `JobService` | `getLatestJobs`, `getJob`, `calculateMatch`, `generateJobAssessment` | `jobs` + `generateQuestions` |
-| `AssessmentService` | `startSession`, `getSession` | `assessment_attempts` (hoy sin uso real) |
-| `CompatibilityService` | `getMatch` | `candidate_matches` (hoy sin escritor) |
+| `SkillsService` | `getSkills` (solo lectura) | `user_skill_scores` |
+| `JobService` | `getLatestJobs`, `getJob`, `calculateMatch` | `jobs` |
+| `AssessmentService` | `getSession` (solo lectura) | `assessment_attempts` |
+| `CompatibilityService` | `getMatch` | `candidate_matches` (hoy sin escritor, A4) |
 
-### `SkillsService.updateSkillScores` / `updateSkillScore`
-- ✅ `updateSkillScores(uid, { skill: score, ... })` mergea **varias** skills a la vez, normaliza claves
-  a minúsculas y se queda con el **mejor** score por skill (`Math.max` vs el existente). `updateSkillScore`
-  es el atajo de una sola skill. Usa `Timestamp.now()`.
-- ⚠️ Sigue corriendo en cliente sobre una colección owner-write → score falsificable hasta mover el
-  scoring a servidor (B2, Fase 6). Ver SECURITY.
+`calculateMatch` es una función pura en `src/lib/match.ts` (reexportada por `JobService`).
+
+### Escritura del DNA — server-only
+- El DNA (`user_skill_scores`) y los intentos (`assessment_attempts`) los escribe **`/api/line/submit`**
+  con Admin SDK: score por skill (mejor resultado, `Math.max`), `Timestamp` de servidor. El cliente no
+  tiene métodos de escritura (reglas `write:false`). Ver SECURITY.
 
 ### `JobService.calculateMatch(jobSkills, userScores)`
 - Normaliza skills a minúsculas, suma scores del usuario para las skills requeridas presentes,
@@ -102,7 +109,7 @@ la lógica de datos desde componentes.
 
 ## 4. Frontera cliente/servidor (importante)
 
-- `src/ai/flows/*` → `'use server'` → ejecutan en el servidor de Next (seguro para la API key de Gemini).
+- `src/ai/flows/*` → `'use server'` → ejecutan en el servidor de Next (seguro para la API key de Groq).
 - `src/services/*` y `src/lib/firebase/*` → **cliente** (`'use client'` o sin marca, importan el Web SDK).
 - Un componente cliente puede `import { generateQuestions } from '@/ai/flows/...'` y llamarlo: Next lo
   serializa como server action. **No** importar el Web SDK de Firebase dentro de un archivo `'use server'`.

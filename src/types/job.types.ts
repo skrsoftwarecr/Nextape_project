@@ -26,7 +26,9 @@ export interface JobOpportunity {
   type: string;
   level: string;
   requiredSkills: string[];
-  assessmentQuestions?: Question[];
+  // El doc público `jobs` guarda las preguntas SIN la respuesta correcta (la clave vive en
+  // `job_answer_keys`, server-only). Por eso es PublicQuestion[], no Question[].
+  assessmentQuestions?: PublicQuestion[];
   createdBy: string;
   postedAt: FirestoreTimestamp;
   applicantsCount?: number;

@@ -9,7 +9,7 @@
   reglas `jobs`/`attempts`/`storage`).
 - ✅ **Verificado:** `npm run typecheck` limpio y `npm run build` correcto (16/16 rutas, con type-check activo).
 - ⏳ **Falta lo pesado (requiere decisión/infra):** scoring/DNA en servidor (integridad, B2), proyecto
-  Firebase canónico + secreto Gemini (B3), motor de matching (A4), **ESLint + CI**, y **tests**.
+  Firebase canónico + `GROQ_API_KEY` (B3/B4), motor de matching (A4), **ESLint + CI**, y **tests**.
 
 ## Fase 0 — Higiene del repo (rápido, sin riesgo)
 - [ ] Borrar `estructura.txt`, `tailwing.config.ts`, `.modified` y añadir patrones a `.gitignore` (R1–R3).
@@ -35,7 +35,7 @@
 
 ## Fase 3 — Configuración e infraestructura 🔴
 - [ ] Unificar `projectId` (client vs `.firebaserc`) y mover config Firebase a `.env` (`NEXT_PUBLIC_*`) (B3).
-- [ ] Configurar secreto de Gemini en App Hosting (B4).
+- [ ] Configurar `GROQ_API_KEY` en Netlify (B4).
 - [ ] Quitar `ignoreBuildErrors`/`ignoreDuringBuilds`; arreglar todos los errores de `npm run typecheck` y `npm run lint` (B5).
 - [ ] Registrar flows en `src/ai/dev.ts`.
 - [ ] Revisar `apphosting.yaml` (`maxInstances: 1` — evaluar para carga real).

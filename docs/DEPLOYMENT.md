@@ -26,13 +26,15 @@ Da a los route handlers permiso para escribir el DNA de forma segura.
 
 > El código ya lo soporta: `src/lib/firebase/admin.ts` hace `JSON.parse(FIREBASE_SERVICE_ACCOUNT)`.
 
-### 2) API Key de Gemini → variable en Netlify (OBLIGATORIO para la IA)
-La usan `/api/line/start`, `/api/jobs/assessment` y el roadmap.
+### 2) API Key de Groq → variable en Netlify (OBLIGATORIO para la IA)
+La usan `/api/line/start`, `/api/jobs/assessment` y el roadmap. Groq es el proveedor de IA del proyecto
+(modelos open-source tipo Llama), elegido por su bajo coste frente a Gemini.
 
-1. Consíguela en **Google AI Studio** (aistudio.google.com → *Get API key*).
+1. Consíguela en **Groq Console** (https://console.groq.com/keys).
 2. Netlify → Environment variables → añade:
-   - **Key:** `GEMINI_API_KEY`
+   - **Key:** `GROQ_API_KEY`
    - **Value:** tu API key.
+   - (Opcional) `GROQ_MODEL` para cambiar el modelo por defecto (`groq/llama-3.3-70b-versatile`).
 
 ### 3) Config web de Firebase → variables en Netlify (recomendado)
 Opcional (hay fallback en `client.ts`), pero recomendable para no hardcodear el proyecto:
@@ -72,9 +74,9 @@ firebase deploy --only firestore:rules,storage:rules   # usa .firebaserc → stu
 ## Checklist de verificación post-deploy
 1. **Login**: entra con Email y con Google/GitHub → debe redirigir a `/dashboard` y crear `users/{uid}`.
 2. **The LINE** (`/dashboard/line`): inicia una simulación → deben cargar 5 preguntas (si falla aquí,
-   revisa `GEMINI_API_KEY` y `FIREBASE_SERVICE_ACCOUNT` en Netlify → *Functions logs*).
+   revisa `GROQ_API_KEY` y `FIREBASE_SERVICE_ACCOUNT` en Netlify → *Functions logs*).
 3. Responde las 5 → pantalla de resultado con % → ve a **CORE** y verifica que aparece el score.
-4. **Roadmap**: genera un roadmap (necesita Gemini).
+4. **Roadmap**: genera un roadmap (necesita Groq).
 5. **Reclutador**: crea una vacante en `/dashboard/vacancies/new` → debe guardarse y generar la prueba.
 6. **Reglas**: intenta escribir `user_skill_scores` desde la consola del navegador → debe fallar
    (prueba de que el DNA no es falsificable).

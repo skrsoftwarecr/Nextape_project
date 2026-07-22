@@ -104,8 +104,48 @@ Registro de las correcciones aplicadas al sanear el sistema. Cada fase referenci
 ### Verificación Fase 6
 - `npm run typecheck` ✅ · `npm run lint` ✅ (0 errores) · `npm test` ✅ (14 pasan) · `npm run build` ✅ (rutas `/api/*`).
 
+## FASE 7 — Migración a Groq + coherencia + spanglish
+
+### Proveedor de IA: Gemini → **Groq** (decisión de equipo, coste)
+- `src/ai/genkit.ts`: plugin **`genkitx-groq`**, modelo `groq/llama-3.3-70b-versatile` (`GROQ_MODEL`),
+  key `GROQ_API_KEY`. Eliminado `@genkit-ai/google-genai`. Se reutiliza el enfoque que el equipo ya tenía
+  en la rama `feat/mvp-core-modules`.
+- Nuevo `src/ai/generate.ts` (`generateJson`): llama al modelo, limpia fences, `JSON.parse` + **validación
+  Zod** con reintento (más robusto con Llama que el structured output nativo).
+- Flows reescritos (assessment y roadmap) con esquema *lenient* → normalización a tipos estrictos.
+- `.env.example` y **todas las docs** actualizadas (Gemini→Groq). `src/ai/dev.ts` registra los flows.
+
+### Correcciones de coherencia (informe del agente de flujo)
+- **#3** El `tag` de la IA se **normaliza al vocabulario del `stack`** (`normalizeTag`) y el prompt lo
+  restringe → el pipeline DNA→match ya no subestima el % por diferencias de redacción.
+- **#2** Login social: el selector de tipo de cuenta ahora es **visible siempre** (Google/GitHub también
+  crean cuenta) → se acabó la auto-asignación silenciosa de `role`.
+- **#6** Crear vacante: manejo de error separado (crear vacante vs generar prueba). Ya no hay job huérfano
+  con mensaje falso "no se pudo crear"; si falla la IA, la prueba se genera al vuelo después.
+- **#7** `jobs.assessmentQuestions` tipado como `PublicQuestion[]` (el doc público no lleva `correctIndex`).
+- **#8** `/api/line/submit` persiste las respuestas reales del intento (antes `{}`).
+- **#11** `apiPost` espera `auth.authStateReady()` antes de leer `currentUser`.
+- **#5** Copy honesto en CORE/Perfil: ya no afirman "los reclutadores ven tu DNA en tiempo real" (las
+  reglas no lo permiten hasta A4).
+- **Escala de dificultad** de The LINE unificada a junior/mid/senior/master (antes `expert` era inválido).
+
+### Spanglish (informe del agente de consistencia)
+- UI a **español** y labels unificados en ~12 archivos: `Recruiter Engine`→`Panel de Reclutador`,
+  `Technical Grade`/`Technical Rank`→`Grado Técnico`, `CORE Affinity`/`Core Match`→`Afinidad CORE`,
+  `Technical/Skill DNA`→`DNA Técnico`, `Compatibility Engine`→`Motor de Compatibilidad`, `Rank Index`,
+  `Skill Gap`, `Latency/Security/Encrypted`, fallbacks `Remote/Full-time/Competitive`, nav `Jobs`→`Empleos`,
+  badge `Enterprise`→`Empresa`, roles `Developer`→`Desarrollador`, typo `CORE_SYNCRONIZED`, metadata, etc.
+- Política de consistencia (del agente): UI en español; código y nombres de marca (`Nextape`, `The LINE`,
+  `CORE`, `Roadmap`, `DNA`, `Match`) en inglés; no mezclar idiomas dentro de una frase.
+
+### Verificación Fase 7
+- `npm run typecheck` ✅ · `npm run lint` ✅ (0 errores, 23 warnings) · `npm test` ✅ · `npm run build` ✅.
+
 ## Pendiente (siguiente)
-- **B3** Configurar el secreto de Gemini en Firebase App Hosting (requiere la API key).
-- **A4** Motor de matching `candidate_matches` (ranking real de candidatos) — usar el mismo patrón server-trust.
-- Reducir los 24 warnings de ESLint (`any`, imports sin usar); tests de reglas con el emulador en CI.
-- Provisionar credenciales del Admin SDK para probar el pipeline end-to-end en staging.
+- **B3/B4** Configurar `GROQ_API_KEY` + `FIREBASE_SERVICE_ACCOUNT` en Netlify (ver DEPLOYMENT).
+- **A4** Motor de matching `candidate_matches` (ranking real de candidatos) — mismo patrón server-trust.
+- **#4** Migrar el SDK crudo de Firestore de 4 páginas (`dashboard`, `vacancies`, `vacancies/new`,
+  `candidates`) a métodos de `JobService` (regla CLAUDE.md §4.2.7).
+- **#10** Compartir el perfil entre `AuthGuard` y `DashboardShell` (evitar doble lectura y flash de nav).
+- **#13** CTAs de landing que preseleccionen rol/registro en el modal.
+- Reducir warnings de ESLint; tests de reglas con emulador en CI.

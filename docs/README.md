@@ -10,7 +10,7 @@ agentes de IA + humanos). Mantener actualizada cuando cambie el código.
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Visión global: stack, patrón (monolito modular), estructura de carpetas, rutas, journeys, comandos. **Empieza aquí.** |
 | [DATABASE.md](./DATABASE.md) | Modelo de datos Firestore: colecciones, esquemas, relaciones, índices, reglas de negocio de datos. |
 | [SECURITY.md](./SECURITY.md) | Auth, reglas de Firestore/Storage, secretos, superficie de ataque y checklist de seguridad. |
-| [BACKEND_AI.md](./BACKEND_AI.md) | Server actions, servicios y flows de Genkit/Gemini. Frontera cliente/servidor. |
+| [BACKEND_AI.md](./BACKEND_AI.md) | Server actions, servicios y flows de Genkit/Groq. Frontera cliente/servidor. |
 | [FRONTEND.md](./FRONTEND.md) | Rutas, layout/navegación, sistema de diseño, estado, código muerto, bugs de UI. |
 | [TECH_DEBT.md](./TECH_DEBT.md) | Backlog consolidado de inconsistencias/bugs por prioridad (🔴🟠🟡). |
 | [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) | Checklist por fases para llevar a producción. |

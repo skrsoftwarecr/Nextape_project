@@ -75,7 +75,7 @@ export default function CandidatesPage() {
         </div>
         <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-50">
           <ShieldCheck className="h-5 w-5 text-brand-purple mb-4" />
-          <span className="text-4xl font-black italic tracking-tighter">0</span>
+          <span className="text-4xl font-black italic tracking-tighter">—</span>
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">DNA verificados</p>
         </div>
       </div>

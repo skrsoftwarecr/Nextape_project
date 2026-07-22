@@ -44,6 +44,12 @@ export async function POST(req: NextRequest) {
     const questions = session.questions as Question[];
     const { skillScores, overall } = gradeAnswers(questions, answers);
 
+    // Mapa de respuestas del usuario (índice elegido por pregunta) para el historial del intento.
+    const answersMap: Record<string, string> = {};
+    questions.forEach((q, i) => {
+      answersMap[q.id] = String(answers[i] ?? -1);
+    });
+
     // DNA: merge quedándonos con el MEJOR score por skill.
     const scoresRef = adminDb().collection("user_skill_scores").doc(uid);
     const currentSnap = await scoresRef.get();
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
       userId: uid,
       jobId: session.jobId ?? null,
       status: "completed",
-      answers: {},
+      answers: answersMap,
       score: overall,
       startedAt: session.createdAt ?? FieldValue.serverTimestamp(),
       completedAt: FieldValue.serverTimestamp(),

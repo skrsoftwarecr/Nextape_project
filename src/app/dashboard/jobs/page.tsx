@@ -92,9 +92,9 @@ export default function JobsPage() {
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-brand-blue" /> {job.location || "Remote"}</div>
-                  <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-brand-blue" /> {job.type || "Full-time"}</div>
-                  <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-brand-blue" /> {job.salary || "Competitive"}</div>
+                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-brand-blue" /> {job.location || "Remoto"}</div>
+                  <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-brand-blue" /> {job.type || "Tiempo completo"}</div>
+                  <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-brand-blue" /> {job.salary || "Competitivo"}</div>
                   <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-brand-blue" /> Sincronizado</div>
                 </div>
 
@@ -116,7 +116,7 @@ export default function JobsPage() {
               </div>
               <div className="hidden md:block text-right shrink-0 border-l border-gray-50 pl-10">
                  <div className="text-6xl font-black text-brand-blue tracking-tighter italic">{job.match}%</div>
-                 <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mt-2">Core Match</div>
+                 <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-300 mt-2">Afinidad CORE</div>
               </div>
             </div>
           )) : (

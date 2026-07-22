@@ -15,7 +15,7 @@ Ver detalle en [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md).
   route handlers `/api/*`); el DNA ya **no es falsificable en cliente** y el `correctIndex` no sale al navegador.
 - ✅ **Calidad/CI:** ESLint configurado (0 errores), tests con Vitest (14 pasan; reglas listas para emulador),
   CI en GitHub Actions (typecheck+lint+test+build).
-- ⏳ **Pendientes:** secreto de Gemini + credenciales Admin en hosting; **A4** (motor de matching
+- ⏳ **Pendientes:** `GROQ_API_KEY` + credenciales Admin en Netlify; **A4** (motor de matching
   `candidate_matches`); **A6** (media de últimos 3 intentos, si se mantiene); reducir 24 warnings de ESLint;
   correr los tests de reglas contra el emulador en CI; visibilidad de `users` para reclutadores (C2).
 
@@ -26,7 +26,7 @@ Ver detalle en [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md).
 | B1 | **Reglas bloquean crear vacantes**: `jobs write: if false`, pero el reclutador crea/actualiza `jobs` desde cliente. | `firestore.rules`, `dashboard/vacancies/new/page.tsx`, `services/jobs.service.ts` | Permitir write a `role==recruiter` dueño (`createdBy==uid`) o mover a Cloud Function con Admin SDK. |
 | B2 | **DNA falsificable**: scoring y escritura de `user_skill_scores` ocurren en cliente (owner-write). El `correctIndex` viaja al navegador. Anula el "DNA verificado". | `firestore.rules`, `dashboard/line/page.tsx`, `services/skills.service.ts`, `ai/flows/generate-assessment-flow.ts` | Scoring en servidor (Cloud Function/Admin SDK); no enviar `correctIndex`; `user_skill_scores` write `if false` para clientes. |
 | B3 | **Mismatch de `projectId`**: app usa `studio-4462619429-470d8`; `.firebaserc` despliega a `nextape-prod`. Reglas podrían no aplicar al proyecto real. | `src/lib/firebase/client.ts`, `.firebaserc` | Unificar en un único proyecto; mover config a `.env` (`NEXT_PUBLIC_*`). |
-| B4 | **Secreto de Gemini no configurado** en hosting → flows IA fallan en prod. | `apphosting.yaml`, `ai/genkit.ts` | Declarar secreto (`GEMINI_API_KEY`) en App Hosting / secret manager. |
+| B4 | **`GROQ_API_KEY` no configurada** en hosting → flows IA fallan en prod. | `ai/genkit.ts`, Netlify env | Declarar `GROQ_API_KEY` como variable de entorno en Netlify (ver DEPLOYMENT). |
 | B5 | **Build ignora errores** de TS y ESLint → se puede desplegar código roto. | `next.config.ts` | Quitar `ignoreBuildErrors`/`ignoreDuringBuilds`; arreglar errores; CI con `typecheck`+`lint`. |
 | B6 | **`vacancies/page.tsx` rompe en runtime**: usa `<Terminal>` y `<Briefcase>` sin importar. | `dashboard/vacancies/page.tsx` | Importar iconos de `lucide-react`. |
 | B7 | **Storage con lectura pública total** (`read: if true`). Cualquier archivo de usuario es público. | `storage.rules` | Restringir lectura; separar carpetas públicas/privadas; validar tipo/tamaño. |
@@ -48,7 +48,7 @@ Ver detalle en [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md).
 
 | # | Problema | Acción |
 |---|---|---|
-| C1 | Modelo IA: `genkit.ts` usa **Gemini 1.5 Flash**; `blueprint.md` dice **2.5 Flash**; `README` dice 1.5. | Alinear en un valor y actualizar docs. |
+| C1 | ✅ **Resuelto.** Migrado a **Groq** (`genkitx-groq`, `llama-3.3-70b-versatile`) por coste. Modelo centralizado en `genkit.ts` (`GROQ_MODEL`). `blueprint.md` (histórico) aún menciona Gemini. |
 | C2 | Blueprint dice `users` con lectura pública para reclutadores; la regla es **owner-only** → rompe el journey de reclutador. | Decidir modelo de visibilidad de candidatos y alinear reglas + blueprint. |
 | C3 | Umbrales de "grade" divergen entre `core` y `profile`. | Extraer a una única función util de grading. |
 | C4 | `company` hardcodeado a `"Empresa NEXTAPE"` en toda vacante; telemetría falsa ("12ms/Encrypted"); `totalApplicants:0`; fallbacks de roadmap/stackMap hardcodeados. | Sustituir por datos reales / marcar claramente como demo. |

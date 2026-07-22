@@ -106,9 +106,10 @@ export function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
         </DialogHeader>
 
         <form onSubmit={handleAuth} className="space-y-4 sm:space-y-6">
-          {mode === "register" && (
-            <div className="space-y-2 sm:space-y-3">
-              <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400">Tipo de Cuenta</Label>
+          {/* Tipo de cuenta: visible siempre. El registro social (Google/GitHub) también crea la
+              cuenta y necesita el rol elegido; en el login de un usuario existente se ignora. */}
+          <div className="space-y-2 sm:space-y-3">
+              <Label className="font-bold text-[10px] uppercase tracking-widest text-gray-400">Tipo de cuenta</Label>
               <RadioGroup
                 defaultValue="developer"
                 onValueChange={(val) => setAccountType(val as any)}
@@ -119,7 +120,7 @@ export function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                   accountType === "developer" ? "border-brand-blue bg-brand-blue/5 shadow-sm" : "border-gray-100 hover:bg-gray-50"
                 )}>
                   <RadioGroupItem value="developer" id="developer-modal" className="hidden" />
-                  <Label htmlFor="developer-modal" className="flex-1 cursor-pointer text-center font-bold text-[10px] tracking-widest uppercase">Developer</Label>
+                  <Label htmlFor="developer-modal" className="flex-1 cursor-pointer text-center font-bold text-[10px] tracking-widest uppercase">Desarrollador</Label>
                 </div>
                 <div className={cn(
                   "flex items-center space-x-2 border rounded-2xl p-4 transition-all cursor-pointer",
@@ -129,8 +130,7 @@ export function AuthModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
                   <Label htmlFor="recruiter-modal" className="flex-1 cursor-pointer text-center font-bold text-[10px] tracking-widest uppercase">Empresa</Label>
                 </div>
               </RadioGroup>
-            </div>
-          )}
+          </div>
 
           <div className="space-y-3 sm:space-y-4">
             {mode === "register" && (

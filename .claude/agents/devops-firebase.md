@@ -17,15 +17,17 @@ Lee: `docs/ARCHITECTURE.md` (§2, §7), `docs/PRODUCTION_READINESS.md` (Fase 0 y
   `studio-4462619429-470d8`. **Las reglas podrían desplegarse a un proyecto distinto del que usa la app.**
 - **Dev env:** Firebase Studio / Project IDX (`.idx/dev.nix`, Node 22), con emuladores **desactivados**
   (usa backends de producción). Dev server en `:9002`.
-- **Secretos:** `.env` en `.gitignore` (bien), pero `apphosting.yaml` **no declara** el secreto de Gemini
-  → los flows IA fallarán en prod.
+- **Secretos:** `.env` en `.gitignore` (bien). En **Netlify** (host real) hay que declarar `GROQ_API_KEY`
+  (IA) y `FIREBASE_SERVICE_ACCOUNT` (Admin SDK) como variables de entorno → si no, los flows IA / el
+  scoring fallan en prod. Ver `docs/DEPLOYMENT.md`.
 - **Build:** `next.config.ts` fija `ignoreBuildErrors` e `ignoreDuringBuilds` (riesgo).
 - **CI:** no existe. No hay tests.
 
 ## Reglas del área (vinculantes)
 1. **Un solo proyecto Firebase.** Unifica `projectId` (client vs `.firebaserc`) antes de desplegar reglas.
    Mueve la config web a `.env` con `NEXT_PUBLIC_*` (no hardcodear en `client.ts`).
-2. **Secretos fuera del repo.** Config Gemini vía secret manager de App Hosting; nunca commitear claves.
+2. **Secretos fuera del repo.** `GROQ_API_KEY` y `FIREBASE_SERVICE_ACCOUNT` como variables de entorno de
+   Netlify; nunca commitear claves.
 3. **No despliegues reglas sin confirmar el proyecto destino** y, idealmente, sin tests de emulador.
 4. **Antes de release**: quitar `ignoreBuildErrors`/`ignoreDuringBuilds` y exigir `typecheck`+`lint` en verde.
 5. **Higiene del repo** (Fase 0): `estructura.txt`, `tailwing.config.ts`, `.modified`, rutas muertas y

@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'NEXTAPE | Developer Hiring Reimagined',
-  description: 'AI-powered developer assessments for modern hiring.',
+  title: 'NEXTAPE | Contratación técnica, reinventada',
+  description: 'Evaluaciones técnicas con IA para una contratación moderna.',
 };
 
 export default function RootLayout({

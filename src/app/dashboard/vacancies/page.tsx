@@ -97,7 +97,7 @@ export default function VacanciesPage() {
 
                <div className="pt-6 border-t border-gray-50 flex gap-4">
                   <div className="bg-gray-50 p-4 rounded-2xl flex-1">
-                     <span className="text-[8px] font-black uppercase tracking-widest text-gray-300 block mb-1">Status de Prueba</span>
+                     <span className="text-[8px] font-black uppercase tracking-widest text-gray-300 block mb-1">Estado de la Prueba</span>
                      <p className="text-xs font-bold text-brand-green uppercase tracking-widest flex items-center gap-2">
                         <Terminal className="h-3 w-3" /> The LINE Activado
                      </p>

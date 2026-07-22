@@ -32,50 +32,52 @@ export default function NewVacancyPage() {
     if (!auth.currentUser) return;
     setLoading(true);
 
+    const skillsArray = formData.skills.split(",").map(s => s.trim().toLowerCase()).filter(s => s);
+
+    const jobData = {
+      title: formData.title,
+      description: formData.description,
+      salary: formData.salary,
+      location: formData.location,
+      type: formData.type,
+      level: formData.level,
+      requiredSkills: skillsArray,
+      createdBy: auth.currentUser.uid,
+      company: "Empresa NEXTAPE",
+      postedAt: Timestamp.now(),
+      applicantsCount: 0
+    };
+
+    // 1) Crear la vacante. Si esto falla, no hay nada creado.
+    let jobId: string;
     try {
-      const skillsArray = formData.skills.split(",").map(s => s.trim().toLowerCase()).filter(s => s);
-      
-      const jobData = {
-        title: formData.title,
-        description: formData.description,
-        salary: formData.salary,
-        location: formData.location,
-        type: formData.type,
-        level: formData.level,
-        requiredSkills: skillsArray,
-        createdBy: auth.currentUser.uid,
-        company: "Empresa NEXTAPE", 
-        postedAt: Timestamp.now(),
-        applicantsCount: 0
-      };
-
-      // Guardamos la vacante
       const docRef = await addDoc(collection(db, "jobs"), jobData);
-      
-      toast({ 
-        title: "Vacante guardada", 
-        description: "Iniciando diseño de simulación por IA..." 
+      jobId = docRef.id;
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo crear la vacante.",
+        variant: "destructive"
       });
-
-      // Generación de la prueba EN SERVIDOR: guarda las preguntas públicas (sin la respuesta
-      // correcta) en la vacante y la clave en una colección protegida. Ver /api/jobs/assessment.
-      await apiPost("/api/jobs/assessment", { jobId: docRef.id });
-
-      toast({ 
-        title: "¡Éxito!", 
-        description: "La vacante y su prueba técnica están online." 
-      });
-      
-      router.push("/dashboard/vacancies");
-    } catch (error: any) {
-      toast({ 
-        title: "Error", 
-        description: error.message || "No se pudo crear la vacante.", 
-        variant: "destructive" 
-      });
-    } finally {
       setLoading(false);
+      return;
     }
+
+    // 2) Generar la prueba EN SERVIDOR (preguntas públicas sin clave + clave en colección protegida).
+    // Si falla, la vacante YA existe: la prueba se generará al vuelo cuando un candidato la tome.
+    try {
+      await apiPost("/api/jobs/assessment", { jobId });
+      toast({ title: "¡Éxito!", description: "La vacante y su prueba técnica están online." });
+    } catch {
+      toast({
+        title: "Vacante creada, prueba pendiente",
+        description: "La vacante se publicó; su prueba se generará al iniciarse la primera simulación.",
+        variant: "destructive"
+      });
+    }
+
+    setLoading(false);
+    router.push("/dashboard/vacancies");
   };
 
   return (
@@ -130,7 +132,7 @@ export default function NewVacancyPage() {
                     <Input 
                       value={formData.location}
                       onChange={e => setFormData({...formData, location: e.target.value})}
-                      placeholder="Remote / City" 
+                      placeholder="Remoto / Ciudad"
                       className="h-12 bg-gray-50 border-none rounded-xl"
                     />
                  </div>
@@ -158,15 +160,15 @@ export default function NewVacancyPage() {
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-none shadow-apple-lg">
                              <SelectItem value="junior">Junior</SelectItem>
-                             <SelectItem value="mid">Mid-Level</SelectItem>
+                             <SelectItem value="mid">Mid</SelectItem>
                              <SelectItem value="senior">Senior</SelectItem>
-                             <SelectItem value="master">Master / Architect</SelectItem>
+                             <SelectItem value="master">Master</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
 
                     <div className="space-y-2">
-                       <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Skills (Separadas por coma)</Label>
+                       <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Habilidades (separadas por coma)</Label>
                        <Input 
                          required
                          value={formData.skills}

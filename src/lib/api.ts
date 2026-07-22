@@ -9,6 +9,9 @@ import { auth } from "@/lib/firebase/client";
  * servidor si la respuesta no es 2xx.
  */
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  // Espera a que Firebase Auth resuelva el estado inicial antes de leer currentUser
+  // (evita enviar la petición sin token si se llama justo tras cargar).
+  await auth.authStateReady();
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : null;
 

@@ -68,7 +68,7 @@ export default function CompatibilityPage() {
     <div className="space-y-12">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-black italic">Compatibility Engine.</h1>
+          <h1 className="text-4xl font-bold tracking-tight text-black italic">Motor de Compatibilidad.</h1>
           <p className="text-gray-500 font-medium text-sm">Análisis de brecha técnica basado en tu CORE real vs mercado.</p>
         </div>
         <Button
@@ -86,14 +86,14 @@ export default function CompatibilityPage() {
             <div className="space-y-4 relative z-10">
                <div className="flex items-center gap-3">
                   <div className="w-2 h-2 bg-brand-blue rounded-full animate-pulse" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">LIVE_MARKET_ANALYSIS</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">ANÁLISIS DE MERCADO EN VIVO</span>
                </div>
                <h2 className="text-3xl font-bold tracking-tight leading-tight">Tu potencial de <br /><span className="text-brand-blue">contratación verificado.</span></h2>
                <p className="text-gray-400 text-sm max-w-sm">Este score refleja tu afinidad con las vacantes actuales según tus resultados en The LINE.</p>
             </div>
             <div className="text-center relative z-10 bg-white/5 p-10 rounded-[2.5rem] border border-white/10 backdrop-blur-3xl">
                <span className="text-7xl font-black italic tracking-tighter text-brand-blue leading-none">{avgMatch || "0.0"}</span>
-               <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4">Rank Index</span>
+               <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-4">Índice de Rango</span>
             </div>
          </div>
          
@@ -102,7 +102,7 @@ export default function CompatibilityPage() {
                <Target className="h-7 w-7 text-brand-blue" />
             </div>
             <div className="space-y-2">
-               <h4 className="font-bold text-2xl text-black leading-none italic">Skill Gap.</h4>
+               <h4 className="font-bold text-2xl text-black leading-none italic">Brecha de Habilidades.</h4>
                <p className="text-sm text-gray-400 font-medium leading-relaxed mt-2">
                  {avgMatch > 8 ? "Tu perfil es excepcional. No hay brechas críticas." : "Identificamos habilidades clave para desbloquear puestos Tier 1."}
                </p>
@@ -111,7 +111,7 @@ export default function CompatibilityPage() {
       </div>
 
       <div className="space-y-8">
-         <h3 className="text-2xl font-bold tracking-tight px-2 text-black italic">Matches de Alta Fidelidad.</h3>
+         <h3 className="text-2xl font-bold tracking-tight px-2 text-black italic">Coincidencias de Alta Fidelidad.</h3>
          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {matches.length > 0 ? matches.map((job, idx) => (
               <div key={idx} className="bg-white rounded-[2.5rem] p-10 border border-gray-50 shadow-apple space-y-10 group hover:shadow-apple-lg transition-all">
@@ -134,7 +134,7 @@ export default function CompatibilityPage() {
 
                  <Link href={`/dashboard/line?jobId=${job.id}`} className="pt-8 border-t border-gray-50 flex justify-between items-center">
                     <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 group-hover:text-black transition-colors">
-                       <Briefcase className="h-4 w-4" /> Aplicar con Identity
+                       <Briefcase className="h-4 w-4" /> Postular con tu Identidad
                     </div>
                     <ArrowRight className="h-6 w-6 text-brand-blue group-hover:translate-x-2 transition-transform" />
                  </Link>

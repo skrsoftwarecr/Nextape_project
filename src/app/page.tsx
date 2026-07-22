@@ -61,7 +61,7 @@ export default function Home() {
         <section className="px-6 pt-32 md:pt-48 pb-20 md:pb-32 max-w-7xl mx-auto text-center relative">
           <div className="relative z-10 space-y-8">
             <div className="inline-flex items-center gap-2 bg-brand-blue/10 text-brand-blue px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest">
-              <Zap className="h-3 w-3" /> Hiring de precisión por IA
+              <Zap className="h-3 w-3" /> Contratación de precisión por IA
             </div>
             <h1 className="text-4xl sm:text-6xl md:text-[5.5rem] font-headline font-black leading-[1] md:leading-[0.9] tracking-tighter italic">
               Contrata <span className="text-brand-blue">talento</span> que <br className="hidden md:block" />
@@ -69,7 +69,7 @@ export default function Home() {
               <span className="text-brand-red">no lo que dice.</span>
             </h1>
             <p className="text-base md:text-xl text-gray-500 max-w-2xl mx-auto font-medium leading-relaxed px-4">
-              Validamos habilidades técnicas reales a través de simulaciones generadas por IA. La confianza que necesitas para contratar developers de élite.
+              Validamos habilidades técnicas reales a través de simulaciones generadas por IA. La confianza que necesitas para contratar desarrolladores de élite.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 px-6 max-w-lg mx-auto">
               <Button
@@ -94,12 +94,12 @@ export default function Home() {
           <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight leading-tight text-black italic">
-                El hiring técnico <br /> <span className="text-brand-red">está roto.</span>
+                La contratación técnica <br /> <span className="text-brand-red">está rota.</span>
               </h2>
               <div className="space-y-6">
                 {[
                   { title: "CVs vs Realidad", text: "Un 'Senior' en papel puede no saber debugear una arquitectura distribuida real hoy." },
-                  { title: "Pruebas Genéricas", text: "Los desafíos de algoritmos no predicen cómo un developer reacciona ante un fallo en producción." },
+                  { title: "Pruebas Genéricas", text: "Los desafíos de algoritmos no predicen cómo un desarrollador reacciona ante un fallo en producción." },
                   { title: "Ruido y Fricción", text: "Las empresas pierden 40+ horas en entrevistas con candidatos que no tienen el nivel requerido." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 p-6 bg-white rounded-[2rem] shadow-apple border border-gray-50 group hover:border-brand-blue/30 transition-all">
@@ -163,7 +163,7 @@ export default function Home() {
               {[
                 { q: "¿Es gratis para desarrolladores?", a: "Sí, Nextape es 100% gratuito para los desarrolladores. Nuestro modelo de negocio se basa en las empresas que buscan talento verificado." },
                 { q: "¿Cómo funciona la simulación?", a: "Generamos escenarios técnicos reales basados en tu stack. Tendrás que resolver anomalías, optimizar código o diseñar arquitecturas en tiempo real." },
-                { q: "¿Qué es el Skill DNA?", a: "Es tu huella técnica verificada. A diferencia de un CV, el DNA se construye con resultados de pruebas reales y es lo que las empresas consultan." }
+                { q: "¿Qué es el DNA técnico?", a: "Es tu huella técnica verificada. A diferencia de un CV, el DNA se construye con resultados de pruebas reales y es lo que las empresas consultan." }
               ].map((item, i) => (
                 <AccordionItem key={i} value={`item-${i}`} className="border-b border-gray-50 py-4">
                   <AccordionTrigger className="text-left font-bold text-lg hover:no-underline hover:text-brand-blue transition-colors px-4">

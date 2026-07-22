@@ -7,7 +7,7 @@ delegando explícitamente.
 | Agente | Área | Edita | Cuándo usarlo |
 |---|---|---|---|
 | [`frontend-engineer`](./frontend-engineer.md) | UI / Next.js / React / Tailwind | `src/app`, `src/components`, `src/hooks` | Pantallas del dashboard, componentes, formularios, diseño. |
-| [`backend-ai-engineer`](./backend-ai-engineer.md) | Servicios + IA | `src/services`, `src/ai`, `src/lib/firebase` | Lógica de datos, server actions, flows de Genkit/Gemini. |
+| [`backend-ai-engineer`](./backend-ai-engineer.md) | Servicios + IA | `src/services`, `src/ai`, `src/lib/firebase` | Lógica de datos, server actions, flows de Genkit/Groq. |
 | [`database-architect`](./database-architect.md) | Modelo de datos | `src/types`, `src/services`, `docs/DATABASE.md` | Colecciones/campos, esquemas, índices, migraciones. |
 | [`security-auditor`](./security-auditor.md) | Seguridad e integridad | `firestore.rules`, `storage.rules` (único autorizado) | Reglas, auth, integridad del DNA, revisión de riesgos. |
 | [`ai-flow-reviewer`](./ai-flow-reviewer.md) | Calidad de IA | `src/ai` (solo) | Revisar/mejorar prompts, flows, structured output, coste. |

@@ -32,7 +32,8 @@ cliente, o exponer una clave de respuestas). Minimiza lo que el cliente puede es
    (Admin SDK). Coordina con backend-ai-engineer.
 5. **Autorización = reglas**, no el `role` del cliente. Verifica ownership (`isOwner`) y evita fugas en
    `list` (filtrar por `userId`).
-6. **Secretos**: config web Firebase → `.env` `NEXT_PUBLIC_*`; claves servidor (Gemini) → secret manager.
+6. **Secretos**: config web Firebase → `.env` `NEXT_PUBLIC_*`; claves de servidor (`GROQ_API_KEY`,
+   `FIREBASE_SERVICE_ACCOUNT`) → variables de entorno de Netlify, nunca en el repo.
    Nada de secretos en el repo. `.env*` debe seguir en `.gitignore`.
 
 ## Hallazgos abiertos a corregir/verificar (de la auditoría inicial)

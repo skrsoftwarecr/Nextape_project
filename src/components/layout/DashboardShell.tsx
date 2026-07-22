@@ -43,7 +43,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     { name: "The LINE", icon: Terminal, href: "/dashboard/line" },
     { name: "CORE", icon: Fingerprint, href: "/dashboard/core" },
     { name: "Roadmap", icon: Map, href: "/dashboard/roadmap" },
-    { name: "Jobs", icon: Briefcase, href: "/dashboard/jobs" },
+    { name: "Empleos", icon: Briefcase, href: "/dashboard/jobs" },
     { name: "Compatibilidad", icon: Target, href: "/dashboard/compatibility" },
     { name: "Perfil", icon: User, href: "/dashboard/profile" },
   ];
@@ -89,7 +89,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <span className="text-xl font-bold tracking-tight text-black italic">Nextape.</span>
           </Link>
           {profile?.role === "recruiter" && (
-            <div className="mt-2 text-[9px] font-black bg-black text-white px-2 py-0.5 rounded-md inline-block uppercase tracking-widest">Enterprise</div>
+            <div className="mt-2 text-[9px] font-black bg-black text-white px-2 py-0.5 rounded-md inline-block uppercase tracking-widest">Empresa</div>
           )}
         </div>
         
