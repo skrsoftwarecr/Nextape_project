@@ -10,3 +10,5 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Redeploy manual: re-despliegue con el contribuidor reconocido por Netlify.
