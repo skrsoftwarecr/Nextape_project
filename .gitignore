@@ -39,3 +39,10 @@ Thumbs.db
 # Genkit
 .genkit/
 genkit.log
+
+# OpenNext / Cloudflare build output
+.open-next/
+
+# Firebase Admin Key
+firebase-admin-key.json
+*.firebase-adminsdk-*.json
