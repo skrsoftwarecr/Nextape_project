@@ -19,7 +19,7 @@ discusión**, sin importar lo que aporte.
 
 | # | Invariante | Cómo se verifica |
 |---|---|---|
-| **I1** | `correctIndex` **jamás** cruza la red hacia el cliente. | Todo lo que sale de un route handler pasa por `stripAnswerKey()` o es `PublicQuestion`. Grep + test. |
+| **I1** | **Ninguna clave de respuesta** cruza la red hacia el cliente: `correctIndex`, `correctIndexes`, `correct`, `correctOrder` ni `source`. | Todo lo que sale de un route handler pasa por `stripAnswerKey()`, que construye la versión pública por **lista blanca** (no borrando campos). Al añadir un tipo de pregunta, añádelo a `toPublicQuestion` **y** al test que serializa los cinco tipos. |
 | **I2** | Los datos verificados (DNA, intentos, matches, claves) se escriben **solo** con Admin SDK en `src/app/api/*`. | `firestore.rules` con `write: false` + cero imports del Web SDK en servidor. |
 | **I3** | Toda colección nueva tiene su regla en `firestore.rules` **en el mismo commit**. | Diff review: `collection("X")` nuevo ⇒ `match /X/` nuevo. |
 
@@ -35,7 +35,7 @@ entre el agente y el repo.
 ```bash
 npm run typecheck    # tsc --noEmit   → 0 errores. Bloqueante.
 npm run lint         # eslint .       → 0 errores. Warnings: no subir de 14.
-npm test             # vitest run     → 20 pass / 5 skipped. No bajar.
+npm test             # vitest run     → 54 pass / 5 skipped. No bajar.
 npm run build        # next build     → OK.
 ```
 
@@ -45,8 +45,8 @@ npm run build        # next build     → OK.
 |---|---|---|
 | typecheck | ✅ | limpio |
 | lint | ✅ | 0 errores · **14 warnings** ← número de referencia, no subirlo |
-| test | ✅ | **20 pass** · 5 skipped (`rules.test.ts`, necesita emulador) |
-| build | ✅ | 19 páginas · 3 route handlers dinámicos · 102 kB First Load |
+| test | ✅ | **54 pass** · 5 skipped (`rules.test.ts`, necesita emulador) |
+| build | ✅ | 20 rutas · 3 route handlers dinámicos · 102 kB First Load |
 
 > `npm run lint` estuvo roto (OOM de V8 al lintear los 17 MB de `.open-next/` commiteados) y rompía CI
 > en todo PR. Arreglado en la Tarea 0.1. Si vuelve a crashear, sospecha de artefactos de build entrando
@@ -251,10 +251,31 @@ contexto de 8 192 tokens, ~568M parámetros, 100+ idiomas.
 > store lo soporta, o se acepta dense-only y se documenta por qué sigue mereciendo la pena (el argumento
 > multilingüe basta por sí solo — pero hay que escribirlo, no asumirlo).
 
-### 6.1 ⏳ Abierto — qué indexa el RAG
+### 6.1 ✅ Decidido — corpus: catálogo de fuentes técnicas *(equipo, 2026-08-02)*
 
-**Esto hay que decidirlo antes de escribir código de retrieval.** Las tres opciones producen sistemas
-distintos, no variantes del mismo.
+El equipo aportó el corpus: ~60 URLs en 13 categorías (documentación oficial de frameworks,
+lenguajes, bases de datos y cloud; OWASP/MITRE/NIST; material de arquitectura; blogs de ingeniería
+de Netflix, Cloudflare, Stripe, Uber…). Está en
+[`src/lib/server/sources.ts`](../src/lib/server/sources.ts) con un índice `tecnología → fuentes`.
+
+Es la **opción A** de las que se barajaban abajo, y encaja con BGE-M3: material técnico extenso,
+mayoritariamente en inglés, con documentos largos que aprovechan los 8 192 tokens de contexto.
+
+**Estado:** las URLs ya se usan como **anclaje del prompt** (el modelo recibe la lista y atribuye
+una fuente a cada pregunta). Falta la parte de retrieval propiamente dicha — ingesta del texto,
+chunking, embeddings, índice — que sigue bloqueada por D1 y D2 del §6.0.
+
+> ⚠️ No confundir anclaje con recuperación. Hoy el modelo no lee las fuentes; `source` es una
+> atribución suya. Mientras eso siga así, **no se puede afirmar que las preguntas estén verificadas
+> contra documentación** — sería exactamente la falsa auditabilidad que el producto no se puede
+> permitir.
+
+**Lista de ingesta:** `allSources()` en ese mismo archivo devuelve el corpus completo deduplicado.
+
+<details>
+<summary>Opciones que se barajaron (histórico)</summary>
+
+Las tres producen sistemas distintos, no variantes del mismo.
 
 ### Opción A — Corpus técnico curado *(recomendada)*
 
@@ -287,9 +308,10 @@ Recuperar el historial del propio candidato (intentos, gaps, roadmap) para perso
 **Recomendación:** **A**, con **B** como caché encima. A resuelve el problema que hace creíble al producto;
 B lo abarata y arregla la inconsistencia del §6.4 de CONTEXT. C es una fase posterior.
 
-**Nota:** la elección de BGE-M3 (§6.0) refuerza A. Los 8 192 tokens de contexto y el soporte multilingüe
-solo aportan valor si el corpus es material técnico real y extenso; para un banco de preguntas propias
-(opción B en solitario) el modelo queda claramente sobredimensionado.
+**Resultado:** se eligió **A** (§6.1). **B** quedó implementada de otra forma — el repertorio por
+vacante (Fase 1.6) ya evita regenerar por candidato, que era su principal beneficio.
+
+</details>
 
 ---
 
@@ -317,6 +339,8 @@ Cada fase tiene criterio de aceptación verificable. **No empezar una fase con l
 | ✅ 1.1 | Persistir en `job_answer_keys` las preguntas generadas al vuelo en `line/start` ([§6.4](./CONTEXT.md)) | `backend-ai-engineer` | **Hecho 2026-08-01.** Escritura en transacción; `jobId` inexistente → 404 |
 | ✅ 1.2 | `runTransaction` en la escritura del DNA ([§6.5](./CONTEXT.md)) | `backend-ai-engineer` | **Hecho 2026-08-01.** También en `candidate_matches` + `applicantsCount` |
 | ✅ 1.3 | Validar longitud de `answers` ([§6.7](./CONTEXT.md)) | `qa-test-engineer` | **Hecho 2026-08-01.** `isValidAnswerSet()` + 6 tests; `answers` inválido → 400 |
+| ✅ 1.6 | **Repertorio por vacante** — generar el banco al publicar y sortear X por candidato | `backend-ai-engineer` | **Hecho 2026-08-02.** `buildQuestionPool()` + `pickRandomQuestions()` estratificado; `/api/line/start` ya no llama a la IA en el camino normal |
+| ✅ 1.7 | Anclar la generación en el catálogo de fuentes del equipo | `rag-engineer` | **Hecho 2026-08-02.** `sources.ts` (13 categorías) + campo `source` por pregunta, descartando URLs inventadas |
 | 1.4 | Rate limiting en los endpoints que llaman al LLM ([§6.6](./CONTEXT.md)) | `backend-ai-engineer` + `security-auditor` | N.º de generaciones por usuario/hora acotado y testeado |
 | 1.5 | Tests de los 3 route handlers (Admin SDK mockeado) | `qa-test-engineer` | Cubiertos 401 / 403 / happy path. Tests totales > 14 |
 

@@ -108,6 +108,69 @@ no hace falta RAG sobre el propio repo, hace falta disciplina de lectura dirigid
 
 ## 3. Flujos críticos (trazados sobre el código real)
 
+### 3.0-bis Tipos de prueba *(desde 2026-08-02)*
+
+The LINE **ya no es solo "marca con X"**. Una prueba combina cinco tipos, definidos como unión
+discriminada en [`question.types.ts`](../src/types/question.types.ts):
+
+| Tipo | Qué evalúa | Respuesta | Crédito parcial |
+|---|---|---|---|
+| `multiple_choice` | criterio de ingeniería | `number` | — |
+| `code_output` | leer código y predecir su comportamiento | `number` | — |
+| `multi_select` | varias afirmaciones correctas de una lista | `number[]` | ✅ los fallos restan |
+| `true_false` | precisión sobre una afirmación técnica | `boolean` | — |
+| `ordering` | orden correcto de un procedimiento | `number[]` | ✅ por posición |
+
+**Todos se corrigen en servidor y sin IA.** Es lo que sostiene el objetivo de coste: hacer una
+prueba no cuesta ni una llamada al modelo.
+
+> ⚠️ **Si algún día se añade un tipo de respuesta abierta**, su corrección exigirá un LLM *por
+> entrega* y `/api/line/submit` volverá a ser un disparador de trabajo caro — el agujero de coste y
+> DDoS que el repertorio cerró, movido de sitio. La salida sería corregir en diferido, no en el submit.
+
+Dos detalles de integridad que no son obvios:
+- **`stripAnswerKey` construye la versión pública por lista blanca**, no borrando campos. Cada tipo
+  tiene su propia clave (`correctIndex`, `correctIndexes`, `correct`, `correctOrder`) y un
+  *denylist* filtraría en cuanto alguien añadiera un tipo nuevo. Es la invariante I1.
+- **`ordering` guarda los pasos desordenados.** El modelo los devuelve en orden correcto y el
+  servidor los permuta, guardando la permutación como clave. Si se guardaran en orden, enviarlos al
+  cliente sería servirle la respuesta.
+
+### 3.0 Repertorio de preguntas *(desde 2026-08-02)*
+
+The LINE ya **no genera preguntas cuando un candidato hace la prueba**. La IA se invoca una sola
+vez, al publicar la vacante, para construir un **repertorio** que se guarda en Firestore; cada
+candidato responde un **sorteo** de ese banco.
+
+```
+PUBLICAR VACANTE (1 vez)                      HACER LA PRUEBA (por candidato)
+  POST /api/jobs/assessment                     POST /api/line/start
+    └─ buildQuestionPool()                        └─ lee job_answer_keys/{jobId}
+        ├─ por skill: 3 llamadas a Groq           └─ pickRandomQuestions(pool, N)
+        │   (multiple_choice + 2 tipos                · estratificado por skill Y tipo
+        │    rotativos, ancladas en sources.ts)       · SIN llamada a IA
+        ├─ dedupe + re-id
+        └─ job_answer_keys/{jobId}.questions
+```
+
+Los tipos **rotan entre skills** en vez de generarse los cinco para cada una: con 5 skills serían
+25 llamadas, y rotando son 15 con la misma variedad en el repertorio global. Cada skill recibe
+opción múltiple —el tipo más fiable, que hace de columna vertebral— más dos tipos distintos.
+
+Dos motivos, ambos del equipo:
+- **Coste.** Una vacante con 20 candidatos pasa de 20 generaciones a 1.
+- **Superficie de abuso.** `/api/line/start` deja de disparar trabajo caro, así que no sirve para
+  quemar la cuota de Groq a base de peticiones.
+
+Efectos de diseño que conviene tener presentes:
+- **Comparabilidad.** Cada candidato recibe preguntas distintas, así que el ranking es comparable
+  de forma *estadística*, no idéntica. Por eso el sorteo es **estratificado por `tag` y por tipo**
+  ([`pickRandomQuestions`](../src/lib/server/assessment.ts)): todos reciben el mismo reparto de
+  skills y la misma mezcla de tipos aunque cambien las preguntas concretas.
+- **Anti-copia.** Como contrapartida, dos candidatos ya no pueden compartir respuestas.
+- **El repertorio no se publica.** `jobs` es `read: if true`; publicar el banco entero dejaría que
+  un candidato se lo estudiara. El doc público solo lleva `assessmentReady` y `assessmentPoolSize`.
+
 ### 3.1 The LINE — el flujo que sostiene el producto
 
 ```
@@ -183,14 +246,16 @@ Firestore, proyecto `studio-4462619429-470d8`.
 | `user_skill_scores` | `{uid}` | owner | ❌ `false` | `/api/line/submit` (Admin) |
 | `assessment_attempts` | `{uid}_{sessionId}` | owner (query filtrada) | ❌ `false` | `/api/line/submit` (Admin) |
 | `line_sessions` | auto | ❌ `false` | ❌ `false` | `/api/line/start` (Admin) |
-| `job_answer_keys` | `{jobId}` | ❌ `false` | ❌ `false` | `/api/jobs/assessment` (Admin) |
+| `job_answer_keys` | `{jobId}` | ❌ `false` | ❌ `false` | `/api/jobs/assessment` (Admin) — **repertorio de la vacante** |
+| `line_question_pools` | `{especialidad}_{nivel}` | ❌ `false` | ❌ `false` | `/api/line/start` (Admin) — repertorio de la simulación general |
 | `jobs` | auto | **público** (`read: true`) | owner `createdBy` (no delete) | cliente + `/api/*` |
 | `candidate_matches` | `{uid}_{jobId}` | candidato **o** reclutador | ❌ `false` | `/api/line/submit` (Admin) |
 | `user_roadmaps` | `{uid}` | owner | owner | cliente |
 | `questions` | — | auth | ❌ `false` | **nadie — regla huérfana, §6.7** |
 
-Las dos colecciones `false/false` (`line_sessions`, `job_answer_keys`) son **el corazón de la integridad**:
-contienen `correctIndex`. Si alguna vez alguien las abre a lectura, el producto muere.
+Las tres colecciones `false/false` (`line_sessions`, `job_answer_keys`, `line_question_pools`) son
+**el corazón de la integridad**: contienen `correctIndex`. Si alguna vez alguien las abre a lectura,
+el producto muere.
 
 **Invariante transversal:** las skills se guardan y comparan **siempre en minúsculas**. Se rompe en tres
 sitios distintos si se olvida: `normalizeTag`, `gradeAnswers`, `calculateMatch`.
@@ -201,16 +266,17 @@ sitios distintos si se olvida: `normalizeTag`, `gradeAnswers`, `calculateMatch`.
 
 Ejecutado sobre `thelineRAG @ aa9e91a` con `npm ci` limpio, Node 22:
 
-| Gate | Al clonar (`aa9e91a`) | Tras los arreglos del 2026-08-01 |
+| Gate | Al clonar (`aa9e91a`) | Estado actual (2026-08-02) |
 |---|---|---|
 | `npm run typecheck` | ✅ limpio | ✅ limpio |
-| `npm test` | ✅ 14 pasan, 5 skipped | ✅ **20 pasan**, 5 skipped |
-| `npm run build` | ✅ OK — 19 páginas, 3 route handlers `ƒ`, 102 kB First Load | ✅ OK |
-| `npm run lint` | ❌ **CRASHEA — OOM de V8** (§6.1) | ✅ 0 errores, **14 warnings** |
+| `npm test` | ✅ 14 pasan, 5 skipped | ✅ **54 pasan**, 5 skipped |
+| `npm run build` | ✅ 19 páginas, 3 route handlers `ƒ` | ✅ OK (+ `/dashboard/vacancies/[id]`) |
+| `npm run lint` | ❌ **CRASHEA — OOM de V8** (§6.1) | ✅ 0 errores, 14 warnings |
 
-Cobertura de tests: 4 archivos, y cubren exactamente lo que importa — `gradeAnswers`/`stripAnswerKey`/
-`isValidAnswerSet` (11), `calculateMatch` (4), `grading` (5) y las reglas (5, dormidos). **Cero tests de
-los route handlers, de los flows de IA y de la UI.**
+Cobertura de tests: 5 archivos. Lo cubierto es exactamente lo que importa — corrección por tipo,
+validación de la forma de cada respuesta, `stripAnswerKey` **de los cinco tipos** (invariante I1),
+sorteo estratificado, compatibilidad con repertorios antiguos, `calculateMatch`, `grading` y las
+reglas (5, dormidos sin emulador). **Cero tests de los route handlers, de los flows de IA y de la UI.**
 
 ---
 
@@ -309,6 +375,33 @@ autenticado puede llamarlo en bucle y quemar la cuota o la factura. Autenticaci�
 - **Telemetría falsa en la UI:** "Latencia 12ms / Cifrado" hardcodeado en
   [`line/page.tsx:226-234`](../src/app/dashboard/line/page.tsx#L226-L234).
 
+### 6.9 ✅🆕 Flujo de reclutador roto de punta a punta · *resuelto 2026-08-02*
+
+Revisión completa del journey empresa → vacante → prueba → candidatos. Cinco fallos, todos corregidos:
+
+1. **🔴 El índice compuesto que rompía las dos páginas principales.**
+   `where("createdBy","==",uid) + orderBy("postedAt","desc")` exige un **índice compuesto** en
+   Firestore. Sin él la query lanza `failed-precondition`, el `catch` lo mandaba a `console.error`
+   y la página caía al estado vacío: **"Mis Vacantes" y "Candidatos" decían "No tienes vacantes
+   activas" aunque las hubiera.** Estaba en `vacancies/page.tsx` y en `JobService.getJobsByRecruiter`.
+   *Resuelto* ordenando en cliente — mismo criterio que ya usaba `CompatibilityService`
+   deliberadamente. Sin pasos de infraestructura.
+2. **Errores tragados:** un fallo de permisos era indistinguible de "no tienes vacantes". Ahora se
+   muestra el error.
+3. **"The LINE Activado" hardcodeado:** siempre en verde, aunque la generación hubiera fallado al
+   publicar. Ahora lee `assessmentReady` y muestra "Prueba pendiente".
+4. **`company` fijo a `"Empresa NEXTAPE"`** en toda vacante → el developer veía la misma empresa en
+   todos los empleos. Ahora es un campo del formulario, prefijado con el nombre del perfil.
+5. **`type` de contrato sin UI:** existía en el estado con valor fijo `"Full-time"`; toda vacante se
+   guardaba como tiempo completo. Ahora es un selector.
+
+**Gestión de vacantes — no existía.** Publicar era irreversible: sin edición, el botón `⋮` no tenía
+handler, `delete: if false` y ningún campo de estado. Añadido
+[`/dashboard/vacancies/[id]`](../src/app/dashboard/vacancies/) con edición completa, **archivar y
+reabrir** (`active`, en vez de borrar: preserva los `candidate_matches` ya obtenidos) y
+**regenerar el repertorio** (`force: true`). `getLatestJobs` filtra las archivadas y
+`/api/line/start` devuelve 409 si la vacante está cerrada.
+
 ### 6.8 Documentación desincronizada (arreglar al tocar cada área)
 
 | Documento | Dice | Realidad |
@@ -325,15 +418,26 @@ autenticado puede llamarlo en bucle y quemar la cuota o la factura. Autenticaci�
 ## 7. Dónde encaja el RAG
 
 El nombre de la rama fija el objetivo: **traer retrieval a The LINE**. El punto de inserción es único y
-está bien aislado — [`generateQuestions()`](../src/ai/flows/generate-assessment-flow.ts), llamado desde
-exactamente dos sitios (`api/line/start`, `api/jobs/assessment`).
+está bien aislado — [`generateQuestions()`](../src/ai/flows/generate-assessment-flow.ts), llamado
+únicamente desde [`buildQuestionPool()`](../src/lib/server/question-pool.ts).
 
 ```
-   HOY:  stack + level ────────────────────────► prompt ──► Groq ──► preguntas
-  CON RAG:  stack + level ──► retrieve(corpus) ──► prompt + contexto ──► Groq ──► preguntas
-                                    ▲
-                            ¿qué corpus? ← LA decisión que falta
+   ANTES:  stack + level ─────────────────────────────► prompt ──► Groq ──► preguntas
+     HOY:  stack + level ──► sources.ts (URLs) ────────► prompt ──► Groq ──► preguntas
+  CON RAG: stack + level ──► retrieve(índice BGE-M3) ──► prompt + TEXTO ──► Groq ──► preguntas
 ```
+
+**Lo que ya existe (2026-08-02):** el catálogo de fuentes del equipo está en
+[`src/lib/server/sources.ts`](../src/lib/server/sources.ts) — 13 categorías, ~60 URLs de
+documentación oficial, OWASP/MITRE, arquitectura y blogs de ingeniería — con un índice
+`tecnología → fuentes` y `resolveSourcesForSkill()`. Las URLs se le pasan al modelo como **anclaje
+del prompt** y cada pregunta guarda un campo `source`.
+
+> ⚠️ **Esto todavía no es RAG.** El modelo **no lee** esas páginas: recibe la lista de URLs y
+> declara cuál corresponde. `source` es por tanto una *atribución del modelo*, no una cita
+> verificada (se descarta si la URL no estaba en la lista, pero eso solo evita enlaces inventados).
+> Sirve para dirigir la generación hacia tecnología real y para dejar el pipeline montado. La
+> auditabilidad de verdad llega cuando se recupere el **texto** de la fuente.
 
 **El problema que el RAG debería resolver** (y que conviene tener explícito antes de escribir código): hoy
 las preguntas salen del conocimiento paramétrico de Llama 3.3. Eso produce escenarios genéricos, **no
