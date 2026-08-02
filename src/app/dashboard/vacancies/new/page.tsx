@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,20 +12,34 @@ import { auth, db } from "@/lib/firebase/client";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthUser } from "@/hooks/use-auth-user";
 
 export default function NewVacancyPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user, authLoading } = useAuthUser();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
+    company: "",
     description: "",
     salary: "",
     location: "Remote",
     type: "Full-time",
     level: "senior",
-    skills: ""
+    skills: "",
+    examQuestionCount: "5"
   });
+
+  // El nombre de la empresa se prefija con el del perfil, pero es editable: un reclutador puede
+  // publicar para varias marcas. Antes estaba hardcodeado a "Empresa NEXTAPE" en TODA vacante,
+  // así que el developer veía el mismo nombre de empresa en el listado de empleos.
+  useEffect(() => {
+    if (!authLoading && user && !formData.company) {
+      setFormData((prev) => ({ ...prev, company: user.displayName ?? "" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +57,13 @@ export default function NewVacancyPage() {
       level: formData.level,
       requiredSkills: skillsArray,
       createdBy: auth.currentUser.uid,
-      company: "Empresa NEXTAPE",
+      company: formData.company.trim() || "Empresa",
+      examQuestionCount: Math.min(Math.max(Number(formData.examQuestionCount) || 5, 3), 20),
+      active: true,
       postedAt: Timestamp.now(),
-      applicantsCount: 0
+      applicantsCount: 0,
+      // El repertorio de preguntas aún no existe: lo crea /api/jobs/assessment justo debajo.
+      assessmentReady: false
     };
 
     // 1) Crear la vacante. Si esto falla, no hay nada creado.
@@ -63,15 +81,19 @@ export default function NewVacancyPage() {
       return;
     }
 
-    // 2) Generar la prueba EN SERVIDOR (preguntas públicas sin clave + clave en colección protegida).
-    // Si falla, la vacante YA existe: la prueba se generará al vuelo cuando un candidato la tome.
+    // 2) Generar EN SERVIDOR el repertorio de preguntas de la vacante (banco protegido con la
+    // clave de respuestas). Cada candidato responderá un sorteo de ese banco, sin volver a llamar
+    // a la IA. Si falla, la vacante YA existe y el repertorio se creará en la primera simulación.
     try {
-      await apiPost("/api/jobs/assessment", { jobId });
-      toast({ title: "¡Éxito!", description: "La vacante y su prueba técnica están online." });
+      const res = await apiPost<{ poolSize: number }>("/api/jobs/assessment", { jobId });
+      toast({
+        title: "¡Vacante publicada!",
+        description: `The LINE lista con un repertorio de ${res.poolSize} preguntas.`
+      });
     } catch {
       toast({
         title: "Vacante creada, prueba pendiente",
-        description: "La vacante se publicó; su prueba se generará al iniciarse la primera simulación.",
+        description: "La vacante se publicó; su repertorio se generará al iniciarse la primera simulación.",
         variant: "destructive"
       });
     }
@@ -107,6 +129,17 @@ export default function NewVacancyPage() {
               </div>
 
               <div className="space-y-2">
+                 <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">Empresa</Label>
+                 <Input
+                   required
+                   value={formData.company}
+                   onChange={e => setFormData({...formData, company: e.target.value})}
+                   placeholder="Nombre de tu empresa"
+                   className="h-14 bg-gray-50 border-none rounded-2xl px-6 text-lg font-bold"
+                 />
+              </div>
+
+              <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">Descripción del Rol</Label>
                  <Textarea 
                    required
@@ -129,12 +162,28 @@ export default function NewVacancyPage() {
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">Ubicación</Label>
-                    <Input 
+                    <Input
                       value={formData.location}
                       onChange={e => setFormData({...formData, location: e.target.value})}
                       placeholder="Remoto / Ciudad"
                       className="h-12 bg-gray-50 border-none rounded-xl"
                     />
+                 </div>
+                 {/* Antes este campo existía en el estado con valor fijo "Full-time" y sin UI:
+                     todas las vacantes se guardaban como tiempo completo. */}
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">Tipo de contrato</Label>
+                    <Select value={formData.type} onValueChange={v => setFormData({...formData, type: v})}>
+                       <SelectTrigger className="h-12 bg-gray-50 border-none rounded-xl">
+                          <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent className="rounded-xl">
+                          <SelectItem value="Full-time">Tiempo completo</SelectItem>
+                          <SelectItem value="Part-time">Medio tiempo</SelectItem>
+                          <SelectItem value="Contract">Por contrato</SelectItem>
+                          <SelectItem value="Internship">Prácticas</SelectItem>
+                       </SelectContent>
+                    </Select>
                  </div>
               </div>
            </div>
@@ -173,9 +222,25 @@ export default function NewVacancyPage() {
                          required
                          value={formData.skills}
                          onChange={e => setFormData({...formData, skills: e.target.value})}
-                         placeholder="react, nextjs, docker..." 
+                         placeholder="react, nextjs, docker..."
                          className="bg-white/5 border-none h-12 rounded-xl text-white px-4"
                        />
+                    </div>
+
+                    <div className="space-y-2">
+                       <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Preguntas por examen</Label>
+                       <Input
+                         type="number"
+                         min={3}
+                         max={20}
+                         value={formData.examQuestionCount}
+                         onChange={e => setFormData({...formData, examQuestionCount: e.target.value})}
+                         className="bg-white/5 border-none h-12 rounded-xl text-white px-4"
+                       />
+                       <p className="text-[9px] text-gray-500 leading-relaxed">
+                         Se sortean de un repertorio mayor con varios tipos de prueba: cada candidato
+                         recibe un examen distinto pero equivalente.
+                       </p>
                     </div>
                  </div>
 
