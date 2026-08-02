@@ -26,7 +26,16 @@ const eslintConfig = [
     },
   },
   {
-    ignores: [".next/**", "node_modules/**", "next-env.d.ts", "**/*.tsbuildinfo"],
+    // `.open-next/` y `.wrangler/` son salida de build de OpenNext/Cloudflare. Si se lintean,
+    // ESLint agota el heap de V8 y `npm run lint` aborta (rompía CI en todo PR).
+    ignores: [
+      ".next/**",
+      ".open-next/**",
+      ".wrangler/**",
+      "node_modules/**",
+      "next-env.d.ts",
+      "**/*.tsbuildinfo",
+    ],
   },
 ];
 

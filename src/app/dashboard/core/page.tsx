@@ -3,8 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { Fingerprint, Zap, Target, Activity, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { SkillsService } from "@/services/skills.service";
 import { useAuthUser } from "@/hooks/use-auth-user";
 import { getTechnicalGrade } from "@/lib/grading";

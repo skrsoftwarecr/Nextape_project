@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, migration]
+    branches: [main, develop, migration, thelineRAG]
   pull_request:
 
 jobs:

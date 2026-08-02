@@ -4,6 +4,11 @@ out/
 build/
 *.tsbuildinfo
 
+# OpenNext / Cloudflare Workers (artefactos de build — NO commitear:
+# son ~17 MB de bundle y hacen que `eslint .` agote el heap de Node)
+.open-next/
+.wrangler/
+
 # Production
 node_modules/
 npm-debug.log*

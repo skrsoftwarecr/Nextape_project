@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
-import { gradeAnswers } from "@/lib/server/assessment";
+import { gradeAnswers, isValidAnswerSet } from "@/lib/server/assessment";
 import { calculateMatch } from "@/lib/match";
 import type { Question } from "@/types/job.types";
 
@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
     }
 
     const questions = session.questions as Question[];
+
+    // El set de respuestas debe corresponder 1:1 con el examen. Antes, un `answers` incompleto
+    // se corregía en silencio (las faltantes contaban como falladas).
+    if (!isValidAnswerSet(questions, answers)) {
+      return NextResponse.json({ error: "invalid_answers" }, { status: 400 });
+    }
+
     const { skillScores, overall } = gradeAnswers(questions, answers);
 
     // Mapa de respuestas del usuario (índice elegido por pregunta) para el historial del intento.
@@ -52,16 +59,22 @@ export async function POST(req: NextRequest) {
     });
 
     // DNA: merge quedándonos con el MEJOR score por skill.
+    // Va en TRANSACCIÓN: era un read-modify-write y dos simulaciones concurrentes del mismo
+    // usuario (p.ej. dos pestañas) podían perder una de las dos actualizaciones.
     const scoresRef = adminDb().collection("user_skill_scores").doc(uid);
-    const currentSnap = await scoresRef.get();
-    const merged: Record<string, number> = { ...(currentSnap.data()?.scores || {}) };
-    for (const [skill, score] of Object.entries(skillScores)) {
-      merged[skill] = Math.max(merged[skill] ?? 0, score);
-    }
-    await scoresRef.set(
-      { uid, scores: merged, updatedAt: FieldValue.serverTimestamp() },
-      { merge: true }
-    );
+    const merged = await adminDb().runTransaction(async (tx) => {
+      const currentSnap = await tx.get(scoresRef);
+      const next: Record<string, number> = { ...(currentSnap.data()?.scores || {}) };
+      for (const [skill, score] of Object.entries(skillScores)) {
+        next[skill] = Math.max(next[skill] ?? 0, score);
+      }
+      tx.set(
+        scoresRef,
+        { uid, scores: next, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+      return next;
+    });
 
     // Registro del intento (historial + métrica de "Simulaciones").
     const attemptId = `${uid}_${sessionId}`;
@@ -100,32 +113,37 @@ export async function POST(req: NextRequest) {
 
           const matchId = `${uid}_${jobId}`;
           const matchRef = adminDb().collection("candidate_matches").doc(matchId);
-          const matchSnap = await matchRef.get();
-          const isNewApplicant = !matchSnap.exists;
-          const bestScore = Math.max(matchSnap.data()?.score ?? 0, overall);
+          const jobRef = adminDb().collection("jobs").doc(jobId);
 
-          await matchRef.set(
-            {
-              userId: uid,
-              recruiterId: job.createdBy,
-              jobId,
-              jobTitle: job.title ?? "",
-              candidateName,
-              score: bestScore,
-              matchPercent,
-              skills: skillsSnapshot,
-              completedAt: FieldValue.serverTimestamp(),
-            },
-            { merge: true }
-          );
+          // Mismo patrón read-modify-write que el DNA: en transacción para no perder el mejor
+          // score entre intentos concurrentes y para que `applicantsCount` no se desincronice
+          // del número real de candidatos (el contador solo sube al crear el match).
+          await adminDb().runTransaction(async (tx) => {
+            const matchSnap = await tx.get(matchRef);
+            const isNewApplicant = !matchSnap.exists;
+            const bestScore = Math.max(matchSnap.data()?.score ?? 0, overall);
 
-          // Solo la primera vez que este candidato aplica a esta vacante cuenta como aplicante nuevo.
-          if (isNewApplicant) {
-            await adminDb()
-              .collection("jobs")
-              .doc(jobId)
-              .update({ applicantsCount: FieldValue.increment(1) });
-          }
+            tx.set(
+              matchRef,
+              {
+                userId: uid,
+                recruiterId: job.createdBy,
+                jobId,
+                jobTitle: job.title ?? "",
+                candidateName,
+                score: bestScore,
+                matchPercent,
+                skills: skillsSnapshot,
+                completedAt: FieldValue.serverTimestamp(),
+              },
+              { merge: true }
+            );
+
+            // Solo la primera vez que este candidato aplica a esta vacante cuenta como aplicante nuevo.
+            if (isNewApplicant) {
+              tx.update(jobRef, { applicantsCount: FieldValue.increment(1) });
+            }
+          });
         }
       } catch (matchErr) {
         console.error("[line/submit] candidate_match error:", matchErr);

@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Fingerprint, Zap, Target, Activity, Loader2, User as UserIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Fingerprint, Zap, Loader2, User as UserIcon } from "lucide-react";
 import { SkillsService } from "@/services/skills.service";
 import { UserService } from "@/services/users.service";
 import { UserProfile } from "@/types/user.types";

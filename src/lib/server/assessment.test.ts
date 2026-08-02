@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { gradeAnswers, stripAnswerKey, SPECIALTY_STACKS } from "./assessment";
+import { gradeAnswers, stripAnswerKey, isValidAnswerSet, SPECIALTY_STACKS } from "./assessment";
 import type { Question } from "@/types/job.types";
 
 const q = (id: string, tag: string, correctIndex: number): Question => ({
@@ -29,6 +29,36 @@ describe("gradeAnswers", () => {
   it("normaliza el tag a minúsculas", () => {
     const { skillScores } = gradeAnswers([q("1", "React", 0)], [0]);
     expect(skillScores.react).toBe(100);
+  });
+});
+
+describe("isValidAnswerSet", () => {
+  const questions = [q("1", "react", 0), q("2", "docker", 2)];
+
+  it("acepta un set completo y en rango", () => {
+    expect(isValidAnswerSet(questions, [0, 3])).toBe(true);
+  });
+
+  it("rechaza un set incompleto (antes puntuaba en silencio)", () => {
+    expect(isValidAnswerSet(questions, [0])).toBe(false);
+  });
+
+  it("rechaza un set más largo que el examen", () => {
+    expect(isValidAnswerSet(questions, [0, 1, 2])).toBe(false);
+  });
+
+  it("rechaza índices fuera del rango de opciones", () => {
+    expect(isValidAnswerSet(questions, [0, 4])).toBe(false);
+    expect(isValidAnswerSet(questions, [-1, 0])).toBe(false);
+  });
+
+  it("rechaza índices no enteros o no numéricos", () => {
+    expect(isValidAnswerSet(questions, [0, 1.5])).toBe(false);
+    expect(isValidAnswerSet(questions, [0, NaN])).toBe(false);
+  });
+
+  it("acepta el examen vacío con respuestas vacías", () => {
+    expect(isValidAnswerSet([], [])).toBe(true);
   });
 });
 
