@@ -1,8 +1,14 @@
-import type { Question, PublicQuestion } from "@/types/job.types";
+import type {
+  Answer,
+  Question,
+  QuestionType,
+  PublicQuestion,
+} from "@/types/question.types";
 
 /**
  * Utilidades de servidor para "The LINE". SOLO se importan desde route handlers.
- * La respuesta correcta (`correctIndex`) nunca sale de aquí hacia el cliente.
+ * Ningún campo de solución (`correctIndex`, `correctIndexes`, `correct`, `correctOrder`)
+ * sale de aquí hacia el cliente.
  */
 
 /** Stacks por especialidad para la simulación general. */
@@ -12,23 +18,156 @@ export const SPECIALTY_STACKS: Record<string, string[]> = {
   devops: ["kubernetes", "ci-cd", "aws", "terraform"],
 };
 
-/** Elimina `correctIndex` de las preguntas antes de enviarlas al cliente. */
+/** Niveles válidos de una simulación. Debe coincidir con el enum del flow de IA. */
+export const LEVELS = ["junior", "mid", "senior", "master"] as const;
+
+/**
+ * Normaliza especialidad y nivel a valores conocidos.
+ *
+ * Importante para el coste: los repertorios generales se guardan en un doc por
+ * `especialidad_nivel`. Sin acotar la entrada, un cliente podría pedir especialidades inventadas
+ * en bucle y forzar una generación de IA (y un documento nuevo) por cada una.
+ */
+export function normalizeSimulationParams(
+  specialty: unknown,
+  level: unknown
+): { specialty: string; level: string } {
+  const s = String(specialty ?? "").toLowerCase();
+  const l = String(level ?? "").toLowerCase();
+  return {
+    specialty: s in SPECIALTY_STACKS ? s : "frontend",
+    level: (LEVELS as readonly string[]).includes(l) ? l : "senior",
+  };
+}
+
+/* ────────────────────────────── Compatibilidad ────────────────────────────── */
+
+/**
+ * Repara una pregunta leída de Firestore que se guardó antes de existir los tipos.
+ *
+ * Los repertorios ya creados no llevan `type` y son todos de opción múltiple. Sin esto, una
+ * vacante publicada antes de este cambio dejaría de poder evaluarse.
+ */
+export function normalizeStoredQuestion(raw: Question): Question {
+  if (raw?.type) return raw;
+  return { ...(raw as object), type: "multiple_choice" } as Question;
+}
+
+export function normalizeStoredQuestions(questions: Question[]): Question[] {
+  return (questions ?? []).map(normalizeStoredQuestion);
+}
+
+/* ────────────────────────── Frontera cliente/servidor ────────────────────── */
+
+/**
+ * Construye la versión pública de una pregunta con **lista blanca**: se enumeran los campos que
+ * SÍ salen, en vez de borrar los que no. Si mañana se añade un tipo con una clave de solución
+ * nueva, no se filtra por olvido. Es la invariante I1 del proyecto.
+ */
+function toPublicQuestion(q: Question): PublicQuestion {
+  const base = {
+    id: q.id,
+    briefing: q.briefing,
+    text: q.text,
+    difficulty: q.difficulty,
+    tag: q.tag,
+  };
+
+  switch (q.type) {
+    case "multiple_choice":
+      return { ...base, type: "multiple_choice", options: q.options };
+    case "code_output":
+      return { ...base, type: "code_output", code: q.code, language: q.language, options: q.options };
+    case "multi_select":
+      return { ...base, type: "multi_select", options: q.options };
+    case "true_false":
+      return { ...base, type: "true_false" };
+    case "ordering":
+      return { ...base, type: "ordering", items: q.items };
+  }
+}
+
+/** Elimina toda clave de solución antes de enviar las preguntas al cliente. */
 export function stripAnswerKey(questions: Question[]): PublicQuestion[] {
-  return questions.map(({ correctIndex: _omit, ...rest }) => rest);
+  return questions.map(toPublicQuestion);
+}
+
+/* ─────────────────────────────── Validación ──────────────────────────────── */
+
+function isIndexIn(value: unknown, length: number): boolean {
+  return Number.isInteger(value) && (value as number) >= 0 && (value as number) < length;
+}
+
+/** ¿La respuesta tiene la forma que exige el tipo de la pregunta? */
+export function isValidAnswerFor(question: Question, answer: Answer): boolean {
+  switch (question.type) {
+    case "multiple_choice":
+    case "code_output":
+      return isIndexIn(answer, question.options.length);
+
+    case "true_false":
+      return typeof answer === "boolean";
+
+    case "multi_select": {
+      if (!Array.isArray(answer)) return false;
+      // Se admite la respuesta vacía (no marcar nada), pero no índices inválidos ni repetidos.
+      if (!answer.every((a) => isIndexIn(a, question.options.length))) return false;
+      return new Set(answer).size === answer.length;
+    }
+
+    case "ordering": {
+      if (!Array.isArray(answer) || answer.length !== question.items.length) return false;
+      if (!answer.every((a) => isIndexIn(a, question.items.length))) return false;
+      // Debe ser una permutación completa: cada elemento colocado una sola vez.
+      return new Set(answer).size === answer.length;
+    }
+  }
 }
 
 /**
- * Valida que el set de respuestas corresponda 1:1 con las preguntas de la sesión.
+ * Valida el set completo de respuestas contra el examen.
  *
- * Sin esto, un `answers` más corto que `questions` se corregía en silencio: las faltantes
- * contaban como falladas y el usuario recibía un score bajo sin saber por qué (y un cliente
- * roto podía degradar el DNA de forma invisible). Mejor rechazar el envío.
+ * Sin esto, un envío incompleto se corregía en silencio: las faltantes contaban como falladas y
+ * el candidato recibía un score bajo sin saber por qué.
  */
-export function isValidAnswerSet(questions: Question[], answers: number[]): boolean {
+export function isValidAnswerSet(questions: Question[], answers: Answer[]): boolean {
   if (!Array.isArray(answers) || answers.length !== questions.length) return false;
-  return answers.every(
-    (a, i) => Number.isInteger(a) && a >= 0 && a < (questions[i]?.options?.length ?? 0)
-  );
+  return questions.every((q, i) => isValidAnswerFor(q, answers[i]));
+}
+
+/* ──────────────────────────────── Grading ────────────────────────────────── */
+
+/**
+ * Puntúa una pregunta de 0 a 1. Determinista, sin IA.
+ *
+ * `multi_select` y `ordering` admiten **crédito parcial**: en una prueba de nivel senior, acertar
+ * 3 de 4 mitigaciones de un incidente no es lo mismo que no acertar ninguna.
+ */
+export function gradeQuestion(question: Question, answer: Answer): number {
+  switch (question.type) {
+    case "multiple_choice":
+    case "code_output":
+      return answer === question.correctIndex ? 1 : 0;
+
+    case "true_false":
+      return answer === question.correct ? 1 : 0;
+
+    case "multi_select": {
+      if (!Array.isArray(answer)) return 0;
+      const correct = new Set(question.correctIndexes);
+      if (correct.size === 0) return 0;
+      const hits = answer.filter((a) => correct.has(a)).length;
+      const misses = answer.length - hits;
+      // Restar los fallos evita que marcarlo todo garantice la puntuación máxima.
+      return Math.max(0, (hits - misses) / correct.size);
+    }
+
+    case "ordering": {
+      if (!Array.isArray(answer) || question.correctOrder.length === 0) return 0;
+      const hits = question.correctOrder.filter((expected, k) => answer[k] === expected).length;
+      return hits / question.correctOrder.length;
+    }
+  }
 }
 
 export interface GradeResult {
@@ -39,31 +178,114 @@ export interface GradeResult {
 }
 
 /**
- * Corrige las respuestas contra la clave. `answers[i]` es el índice elegido para `questions[i]`.
- * Score por tag = % de aciertos dentro de ese tag. Global = % de aciertos total.
+ * Corrige las respuestas contra la clave. `answers[i]` corresponde a `questions[i]`.
+ * Score por tag = media de crédito obtenido en ese tag. Global = media de todo el examen.
  */
-export function gradeAnswers(questions: Question[], answers: number[]): GradeResult {
-  const perTag: Record<string, { correct: number; total: number }> = {};
-  let correctCount = 0;
+export function gradeAnswers(questions: Question[], answers: Answer[]): GradeResult {
+  const perTag: Record<string, { earned: number; total: number }> = {};
+  let earnedTotal = 0;
 
   questions.forEach((q, i) => {
     const tag = String(q.tag || "general").toLowerCase();
-    perTag[tag] = perTag[tag] || { correct: 0, total: 0 };
+    const credit = gradeQuestion(q, answers[i] ?? null);
+    perTag[tag] = perTag[tag] || { earned: 0, total: 0 };
+    perTag[tag].earned += credit;
     perTag[tag].total++;
-    if (answers[i] === q.correctIndex) {
-      perTag[tag].correct++;
-      correctCount++;
-    }
+    earnedTotal += credit;
   });
 
   const skillScores: Record<string, number> = {};
-  for (const [tag, { correct, total }] of Object.entries(perTag)) {
-    skillScores[tag] = Math.round((correct / total) * 100);
+  for (const [tag, { earned, total }] of Object.entries(perTag)) {
+    skillScores[tag] = Math.round((earned / total) * 100);
   }
 
-  const overall = questions.length > 0
-    ? Math.round((correctCount / questions.length) * 100)
-    : 0;
+  const overall = questions.length > 0 ? Math.round((earnedTotal / questions.length) * 100) : 0;
 
   return { skillScores, overall };
+}
+
+/* ───────────────────────────── Repertorio ────────────────────────────────── */
+
+/** Baraja una copia del array (Fisher-Yates). No muta la entrada. */
+export function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/**
+ * Elimina preguntas repetidas de un repertorio, comparando el enunciado normalizado.
+ * El modelo tiende a repetir escenarios entre llamadas; sin esto, un candidato podría
+ * recibir la misma pregunta dos veces en el mismo examen.
+ */
+export function dedupeQuestions(questions: Question[]): Question[] {
+  const seen = new Set<string>();
+  const out: Question[] = [];
+  for (const q of questions) {
+    const key = (q.text ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+  }
+  return out;
+}
+
+/**
+ * Elige `count` preguntas al azar del repertorio, estratificando por **skill y por tipo**.
+ *
+ * Por qué doblemente estratificado: si se sortea sin más, un candidato puede recibir 5 preguntas
+ * de `react` de opción múltiple y otro 5 de `docker` de ordenar pasos para la misma vacante, y sus
+ * scores dejan de ser comparables — que es justo lo que el reclutador usa para rankear. Repartiendo
+ * por turnos, todos reciben el mismo *reparto* de skills y de tipos aunque las preguntas cambien.
+ *
+ * Devuelve menos de `count` solo si el repertorio no da para más.
+ */
+export function pickRandomQuestions(pool: Question[], count: number): Question[] {
+  if (count <= 0 || pool.length === 0) return [];
+  if (pool.length <= count) return shuffle(pool);
+
+  // Grupo = combinación (tag, tipo). El reparto por turnos entre grupos equilibra ambas
+  // dimensiones a la vez.
+  const groups = new Map<string, Question[]>();
+  for (const q of pool) {
+    const key = `${String(q.tag || "general").toLowerCase()}::${q.type}`;
+    groups.set(key, [...(groups.get(key) ?? []), q]);
+  }
+
+  const buckets = shuffle([...groups.values()]).map((g) => shuffle(g));
+  const picked: Question[] = [];
+
+  while (picked.length < count) {
+    let tookAny = false;
+    for (const bucket of buckets) {
+      if (picked.length >= count) break;
+      const q = bucket.pop();
+      if (q) {
+        picked.push(q);
+        tookAny = true;
+      }
+    }
+    if (!tookAny) break; // repertorio agotado
+  }
+
+  // Se rebaraja para que el orden no revele el reparto por grupo.
+  return shuffle(picked);
+}
+
+/** Reparto de tipos presente en un conjunto de preguntas (para diagnóstico y UI). */
+export function countByType(questions: Question[]): Record<QuestionType, number> {
+  const counts = {
+    multiple_choice: 0,
+    code_output: 0,
+    multi_select: 0,
+    true_false: 0,
+    ordering: 0,
+  } as Record<QuestionType, number>;
+  for (const q of questions) {
+    if (q.type in counts) counts[q.type]++;
+  }
+  return counts;
 }

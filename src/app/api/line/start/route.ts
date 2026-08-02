@@ -1,17 +1,71 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
+import type { DocumentData, DocumentReference } from "firebase-admin/firestore";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
-import { generateQuestions } from "@/ai/flows/generate-assessment-flow";
-import { SPECIALTY_STACKS, stripAnswerKey } from "@/lib/server/assessment";
-import type { Question } from "@/types/job.types";
+import {
+  SPECIALTY_STACKS,
+  normalizeSimulationParams,
+  normalizeStoredQuestions,
+  pickRandomQuestions,
+  stripAnswerKey,
+} from "@/lib/server/assessment";
+import { buildQuestionPool, QUESTIONS_PER_EXAM } from "@/lib/server/question-pool";
+import type { Question } from "@/types/question.types";
 
 // El Admin SDK requiere el runtime de Node (no Edge).
 export const runtime = "nodejs";
 
 /**
+ * Lee el repertorio de un documento de banco de preguntas. `[]` si no hay.
+ * Normaliza los repertorios creados antes de existir los tipos de pregunta (sin campo `type`),
+ * para que una vacante publicada entonces siga siendo evaluable.
+ */
+function readPool(data: DocumentData | undefined): Question[] {
+  const questions = data?.questions;
+  return Array.isArray(questions) ? normalizeStoredQuestions(questions as Question[]) : [];
+}
+
+/**
+ * Devuelve el repertorio de `ref`; si está vacío, lo genera con IA y lo persiste.
+ *
+ * La generación es el camino EXCEPCIONAL: en régimen normal el repertorio ya existe (lo crea
+ * `/api/jobs/assessment` al publicar la vacante) y esta función solo lee. La transacción evita
+ * que dos candidatos que empiezan a la vez generen —y paguen— dos repertorios distintos.
+ */
+async function loadOrCreatePool(
+  ref: DocumentReference,
+  input: { stack: string[]; level: string },
+  metadata: Record<string, unknown>
+): Promise<Question[]> {
+  const snap = await ref.get();
+  const existing = readPool(snap.data());
+  if (existing.length > 0) return existing;
+
+  const generated = await buildQuestionPool(input);
+  if (generated.length === 0) return [];
+
+  return adminDb().runTransaction(async (tx) => {
+    const fresh = await tx.get(ref);
+    const freshPool = readPool(fresh.data());
+    if (freshPool.length > 0) return freshPool; // otro candidato ganó la carrera
+    tx.set(ref, {
+      ...metadata,
+      questions: generated,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return generated;
+  });
+}
+
+/**
  * POST /api/line/start
- * Inicia una simulación: genera (o carga) preguntas EN SERVIDOR, guarda la clave de respuestas
- * en una sesión que el cliente no puede leer, y devuelve las preguntas SIN `correctIndex`.
+ * Inicia una simulación: **sortea** las preguntas de un repertorio ya generado, guarda la clave
+ * de respuestas en una sesión que el cliente no puede leer, y devuelve las preguntas SIN
+ * `correctIndex`.
+ *
+ * En el camino normal **no llama a la IA**: el repertorio se genera una sola vez (al publicar la
+ * vacante, o la primera vez que se usa una especialidad). Eso abarata el coste por candidato y
+ * quita a este endpoint su capacidad de disparar trabajo caro bajo demanda.
  *
  * Body: { jobId?: string } | { specialty?: string, level?: string }
  * Auth: header `Authorization: Bearer <Firebase ID token>`.
@@ -24,69 +78,69 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const jobId: string | undefined = body?.jobId;
-  const specialty: string = body?.specialty ?? "frontend";
-  const level: string = body?.level ?? "senior";
 
   try {
-    let questions: Question[] = [];
+    let pool: Question[] = [];
+    let examSize = QUESTIONS_PER_EXAM;
 
     if (jobId) {
-      // Preferimos la clave de respuestas protegida (server-only); si no existe, generamos.
+      const jobRef = adminDb().collection("jobs").doc(jobId);
+      const jobSnap = await jobRef.get();
+      if (!jobSnap.exists) {
+        return NextResponse.json({ error: "job_not_found" }, { status: 404 });
+      }
+      const job = jobSnap.data()!;
+
+      // Una vacante archivada no admite nuevas candidaturas.
+      if (job.active === false) {
+        return NextResponse.json({ error: "job_closed" }, { status: 409 });
+      }
+
+      // El reclutador puede fijar el tamaño del examen; se acota para que nadie pida un examen
+      // absurdo (ni de 0 preguntas ni de 500).
+      if (Number.isInteger(job.examQuestionCount)) {
+        examSize = Math.min(Math.max(job.examQuestionCount, 3), 20);
+      }
+
       const keyRef = adminDb().collection("job_answer_keys").doc(jobId);
-      const keySnap = await keyRef.get();
 
-      if (keySnap.exists && Array.isArray(keySnap.data()?.questions)) {
-        questions = keySnap.data()!.questions as Question[];
-      } else {
-        const jobRef = adminDb().collection("jobs").doc(jobId);
-        const jobSnap = await jobRef.get();
-        if (!jobSnap.exists) {
-          return NextResponse.json({ error: "job_not_found" }, { status: 404 });
-        }
-        const job = jobSnap.data()!;
-        const result = await generateQuestions({
-          stack: job.requiredSkills?.length ? job.requiredSkills : ["react", "nextjs"],
+      pool = await loadOrCreatePool(
+        keyRef,
+        {
+          stack: Array.isArray(job.requiredSkills) && job.requiredSkills.length
+            ? job.requiredSkills
+            : SPECIALTY_STACKS.frontend,
           level: job.level || "senior",
-          count: 5,
-        });
-        const generated = result.questions as Question[];
+        },
+        { jobId }
+      );
 
-        // Persistimos la clave para que TODOS los candidatos de esta vacante respondan el MISMO
-        // examen. Antes se generaba al vuelo sin guardar: cada candidato recibía preguntas
-        // distintas y el ranking de `candidate_matches` dejaba de ser comparable, que es
-        // justo el valor que ve el reclutador.
-        // La transacción resuelve la carrera entre dos candidatos que empiezan a la vez:
-        // gana el primero en escribir y el segundo reutiliza esa misma clave.
-        questions = await adminDb().runTransaction(async (tx) => {
-          const fresh = await tx.get(keyRef);
-          if (fresh.exists && Array.isArray(fresh.data()?.questions)) {
-            return fresh.data()!.questions as Question[];
-          }
-          tx.set(keyRef, {
-            jobId,
-            questions: generated,
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-          // El doc público de la vacante guarda las preguntas SIN la clave.
-          tx.update(jobRef, {
-            assessmentQuestions: stripAnswerKey(generated),
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-          return generated;
-        });
+      // Si el repertorio se acaba de crear aquí (la generación al publicar falló), se refleja en
+      // el doc público para que el reclutador vea el estado real de la prueba. Best-effort.
+      if (pool.length > 0 && !job.assessmentReady) {
+        await jobRef
+          .update({ assessmentReady: true, assessmentPoolSize: pool.length })
+          .catch((err) => console.error("[line/start] no se pudo marcar assessmentReady:", err));
       }
     } else {
-      const result = await generateQuestions({
-        stack: SPECIALTY_STACKS[specialty] ?? SPECIALTY_STACKS.frontend,
-        level,
-        count: 5,
-      });
-      questions = result.questions as Question[];
+      // Simulación general: un repertorio compartido por especialidad y nivel.
+      const { specialty, level } = normalizeSimulationParams(body?.specialty, body?.level);
+      const poolRef = adminDb().collection("line_question_pools").doc(`${specialty}_${level}`);
+
+      pool = await loadOrCreatePool(
+        poolRef,
+        { stack: SPECIALTY_STACKS[specialty], level },
+        { specialty, level }
+      );
     }
 
-    if (!questions || questions.length === 0) {
+    if (pool.length === 0) {
       return NextResponse.json({ error: "no_questions" }, { status: 502 });
     }
+
+    // El examen del candidato: X preguntas sorteadas del repertorio, repartidas entre las skills
+    // y entre los tipos de pregunta.
+    const questions = pickRandomQuestions(pool, examSize);
 
     // Sesión con la clave completa (solo Admin puede leerla/escribirla).
     const sessionRef = adminDb().collection("line_sessions").doc();

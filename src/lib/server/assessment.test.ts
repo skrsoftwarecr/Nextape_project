@@ -1,25 +1,136 @@
 import { describe, it, expect } from "vitest";
-import { gradeAnswers, stripAnswerKey, isValidAnswerSet, SPECIALTY_STACKS } from "./assessment";
-import type { Question } from "@/types/job.types";
+import {
+  gradeAnswers,
+  gradeQuestion,
+  stripAnswerKey,
+  isValidAnswerSet,
+  isValidAnswerFor,
+  dedupeQuestions,
+  pickRandomQuestions,
+  normalizeSimulationParams,
+  normalizeStoredQuestions,
+  countByType,
+  SPECIALTY_STACKS,
+} from "./assessment";
+import type {
+  MultipleChoiceQuestion,
+  MultiSelectQuestion,
+  OrderingQuestion,
+  Question,
+  TrueFalseQuestion,
+  CodeOutputQuestion,
+} from "@/types/question.types";
 
-const q = (id: string, tag: string, correctIndex: number): Question => ({
+const base = { briefing: "b", difficulty: "senior" };
+
+const mc = (id: string, tag: string, correctIndex: number, text = "t"): MultipleChoiceQuestion => ({
+  ...base,
   id,
   tag,
-  correctIndex,
-  briefing: "b",
-  text: "t",
+  text,
+  type: "multiple_choice",
   options: ["0", "1", "2", "3"],
-  difficulty: "senior",
+  correctIndex,
+});
+
+const tf = (id: string, tag: string, correct: boolean, text = "tf"): TrueFalseQuestion => ({
+  ...base,
+  id,
+  tag,
+  text,
+  type: "true_false",
+  correct,
+});
+
+const ms = (id: string, tag: string, correctIndexes: number[], text = "ms"): MultiSelectQuestion => ({
+  ...base,
+  id,
+  tag,
+  text,
+  type: "multi_select",
+  options: ["a", "b", "c", "d", "e"],
+  correctIndexes,
+});
+
+const ord = (id: string, tag: string, correctOrder: number[], text = "ord"): OrderingQuestion => ({
+  ...base,
+  id,
+  tag,
+  text,
+  type: "ordering",
+  items: ["p0", "p1", "p2", "p3"],
+  correctOrder,
+});
+
+const code = (id: string, tag: string, correctIndex: number, text = "co"): CodeOutputQuestion => ({
+  ...base,
+  id,
+  tag,
+  text,
+  type: "code_output",
+  code: "const x = 1;",
+  language: "typescript",
+  options: ["0", "1", "2", "3"],
+  correctIndex,
+});
+
+/** Repertorio de `n` preguntas de opción múltiple de un mismo tag, con enunciados distintos. */
+const poolOf = (tag: string, n: number): Question[] =>
+  Array.from({ length: n }, (_, i) => mc(`${tag}-${i}`, tag, 0, `${tag} pregunta ${i}`));
+
+describe("gradeQuestion — corrección determinista por tipo", () => {
+  it("opción múltiple y código: acierto binario", () => {
+    expect(gradeQuestion(mc("1", "react", 2), 2)).toBe(1);
+    expect(gradeQuestion(mc("1", "react", 2), 0)).toBe(0);
+    expect(gradeQuestion(code("1", "react", 3), 3)).toBe(1);
+  });
+
+  it("verdadero/falso: distingue el booleano correcto", () => {
+    expect(gradeQuestion(tf("1", "react", true), true)).toBe(1);
+    expect(gradeQuestion(tf("1", "react", true), false)).toBe(0);
+    expect(gradeQuestion(tf("1", "react", false), false)).toBe(1);
+  });
+
+  it("selección múltiple: crédito parcial", () => {
+    const q = ms("1", "react", [0, 2]);
+    expect(gradeQuestion(q, [0, 2])).toBe(1); // ambas correctas
+    expect(gradeQuestion(q, [0])).toBe(0.5); // media
+    expect(gradeQuestion(q, [])).toBe(0);
+  });
+
+  it("selección múltiple: marcarlo todo NO garantiza el máximo", () => {
+    const q = ms("1", "react", [0, 2]);
+    // 2 aciertos y 3 fallos → (2-3)/2 < 0, se recorta a 0.
+    expect(gradeQuestion(q, [0, 1, 2, 3, 4])).toBe(0);
+  });
+
+  it("ordenar: crédito por posiciones acertadas", () => {
+    const q = ord("1", "react", [2, 0, 3, 1]);
+    expect(gradeQuestion(q, [2, 0, 3, 1])).toBe(1);
+    expect(gradeQuestion(q, [2, 0, 1, 3])).toBe(0.5); // 2 de 4 posiciones
+    expect(gradeQuestion(q, [1, 3, 0, 2])).toBe(0);
+  });
+
+  it("una respuesta nula nunca puntúa", () => {
+    expect(gradeQuestion(mc("1", "react", 0), null)).toBe(0);
+    expect(gradeQuestion(tf("1", "react", true), null)).toBe(0);
+    expect(gradeQuestion(ord("1", "react", [0, 1, 2, 3]), null)).toBe(0);
+  });
 });
 
 describe("gradeAnswers", () => {
-  it("puntúa por tag y global", () => {
-    const questions = [q("1", "react", 0), q("2", "react", 1), q("3", "docker", 2)];
-    // react: acierta la 1 (0==0), falla la 2 (0!=1) → 50; docker: acierta (2==2) → 100
-    const { skillScores, overall } = gradeAnswers(questions, [0, 0, 2]);
+  it("puntúa por tag y global mezclando tipos", () => {
+    const questions = [mc("1", "react", 0), tf("2", "react", true), mc("3", "docker", 2)];
+    // react: acierta la 1, falla la 2 → 50; docker: acierta → 100
+    const { skillScores, overall } = gradeAnswers(questions, [0, false, 2]);
     expect(skillScores.react).toBe(50);
     expect(skillScores.docker).toBe(100);
-    expect(overall).toBe(67); // 2/3 = 66.6 → 67
+    expect(overall).toBe(67); // 2/3
+  });
+
+  it("agrega el crédito parcial al score del tag", () => {
+    const { skillScores } = gradeAnswers([ms("1", "react", [0, 2])], [[0]]);
+    expect(skillScores.react).toBe(50);
   });
 
   it("maneja examen vacío", () => {
@@ -27,34 +138,51 @@ describe("gradeAnswers", () => {
   });
 
   it("normaliza el tag a minúsculas", () => {
-    const { skillScores } = gradeAnswers([q("1", "React", 0)], [0]);
+    const { skillScores } = gradeAnswers([mc("1", "React", 0)], [0]);
     expect(skillScores.react).toBe(100);
   });
 });
 
-describe("isValidAnswerSet", () => {
-  const questions = [q("1", "react", 0), q("2", "docker", 2)];
+describe("isValidAnswerFor — la forma debe coincidir con el tipo", () => {
+  it("rechaza formas cruzadas entre tipos", () => {
+    expect(isValidAnswerFor(mc("1", "r", 0), true)).toBe(false);
+    expect(isValidAnswerFor(tf("1", "r", true), 1)).toBe(false);
+    expect(isValidAnswerFor(ms("1", "r", [0]), 0)).toBe(false);
+    expect(isValidAnswerFor(ord("1", "r", [0, 1, 2, 3]), 0)).toBe(false);
+  });
 
-  it("acepta un set completo y en rango", () => {
-    expect(isValidAnswerSet(questions, [0, 3])).toBe(true);
+  it("acepta las formas correctas", () => {
+    expect(isValidAnswerFor(mc("1", "r", 0), 3)).toBe(true);
+    expect(isValidAnswerFor(tf("1", "r", true), false)).toBe(true);
+    expect(isValidAnswerFor(ms("1", "r", [0]), [1, 4])).toBe(true);
+    expect(isValidAnswerFor(ord("1", "r", [0, 1, 2, 3]), [3, 2, 1, 0])).toBe(true);
+  });
+
+  it("rechaza índices fuera de rango o repetidos", () => {
+    expect(isValidAnswerFor(mc("1", "r", 0), 4)).toBe(false);
+    expect(isValidAnswerFor(mc("1", "r", 0), -1)).toBe(false);
+    expect(isValidAnswerFor(ms("1", "r", [0]), [1, 1])).toBe(false);
+  });
+
+  it("ordenar exige una permutación completa", () => {
+    expect(isValidAnswerFor(ord("1", "r", [0, 1, 2, 3]), [0, 1, 2])).toBe(false);
+    expect(isValidAnswerFor(ord("1", "r", [0, 1, 2, 3]), [0, 0, 1, 2])).toBe(false);
+  });
+});
+
+describe("isValidAnswerSet", () => {
+  const questions = [mc("1", "react", 0), tf("2", "docker", true)];
+
+  it("acepta un set completo y bien formado", () => {
+    expect(isValidAnswerSet(questions, [3, false])).toBe(true);
   });
 
   it("rechaza un set incompleto (antes puntuaba en silencio)", () => {
-    expect(isValidAnswerSet(questions, [0])).toBe(false);
+    expect(isValidAnswerSet(questions, [3])).toBe(false);
   });
 
   it("rechaza un set más largo que el examen", () => {
-    expect(isValidAnswerSet(questions, [0, 1, 2])).toBe(false);
-  });
-
-  it("rechaza índices fuera del rango de opciones", () => {
-    expect(isValidAnswerSet(questions, [0, 4])).toBe(false);
-    expect(isValidAnswerSet(questions, [-1, 0])).toBe(false);
-  });
-
-  it("rechaza índices no enteros o no numéricos", () => {
-    expect(isValidAnswerSet(questions, [0, 1.5])).toBe(false);
-    expect(isValidAnswerSet(questions, [0, NaN])).toBe(false);
+    expect(isValidAnswerSet(questions, [0, true, 1])).toBe(false);
   });
 
   it("acepta el examen vacío con respuestas vacías", () => {
@@ -62,12 +190,164 @@ describe("isValidAnswerSet", () => {
   });
 });
 
-describe("stripAnswerKey", () => {
-  it("elimina correctIndex antes de enviar al cliente", () => {
-    const stripped = stripAnswerKey([q("1", "react", 2)]);
-    expect("correctIndex" in stripped[0]).toBe(false);
-    expect(stripped[0].tag).toBe("react");
-    expect(stripped[0].options).toHaveLength(4);
+describe("stripAnswerKey — invariante I1", () => {
+  it("elimina la clave de CADA tipo de pregunta", () => {
+    const questions: Question[] = [
+      mc("1", "react", 2),
+      code("2", "react", 1),
+      ms("3", "react", [0, 2]),
+      tf("4", "react", true),
+      ord("5", "react", [2, 0, 3, 1]),
+    ];
+    const stripped = stripAnswerKey(questions);
+    const serialized = JSON.stringify(stripped);
+
+    for (const key of ["correctIndex", "correctIndexes", "correct", "correctOrder", "source"]) {
+      expect(serialized.includes(`"${key}"`)).toBe(false);
+    }
+  });
+
+  it("conserva lo que el candidato necesita para responder", () => {
+    const [stripped] = stripAnswerKey([code("1", "react", 1)]);
+    expect(stripped.type).toBe("code_output");
+    expect("options" in stripped && stripped.options).toHaveLength(4);
+    expect("code" in stripped && stripped.code).toBe("const x = 1;");
+  });
+
+  it("no filtra la fuente atribuida por el modelo", () => {
+    const conFuente = { ...mc("1", "react", 2), source: "https://react.dev" };
+    expect("source" in stripAnswerKey([conFuente])[0]).toBe(false);
+  });
+});
+
+describe("normalizeStoredQuestions — compatibilidad con repertorios antiguos", () => {
+  it("asume opción múltiple si falta el tipo", () => {
+    const legacy = {
+      id: "1",
+      briefing: "b",
+      text: "t",
+      tag: "react",
+      difficulty: "senior",
+      options: ["a", "b", "c", "d"],
+      correctIndex: 1,
+    } as unknown as Question;
+
+    const [fixed] = normalizeStoredQuestions([legacy]);
+    expect(fixed.type).toBe("multiple_choice");
+    expect(gradeQuestion(fixed, 1)).toBe(1);
+  });
+
+  it("respeta el tipo cuando ya existe", () => {
+    expect(normalizeStoredQuestions([tf("1", "react", true)])[0].type).toBe("true_false");
+  });
+});
+
+describe("dedupeQuestions", () => {
+  it("elimina enunciados repetidos ignorando mayúsculas y espacios", () => {
+    const questions = [
+      mc("1", "react", 0, "¿Cómo resuelves el N+1?"),
+      mc("2", "react", 1, "  ¿CÓMO   resuelves el N+1?  "),
+      mc("3", "docker", 2, "¿Cómo reduces el tamaño de la imagen?"),
+    ];
+    const out = dedupeQuestions(questions);
+    expect(out).toHaveLength(2);
+    expect(out.map((x) => x.id)).toEqual(["1", "3"]);
+  });
+
+  it("descarta preguntas sin enunciado", () => {
+    expect(dedupeQuestions([mc("1", "react", 0, "   ")])).toHaveLength(0);
+  });
+});
+
+describe("pickRandomQuestions", () => {
+  const pool = [...poolOf("react", 10), ...poolOf("docker", 10)];
+
+  it("devuelve exactamente la cantidad pedida", () => {
+    expect(pickRandomQuestions(pool, 5)).toHaveLength(5);
+  });
+
+  it("nunca repite una pregunta dentro del mismo examen", () => {
+    for (let i = 0; i < 20; i++) {
+      const picked = pickRandomQuestions(pool, 8);
+      expect(new Set(picked.map((p) => p.id)).size).toBe(8);
+    }
+  });
+
+  it("estratifica por tag: reparte el examen entre las skills", () => {
+    for (let i = 0; i < 20; i++) {
+      const picked = pickRandomQuestions(pool, 4);
+      expect(picked.filter((p) => p.tag === "react")).toHaveLength(2);
+    }
+  });
+
+  it("estratifica también por TIPO de pregunta", () => {
+    // Un solo tag, cuatro tipos con 5 preguntas cada uno: un examen de 4 debe traer uno de cada.
+    const mixto: Question[] = [
+      ...Array.from({ length: 5 }, (_, i) => mc(`mc${i}`, "react", 0, `mc ${i}`)),
+      ...Array.from({ length: 5 }, (_, i) => tf(`tf${i}`, "react", true, `tf ${i}`)),
+      ...Array.from({ length: 5 }, (_, i) => ms(`ms${i}`, "react", [0], `ms ${i}`)),
+      ...Array.from({ length: 5 }, (_, i) => ord(`or${i}`, "react", [0, 1, 2, 3], `or ${i}`)),
+    ];
+    for (let i = 0; i < 20; i++) {
+      const counts = countByType(pickRandomQuestions(mixto, 4));
+      expect(counts.multiple_choice).toBe(1);
+      expect(counts.true_false).toBe(1);
+      expect(counts.multi_select).toBe(1);
+      expect(counts.ordering).toBe(1);
+    }
+  });
+
+  it("no se queda corto si un grupo tiene menos preguntas que su turno", () => {
+    const desigual = [...poolOf("react", 1), ...poolOf("docker", 9)];
+    expect(pickRandomQuestions(desigual, 5)).toHaveLength(5);
+  });
+
+  it("devuelve todo el repertorio si es menor o igual que el examen", () => {
+    expect(pickRandomQuestions(poolOf("react", 3), 5)).toHaveLength(3);
+  });
+
+  it("maneja repertorio vacío y cantidades no positivas", () => {
+    expect(pickRandomQuestions([], 5)).toEqual([]);
+    expect(pickRandomQuestions(pool, 0)).toEqual([]);
+  });
+
+  it("varía el examen entre candidatos (el sorteo es real)", () => {
+    const firmas = new Set(
+      Array.from({ length: 30 }, () =>
+        pickRandomQuestions(pool, 5)
+          .map((p) => p.id)
+          .sort()
+          .join("|")
+      )
+    );
+    expect(firmas.size).toBeGreaterThan(1);
+  });
+});
+
+describe("normalizeSimulationParams", () => {
+  it("acepta valores válidos", () => {
+    expect(normalizeSimulationParams("backend", "junior")).toEqual({
+      specialty: "backend",
+      level: "junior",
+    });
+  });
+
+  it("normaliza mayúsculas", () => {
+    expect(normalizeSimulationParams("DevOps", "MID")).toEqual({
+      specialty: "devops",
+      level: "mid",
+    });
+  });
+
+  it("cae a valores por defecto ante entradas inventadas (evita repertorios infinitos)", () => {
+    expect(normalizeSimulationParams("no-existe", "ultra")).toEqual({
+      specialty: "frontend",
+      level: "senior",
+    });
+    expect(normalizeSimulationParams(undefined, null)).toEqual({
+      specialty: "frontend",
+      level: "senior",
+    });
   });
 });
 

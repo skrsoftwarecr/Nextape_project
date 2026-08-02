@@ -49,6 +49,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Repertorios de preguntas de las simulaciones generales (uno por especialidad_nivel).
+    // Mismo motivo que los anteriores: contienen `correctIndex`. SERVER-ONLY.
+    match /line_question_pools/{poolId} {
+      allow read, write: if false;
+    }
+
     // Trabajos / Vacantes.
     // Lectura pública. Escritura solo del reclutador DUEÑO (`createdBy`), sin borrado desde
     // cliente y sin poder reasignar la propiedad. Esto desbloquea la creación de vacantes y su

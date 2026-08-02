@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Terminal, Cpu, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { apiPost } from "@/lib/api";
-import type { PublicQuestion } from "@/types/job.types";
+import { QuestionCard, QuestionTypeBadge } from "@/components/line/QuestionCard";
+import type { Answer, PublicQuestion } from "@/types/question.types";
 
 function LineContent() {
   const searchParams = useSearchParams();
@@ -16,7 +17,8 @@ function LineContent() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<PublicQuestion[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  // La forma de cada respuesta depende del tipo de su pregunta (índice, booleano o array).
+  const [answers, setAnswers] = useState<Answer[]>([]);
   const [score, setScore] = useState(0);
   const [specialty, setSpecialty] = useState("frontend");
   const [difficulty, setLevel] = useState("senior");
@@ -52,7 +54,7 @@ function LineContent() {
     }
   };
 
-  const finishSimulation = async (finalAnswers: number[]) => {
+  const finishSimulation = async (finalAnswers: Answer[]) => {
     setStatus("loading");
     try {
       // La corrección y la escritura del DNA ocurren EN SERVIDOR (no falsificable en cliente).
@@ -69,8 +71,8 @@ function LineContent() {
     }
   };
 
-  const handleAnswer = async (index: number) => {
-    const updatedAnswers = [...answers, index];
+  const handleAnswer = async (answer: Answer) => {
+    const updatedAnswers = [...answers, answer];
     setAnswers(updatedAnswers);
 
     if (currentQIndex < questions.length - 1) {
@@ -201,27 +203,30 @@ function LineContent() {
              </div>
           </div>
 
-          <div className="max-w-2xl w-full p-8 md:p-12 bg-white/5 rounded-[2.5rem] border border-white/10 space-y-10 backdrop-blur-3xl">
+          <div className="max-w-2xl w-full p-8 md:p-12 bg-white/5 rounded-[2.5rem] border border-white/10 space-y-10 backdrop-blur-3xl max-h-[70vh] overflow-y-auto">
              <div className="space-y-6">
-                <div className="inline-block px-3 py-1 bg-brand-blue/20 text-brand-blue rounded-full text-[9px] font-bold uppercase tracking-widest">
-                  {questions[currentQIndex].tag}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-block px-3 py-1 bg-brand-blue/20 text-brand-blue rounded-full text-[9px] font-bold uppercase tracking-widest">
+                    {questions[currentQIndex].tag}
+                  </div>
+                  <QuestionTypeBadge type={questions[currentQIndex].type} />
                 </div>
+                {questions[currentQIndex].briefing && (
+                  <p className="text-sm text-gray-400 font-medium leading-relaxed border-l-2 border-white/10 pl-4">
+                    {questions[currentQIndex].briefing}
+                  </p>
+                )}
                 <p className="text-xl md:text-2xl font-bold leading-tight tracking-tight italic">
                   {questions[currentQIndex].text}
                 </p>
              </div>
-             <div className="grid grid-cols-1 gap-3">
-                {questions[currentQIndex].options.map((opt: string, i: number) => (
-                  <Button 
-                    key={i} 
-                    variant="outline" 
-                    onClick={() => handleAnswer(i)}
-                    className="h-14 rounded-xl border-white/10 text-white hover:bg-white/10 justify-start px-6 font-bold text-base transition-all hover:translate-x-2 text-left bg-transparent"
-                  >
-                    <span className="text-brand-blue mr-4 font-black">{i + 1}.</span> {opt}
-                  </Button>
-                ))}
-             </div>
+             {/* `key` reinicia el estado local del componente al cambiar de pregunta
+                 (selecciones a medias de multi_select / ordering). */}
+             <QuestionCard
+               key={questions[currentQIndex].id}
+               question={questions[currentQIndex]}
+               onAnswer={handleAnswer}
+             />
           </div>
           <div className="flex gap-10">
             <div className="text-center">

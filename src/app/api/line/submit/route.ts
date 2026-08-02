@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
-import { gradeAnswers, isValidAnswerSet } from "@/lib/server/assessment";
+import {
+  gradeAnswers,
+  isValidAnswerSet,
+  normalizeStoredQuestions,
+} from "@/lib/server/assessment";
 import { calculateMatch } from "@/lib/match";
-import type { Question } from "@/types/job.types";
+import type { Answer, Question } from "@/types/question.types";
 
 export const runtime = "nodejs";
 
@@ -24,7 +28,9 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const sessionId: string | undefined = body?.sessionId;
-  const answers: number[] = Array.isArray(body?.answers) ? body.answers : [];
+  // La forma de cada respuesta depende del tipo de su pregunta (índice, booleano o array);
+  // `isValidAnswerSet` la comprueba contra el examen antes de corregir.
+  const answers: Answer[] = Array.isArray(body?.answers) ? body.answers : [];
 
   if (!sessionId) {
     return NextResponse.json({ error: "missing_session" }, { status: 400 });
@@ -42,20 +48,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
-    const questions = session.questions as Question[];
+    const questions = normalizeStoredQuestions(session.questions as Question[]);
 
-    // El set de respuestas debe corresponder 1:1 con el examen. Antes, un `answers` incompleto
-    // se corregía en silencio (las faltantes contaban como falladas).
+    // El set de respuestas debe corresponder 1:1 con el examen y tener la forma que exige cada
+    // tipo. Antes, un `answers` incompleto se corregía en silencio (las faltantes contaban como
+    // falladas).
     if (!isValidAnswerSet(questions, answers)) {
       return NextResponse.json({ error: "invalid_answers" }, { status: 400 });
     }
 
     const { skillScores, overall } = gradeAnswers(questions, answers);
 
-    // Mapa de respuestas del usuario (índice elegido por pregunta) para el historial del intento.
+    // Mapa de respuestas del usuario para el historial del intento. Se serializa a JSON porque
+    // según el tipo puede ser un índice, un booleano o un array.
     const answersMap: Record<string, string> = {};
     questions.forEach((q, i) => {
-      answersMap[q.id] = String(answers[i] ?? -1);
+      answersMap[q.id] = JSON.stringify(answers[i] ?? null);
     });
 
     // DNA: merge quedándonos con el MEJOR score por skill.

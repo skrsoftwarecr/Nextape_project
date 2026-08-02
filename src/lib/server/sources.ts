@@ -1,0 +1,275 @@
+/**
+ * Catálogo de **fuentes técnicas de referencia** de NEXTAPE.
+ *
+ * Es el corpus sobre el que se apoyan las preguntas de The LINE: documentación oficial,
+ * estándares de seguridad, material de arquitectura y blogs de ingeniería de empresas que operan
+ * a escala real.
+ *
+ * ⚠️ **Estado actual — leer antes de usarlo.** Hoy estas URLs se le pasan al modelo como *anclaje*
+ * del prompt: se le pide que sitúe el escenario en las prácticas documentadas por estas fuentes y
+ * que declare cuál corresponde. Eso **no es RAG y no es verificación**: el modelo no lee las
+ * páginas, así que el campo `source` de una pregunta es una *atribución del modelo*, no una cita
+ * comprobada. Sirve para (a) dirigir la generación hacia tecnología real y no genérica, y (b)
+ * dejar el pipeline listo para la recuperación de verdad.
+ *
+ * Cuando exista retrieval (BGE-M3 → índice → `retrieve()`), este catálogo pasa a ser la lista de
+ * ingesta y `source` se convierte en una cita verificable. Ver `docs/HARNESS.md §6`.
+ */
+
+export type SourceCategory =
+  | "frontend"
+  | "backend"
+  | "mobile"
+  | "languages"
+  | "databases"
+  | "cloud"
+  | "devops"
+  | "security"
+  | "architecture"
+  | "roadmap"
+  | "api"
+  | "testing"
+  | "engineering";
+
+/** Catálogo por categoría (definido por el equipo). */
+export const SOURCE_CATALOG: Record<SourceCategory, string[]> = {
+  frontend: [
+    "https://react.dev",
+    "https://nextjs.org/docs",
+    "https://angular.dev",
+    "https://vuejs.org/guide",
+    "https://svelte.dev/docs",
+    "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+    "https://developer.mozilla.org/en-US/docs/Web/CSS",
+    "https://www.typescriptlang.org/docs",
+  ],
+  backend: [
+    "https://nodejs.org/docs/latest/api",
+    "https://expressjs.com",
+    "https://docs.nestjs.com",
+    "https://docs.djangoproject.com",
+    "https://fastapi.tiangolo.com",
+    "https://laravel.com/docs",
+    "https://learn.microsoft.com/aspnet/core",
+    "https://docs.spring.io",
+    "https://go.dev/doc",
+  ],
+  mobile: [
+    "https://developer.android.com/docs",
+    "https://kotlinlang.org/docs",
+    "https://developer.apple.com/documentation",
+    "https://docs.flutter.dev",
+    "https://reactnative.dev/docs/getting-started",
+  ],
+  languages: [
+    "https://docs.python.org/3",
+    "https://docs.oracle.com/en/java",
+    "https://learn.microsoft.com/dotnet",
+    "https://go.dev/doc",
+    "https://doc.rust-lang.org/book",
+    "https://www.php.net/docs.php",
+    "https://kotlinlang.org/docs",
+    "https://developer.apple.com/documentation/swift",
+    "https://en.cppreference.com",
+  ],
+  databases: [
+    "https://www.postgresql.org/docs",
+    "https://dev.mysql.com/doc",
+    "https://learn.microsoft.com/sql",
+    "https://www.mongodb.com/docs",
+    "https://redis.io/docs",
+    "https://www.elastic.co/guide",
+  ],
+  cloud: [
+    "https://docs.aws.amazon.com",
+    "https://learn.microsoft.com/azure",
+    "https://cloud.google.com/docs",
+  ],
+  devops: [
+    "https://docs.docker.com",
+    "https://kubernetes.io/docs",
+    "https://developer.hashicorp.com/terraform/docs",
+    "https://git-scm.com/doc",
+    "https://docs.github.com",
+  ],
+  security: [
+    "https://owasp.org/www-project-top-ten",
+    "https://attack.mitre.org",
+    "https://cve.mitre.org",
+    "https://cwe.mitre.org",
+    "https://csrc.nist.gov/publications",
+  ],
+  architecture: [
+    "https://github.com/donnemartin/system-design-primer",
+    "https://microservices.io",
+    "https://martinfowler.com",
+    "https://refactoring.guru",
+    "https://12factor.net",
+  ],
+  roadmap: ["https://roadmap.sh"],
+  api: [
+    "https://spec.openapis.org/oas/latest.html",
+    "https://graphql.org/learn",
+    "https://grpc.io/docs",
+  ],
+  testing: [
+    "https://jestjs.io/docs",
+    "https://vitest.dev/guide",
+    "https://playwright.dev/docs",
+    "https://docs.cypress.io",
+    "https://junit.org/junit5/docs/current/user-guide",
+  ],
+  engineering: [
+    "https://netflixtechblog.com",
+    "https://github.blog/engineering",
+    "https://blog.cloudflare.com",
+    "https://stripe.com/blog/engineering",
+    "https://engineering.fb.com",
+    "https://opensource.googleblog.com",
+    "https://www.uber.com/blog/engineering",
+  ],
+};
+
+/**
+ * Fuentes específicas por tecnología. La clave es el término tal y como lo escribe un reclutador
+ * en `requiredSkills` (siempre en minúsculas); se aceptan alias comunes.
+ *
+ * Existe además del catálogo por categoría porque la precisión importa: para una vacante de
+ * `postgresql` conviene apuntar a la documentación de Postgres, no a las seis de `databases`.
+ */
+const TECHNOLOGY_SOURCES: Record<string, string[]> = {
+  // Frontend
+  react: ["https://react.dev", "https://developer.mozilla.org/en-US/docs/Web/JavaScript"],
+  "react.js": ["https://react.dev"],
+  nextjs: ["https://nextjs.org/docs", "https://react.dev"],
+  "next.js": ["https://nextjs.org/docs", "https://react.dev"],
+  angular: ["https://angular.dev"],
+  vue: ["https://vuejs.org/guide"],
+  "vue.js": ["https://vuejs.org/guide"],
+  svelte: ["https://svelte.dev/docs"],
+  javascript: ["https://developer.mozilla.org/en-US/docs/Web/JavaScript"],
+  js: ["https://developer.mozilla.org/en-US/docs/Web/JavaScript"],
+  css: ["https://developer.mozilla.org/en-US/docs/Web/CSS"],
+  tailwind: ["https://developer.mozilla.org/en-US/docs/Web/CSS"],
+  typescript: ["https://www.typescriptlang.org/docs"],
+  ts: ["https://www.typescriptlang.org/docs"],
+
+  // Backend
+  node: ["https://nodejs.org/docs/latest/api"],
+  "node.js": ["https://nodejs.org/docs/latest/api"],
+  nodejs: ["https://nodejs.org/docs/latest/api"],
+  express: ["https://expressjs.com", "https://nodejs.org/docs/latest/api"],
+  nestjs: ["https://docs.nestjs.com"],
+  django: ["https://docs.djangoproject.com", "https://docs.python.org/3"],
+  fastapi: ["https://fastapi.tiangolo.com", "https://docs.python.org/3"],
+  laravel: ["https://laravel.com/docs", "https://www.php.net/docs.php"],
+  "asp.net": ["https://learn.microsoft.com/aspnet/core"],
+  spring: ["https://docs.spring.io", "https://docs.oracle.com/en/java"],
+
+  // Lenguajes
+  python: ["https://docs.python.org/3"],
+  java: ["https://docs.oracle.com/en/java"],
+  dotnet: ["https://learn.microsoft.com/dotnet"],
+  "c#": ["https://learn.microsoft.com/dotnet"],
+  go: ["https://go.dev/doc"],
+  golang: ["https://go.dev/doc"],
+  rust: ["https://doc.rust-lang.org/book"],
+  php: ["https://www.php.net/docs.php"],
+  kotlin: ["https://kotlinlang.org/docs"],
+  swift: ["https://developer.apple.com/documentation/swift"],
+  "c++": ["https://en.cppreference.com"],
+
+  // Móvil
+  android: ["https://developer.android.com/docs", "https://kotlinlang.org/docs"],
+  ios: ["https://developer.apple.com/documentation"],
+  flutter: ["https://docs.flutter.dev"],
+  "react native": ["https://reactnative.dev/docs/getting-started", "https://react.dev"],
+
+  // Datos
+  postgresql: ["https://www.postgresql.org/docs"],
+  postgres: ["https://www.postgresql.org/docs"],
+  mysql: ["https://dev.mysql.com/doc"],
+  sqlserver: ["https://learn.microsoft.com/sql"],
+  mongodb: ["https://www.mongodb.com/docs"],
+  redis: ["https://redis.io/docs"],
+  elasticsearch: ["https://www.elastic.co/guide"],
+
+  // Cloud / DevOps
+  aws: ["https://docs.aws.amazon.com"],
+  azure: ["https://learn.microsoft.com/azure"],
+  gcp: ["https://cloud.google.com/docs"],
+  docker: ["https://docs.docker.com"],
+  kubernetes: ["https://kubernetes.io/docs"],
+  k8s: ["https://kubernetes.io/docs"],
+  terraform: ["https://developer.hashicorp.com/terraform/docs"],
+  git: ["https://git-scm.com/doc"],
+  "ci-cd": ["https://docs.github.com", "https://12factor.net"],
+  cicd: ["https://docs.github.com", "https://12factor.net"],
+
+  // API
+  openapi: ["https://spec.openapis.org/oas/latest.html"],
+  rest: ["https://spec.openapis.org/oas/latest.html"],
+  graphql: ["https://graphql.org/learn"],
+  grpc: ["https://grpc.io/docs"],
+
+  // Testing
+  jest: ["https://jestjs.io/docs"],
+  vitest: ["https://vitest.dev/guide"],
+  playwright: ["https://playwright.dev/docs"],
+  cypress: ["https://docs.cypress.io"],
+  junit: ["https://junit.org/junit5/docs/current/user-guide"],
+  testing: SOURCE_CATALOG.testing,
+
+  // Seguridad / arquitectura
+  security: SOURCE_CATALOG.security,
+  seguridad: SOURCE_CATALOG.security,
+  owasp: ["https://owasp.org/www-project-top-ten", "https://cwe.mitre.org"],
+  microservices: ["https://microservices.io", "https://martinfowler.com"],
+  microservicios: ["https://microservices.io", "https://martinfowler.com"],
+  arquitectura: SOURCE_CATALOG.architecture,
+  architecture: SOURCE_CATALOG.architecture,
+};
+
+/**
+ * Fuentes transversales: aplican a cualquier escenario técnico de nivel senior, sea cual sea el
+ * stack. Se usan como respaldo cuando la skill no está en el índice y para completar hueco.
+ */
+export const UNIVERSAL_SOURCES: string[] = [
+  "https://github.com/donnemartin/system-design-primer",
+  "https://martinfowler.com",
+  "https://12factor.net",
+  "https://owasp.org/www-project-top-ten",
+  "https://netflixtechblog.com",
+];
+
+/**
+ * Devuelve las fuentes más relevantes para una skill.
+ *
+ * Estrategia: coincidencia exacta → coincidencia parcial (`"react hooks"` cae en `react`) →
+ * fuentes transversales. Nunca devuelve una lista vacía, para que el prompt siempre tenga anclaje.
+ */
+export function resolveSourcesForSkill(skill: string, max = 4): string[] {
+  const key = skill.trim().toLowerCase();
+  if (!key) return UNIVERSAL_SOURCES.slice(0, max);
+
+  const exact = TECHNOLOGY_SOURCES[key];
+  if (exact) return dedupe([...exact, ...UNIVERSAL_SOURCES]).slice(0, max);
+
+  const partialKey = Object.keys(TECHNOLOGY_SOURCES).find(
+    (k) => key.includes(k) || k.includes(key)
+  );
+  if (partialKey) {
+    return dedupe([...TECHNOLOGY_SOURCES[partialKey], ...UNIVERSAL_SOURCES]).slice(0, max);
+  }
+
+  return UNIVERSAL_SOURCES.slice(0, max);
+}
+
+/** Todas las URLs del catálogo, sin repetir. Es la lista de ingesta para el futuro RAG. */
+export function allSources(): string[] {
+  return dedupe(Object.values(SOURCE_CATALOG).flat());
+}
+
+function dedupe(urls: string[]): string[] {
+  return [...new Set(urls)];
+}

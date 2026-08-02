@@ -1,20 +1,13 @@
 import { FirestoreTimestamp } from "./firebase.types";
 
-export interface Question {
-  id: string;
-  briefing: string;
-  text: string;
-  options: string[];
-  correctIndex: number;
-  difficulty: string;
-  tag: string;
-}
-
-/**
- * Pregunta expuesta al cliente: SIN la respuesta correcta (`correctIndex`).
- * La clave de respuestas nunca se envía al navegador; el grading ocurre en servidor.
- */
-export type PublicQuestion = Omit<Question, "correctIndex">;
+// Los tipos de pregunta viven en `question.types.ts` (The LINE los usa también fuera del contexto
+// de una vacante). Se reexportan aquí para no romper los imports existentes.
+export type {
+  Question,
+  PublicQuestion,
+  QuestionType,
+  Answer,
+} from "./question.types";
 
 export interface JobOpportunity {
   id?: string;
@@ -26,11 +19,25 @@ export interface JobOpportunity {
   type: string;
   level: string;
   requiredSkills: string[];
-  // El doc público `jobs` guarda las preguntas SIN la respuesta correcta (la clave vive en
-  // `job_answer_keys`, server-only). Por eso es PublicQuestion[], no Question[].
-  assessmentQuestions?: PublicQuestion[];
+  /**
+   * Si la vacante ya tiene su repertorio de preguntas generado (`job_answer_keys/{jobId}`).
+   * El doc público **no** guarda las preguntas: `jobs` es de lectura pública, así que publicarlas
+   * dejaría que un candidato se estudiara el banco entero antes de la prueba.
+   */
+  assessmentReady?: boolean;
+  /** Tamaño del repertorio. Cada candidato responde un sorteo de este banco. */
+  assessmentPoolSize?: number;
+  /** Preguntas que responde cada candidato. Si falta, se usa el valor por defecto del servidor. */
+  examQuestionCount?: number;
+  /**
+   * Vacante abierta a candidaturas. `false` = archivada: deja de listarse para developers y no
+   * admite nuevas pruebas, pero se conserva junto con sus candidatos.
+   * Si falta, se considera activa (vacantes creadas antes de este campo).
+   */
+  active?: boolean;
   createdBy: string;
   postedAt: FirestoreTimestamp;
+  updatedAt?: FirestoreTimestamp;
   applicantsCount?: number;
 }
 

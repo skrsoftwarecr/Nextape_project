@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
-import { generateQuestions } from "@/ai/flows/generate-assessment-flow";
-import { stripAnswerKey } from "@/lib/server/assessment";
-import type { Question } from "@/types/job.types";
+import { SPECIALTY_STACKS } from "@/lib/server/assessment";
+import { buildQuestionPool, QUESTIONS_PER_EXAM } from "@/lib/server/question-pool";
 
 export const runtime = "nodejs";
 
 /**
  * POST /api/jobs/assessment
- * Genera la prueba técnica de una vacante EN SERVIDOR. Guarda en el documento público `jobs`
- * las preguntas SIN `correctIndex`, y la clave de respuestas en `job_answer_keys/{jobId}`
- * (colección que el cliente no puede leer). Solo el reclutador dueño de la vacante puede llamarlo.
+ * (Reclutador dueño) genera el **repertorio** de preguntas de una vacante: un banco amplio que se
+ * guarda en `job_answer_keys/{jobId}` (server-only, con `correctIndex`). Cada candidato recibirá
+ * después un sorteo de ese banco, sin volver a llamar a la IA.
  *
- * Body: { jobId: string }
+ * El documento público `jobs` NO recibe las preguntas — solo el estado (`assessmentReady`,
+ * `assessmentPoolSize`). Publicar el repertorio entero permitiría a un candidato estudiárselo
+ * antes de la prueba, que es precisamente lo que la evaluación debe impedir.
+ *
+ * Es **idempotente**: si ya hay repertorio no se regenera (ni se vuelve a pagar) salvo `force:true`.
+ *
+ * Body: { jobId: string, force?: boolean }
  * Auth: header `Authorization: Bearer <Firebase ID token>`.
  */
 export async function POST(req: NextRequest) {
@@ -24,6 +29,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const jobId: string | undefined = body?.jobId;
+  const force: boolean = body?.force === true;
   if (!jobId) {
     return NextResponse.json({ error: "missing_job" }, { status: 400 });
   }
@@ -39,31 +45,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
-    const result = await generateQuestions({
-      stack: job.requiredSkills || ["react", "nextjs"],
-      level: job.level || "senior",
-      count: 5,
-    });
-    const questions = result.questions as Question[];
+    const keyRef = adminDb().collection("job_answer_keys").doc(jobId);
 
-    if (!questions || questions.length === 0) {
-      return NextResponse.json({ error: "no_questions" }, { status: 502 });
+    // Reutilizar el repertorio existente evita que reintentos del formulario (o un reclutador
+    // pulsando dos veces) disparen generaciones de IA duplicadas.
+    if (!force) {
+      const existing = await keyRef.get();
+      const existingQuestions = existing.data()?.questions;
+      if (Array.isArray(existingQuestions) && existingQuestions.length > 0) {
+        return NextResponse.json({
+          ok: true,
+          reused: true,
+          poolSize: existingQuestions.length,
+        });
+      }
     }
 
-    // Clave de respuestas protegida (server-only).
-    await adminDb().collection("job_answer_keys").doc(jobId).set({
+    const pool = await buildQuestionPool({
+      stack:
+        Array.isArray(job.requiredSkills) && job.requiredSkills.length
+          ? job.requiredSkills
+          : SPECIALTY_STACKS.frontend,
+      level: job.level || "senior",
+    });
+
+    // Con menos preguntas que un examen, el sorteo no aporta nada: se trata como fallo.
+    if (pool.length < QUESTIONS_PER_EXAM) {
+      console.error(`[jobs/assessment] repertorio insuficiente (${pool.length}) para ${jobId}`);
+      return NextResponse.json(
+        { error: "pool_too_small", poolSize: pool.length },
+        { status: 502 }
+      );
+    }
+
+    await keyRef.set({
       jobId,
-      questions,
+      questions: pool,
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // Preguntas públicas SIN la respuesta correcta.
     await jobRef.update({
-      assessmentQuestions: stripAnswerKey(questions),
+      assessmentReady: true,
+      assessmentPoolSize: pool.length,
+      // Se elimina el campo de la etapa anterior: guardaba las preguntas del examen en el doc
+      // público, que cualquiera puede leer (`jobs` es `read: if true`).
+      assessmentQuestions: FieldValue.delete(),
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ ok: true, count: questions.length });
+    return NextResponse.json({ ok: true, reused: false, poolSize: pool.length });
   } catch (err) {
     console.error("[jobs/assessment] error:", err);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
