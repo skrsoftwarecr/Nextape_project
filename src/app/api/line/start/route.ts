@@ -123,15 +123,27 @@ export async function POST(req: NextRequest) {
           .catch((err) => console.error("[line/start] no se pudo marcar assessmentReady:", err));
       }
     } else {
-      // Simulación general: un repertorio compartido por especialidad y nivel.
-      const { specialty, level } = normalizeSimulationParams(body?.specialty, body?.level);
-      const poolRef = adminDb().collection("line_question_pools").doc(`${specialty}_${level}`);
-
-      pool = await loadOrCreatePool(
-        poolRef,
-        { stack: SPECIALTY_STACKS[specialty], level },
-        { specialty, level }
+      // Simulación general (modo práctica): repertorio PRECARGADO por tecnología/especialidad y
+      // nivel. Aquí NO se genera nada bajo demanda — el banco lo crea `npm run seed:questions`.
+      // Es lo que quita a este endpoint su capacidad de disparar trabajo caro: da igual cuántas
+      // veces se llame, solo lee un documento.
+      const { subject, level } = normalizeSimulationParams(
+        body?.technology ?? body?.specialty,
+        body?.level
       );
+      const poolSnap = await adminDb()
+        .collection("line_question_pools")
+        .doc(`${subject}_${level}`)
+        .get();
+      pool = readPool(poolSnap.data());
+
+      if (pool.length === 0) {
+        console.warn(`[line/start] banco sin precargar: ${subject}_${level}`);
+        return NextResponse.json(
+          { error: "pool_not_seeded", subject, level },
+          { status: 503 }
+        );
+      }
     }
 
     if (pool.length === 0) {

@@ -1,3 +1,4 @@
+import { findTechnology } from "@/lib/technologies";
 import type {
   Answer,
   Question,
@@ -22,22 +23,28 @@ export const SPECIALTY_STACKS: Record<string, string[]> = {
 export const LEVELS = ["junior", "mid", "senior", "master"] as const;
 
 /**
- * Normaliza especialidad y nivel a valores conocidos.
+ * Normaliza los parámetros de una simulación general (The LINE libre, sin vacante).
  *
- * Importante para el coste: los repertorios generales se guardan en un doc por
- * `especialidad_nivel`. Sin acotar la entrada, un cliente podría pedir especialidades inventadas
- * en bucle y forzar una generación de IA (y un documento nuevo) por cada una.
+ * `subject` puede ser una **tecnología** del catálogo (`react`, `postgresql`, …) o una de las tres
+ * **especialidades** históricas (`frontend`, `backend`, `devops`). Se acota contra listas conocidas:
+ * el repertorio se guarda en un doc por `sujeto_nivel`, así que aceptar valores libres permitiría
+ * pedir combinaciones inventadas en bucle y ensuciar la colección.
  */
 export function normalizeSimulationParams(
-  specialty: unknown,
+  subject: unknown,
   level: unknown
-): { specialty: string; level: string } {
-  const s = String(specialty ?? "").toLowerCase();
+): { subject: string; kind: "technology" | "specialty"; level: string } {
+  const raw = String(subject ?? "").trim().toLowerCase();
   const l = String(level ?? "").toLowerCase();
-  return {
-    specialty: s in SPECIALTY_STACKS ? s : "frontend",
-    level: (LEVELS as readonly string[]).includes(l) ? l : "senior",
-  };
+  const normalizedLevel = (LEVELS as readonly string[]).includes(l) ? l : "senior";
+
+  if (raw in SPECIALTY_STACKS) {
+    return { subject: raw, kind: "specialty", level: normalizedLevel };
+  }
+  if (findTechnology(raw)) {
+    return { subject: raw, kind: "technology", level: normalizedLevel };
+  }
+  return { subject: "frontend", kind: "specialty", level: normalizedLevel };
 }
 
 /* ────────────────────────────── Compatibilidad ────────────────────────────── */

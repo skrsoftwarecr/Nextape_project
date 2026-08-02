@@ -56,6 +56,80 @@ export function typesForSkill(index: number): QuestionType[] {
   return ["multiple_choice", a, b];
 }
 
+/**
+ * Cuántas preguntas se piden por tipo al construir el **banco de práctica** de una tecnología.
+ *
+ * Es más grande que el repertorio de una vacante: aquí el usuario practica repetidamente sobre la
+ * misma tecnología, así que necesita variedad suficiente para no repetir preguntas enseguida.
+ */
+export const BANK_QUESTIONS_PER_TYPE: Record<QuestionType, number> = {
+  multiple_choice: 8,
+  true_false: 5,
+  multi_select: 4,
+  ordering: 4,
+  code_output: 4,
+};
+
+/** Los cinco tipos, para el banco de práctica (una tecnología recibe todos). */
+export const ALL_QUESTION_TYPES: QuestionType[] = [
+  "multiple_choice",
+  "true_false",
+  "multi_select",
+  "ordering",
+  "code_output",
+];
+
+export interface BuildTechnologyPoolInput {
+  /** Id de la tecnología (clave del catálogo `src/lib/technologies.ts`). */
+  technology: string;
+  level: string;
+  /** Tipos a generar. Por defecto los cinco. */
+  types?: QuestionType[];
+  /** Preguntas por tipo. Por defecto `BANK_QUESTIONS_PER_TYPE`. */
+  perType?: Partial<Record<QuestionType, number>>;
+}
+
+/**
+ * Construye el banco de práctica de UNA tecnología y UN nivel, con **todos** los tipos.
+ *
+ * Se diferencia de `buildQuestionPool` (que rota tipos entre las skills de una vacante) porque
+ * aquí solo hay una tecnología: rotar no aportaría variedad, se generan los cinco tipos.
+ *
+ * Pensado para el script de precarga, no para el camino de petición: genera bastante contenido y
+ * tarda. Ver `scripts/seed-question-bank.ts`.
+ */
+export async function buildTechnologyPool({
+  technology,
+  level,
+  types = ALL_QUESTION_TYPES,
+  perType,
+}: BuildTechnologyPoolInput): Promise<Question[]> {
+  const skill = technology.trim().toLowerCase();
+  if (!skill) return [];
+
+  const sources = resolveSourcesForSkill(skill);
+  const collected: Question[] = [];
+
+  // En serie: el script puede recorrer cientos de combinaciones y disparar los cinco tipos a la
+  // vez multiplicaría la presión sobre el límite de peticiones de Groq.
+  for (const type of types) {
+    try {
+      const result = await generateQuestions({
+        stack: [skill],
+        level,
+        type,
+        count: perType?.[type] ?? BANK_QUESTIONS_PER_TYPE[type],
+        sources,
+      });
+      collected.push(...(result.questions as Question[]));
+    } catch (err) {
+      console.error(`[question-pool] fallo generando '${type}' de '${skill}' (${level}):`, err);
+    }
+  }
+
+  return dedupeQuestions(collected).map((q, i) => ({ ...q, id: String(i) }));
+}
+
 export interface BuildPoolInput {
   /** Skills a cubrir (se normalizan a minúsculas). */
   stack: string[];

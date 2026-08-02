@@ -1,0 +1,319 @@
+/**
+ * Precarga el **banco de preguntas de The LINE general** en Firestore.
+ *
+ * Genera con IA un repertorio por cada combinación (tecnología × nivel) y lo guarda en
+ * `line_question_pools/{tecnologia}_{nivel}`. Cuando un usuario practica, `/api/line/start` solo
+ * LEE ese documento y sortea: no se invoca al modelo en tiempo de petición, así que The LINE
+ * general deja de ser un disparador de trabajo caro (coste y DDoS).
+ *
+ * ── Cómo se ejecuta ─────────────────────────────────────────────────────────────────────────
+ *   npm run seed:questions -- --dry-run                    # plan y coste estimado, no escribe
+ *   npm run seed:questions -- --category=frontend --yes    # genera una tanda
+ *   npm run seed:questions -- --yes                        # todo el catálogo (tarda MUCHO)
+ *
+ * Requiere en `.env.local` (o el entorno):
+ *   GROQ_API_KEY                              clave del proveedor de IA
+ *   FIREBASE_SERVICE_ACCOUNT                  JSON del service account en una variable
+ *   (o GOOGLE_APPLICATION_CREDENTIALS         ruta a ese JSON)
+ *
+ * ⚠️ Escribe en el Firestore del proyecto configurado — normalmente **producción**. Por eso no
+ * escribe nada sin `--yes`, y por defecto no regenera lo que ya existe.
+ *
+ * Es **reanudable**: salta las combinaciones ya generadas, así que se puede cortar con Ctrl+C y
+ * relanzar sin perder trabajo ni pagar dos veces.
+ */
+
+import { config } from "dotenv";
+import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import type { Firestore } from "firebase-admin/firestore";
+
+import { TECHNOLOGIES, TECH_CATEGORIES, findTechnology } from "@/lib/technologies";
+import type { TechCategory } from "@/lib/technologies";
+import { LEVELS, SPECIALTY_STACKS, countByType } from "@/lib/server/assessment";
+import {
+  buildTechnologyPool,
+  buildQuestionPool,
+  BANK_QUESTIONS_PER_TYPE,
+  ALL_QUESTION_TYPES,
+} from "@/lib/server/question-pool";
+import type { Question } from "@/types/question.types";
+
+// `.env.local` primero (convención de Next), con `.env` como respaldo.
+config({ path: ".env.local" });
+config();
+
+const COLLECTION = "line_question_pools";
+const GENERATOR = "seed-question-bank@v1";
+
+/* ────────────────────────────────── Argumentos ────────────────────────────────── */
+
+interface Options {
+  dryRun: boolean;
+  confirmed: boolean;
+  only: string[];
+  categories: TechCategory[];
+  levels: string[];
+  force: boolean;
+  limit: number;
+  delayMs: number;
+  includeSpecialties: boolean;
+}
+
+function parseArgs(argv: string[]): Options {
+  const get = (name: string): string | undefined => {
+    const hit = argv.find((a) => a.startsWith(`--${name}=`));
+    return hit ? hit.slice(name.length + 3) : undefined;
+  };
+  const has = (name: string) => argv.includes(`--${name}`);
+
+  const list = (value: string | undefined): string[] =>
+    (value ?? "")
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+  const levels = list(get("levels"));
+  const categories = list(get("category")) as TechCategory[];
+
+  return {
+    dryRun: has("dry-run"),
+    confirmed: has("yes"),
+    only: list(get("only")),
+    categories: categories.filter((c) => (TECH_CATEGORIES as readonly string[]).includes(c)),
+    levels: levels.filter((l) => (LEVELS as readonly string[]).includes(l)),
+    force: has("force"),
+    limit: Number(get("limit") ?? "0") || 0,
+    delayMs: Number(get("delay") ?? "1000") || 0,
+    includeSpecialties: !has("no-specialties"),
+  };
+}
+
+/* ────────────────────────────────── Plan ────────────────────────────────── */
+
+interface Target {
+  key: string;
+  label: string;
+  /** `technology` = una tecnología del catálogo; `specialty` = los 3 stacks generales del LINE. */
+  kind: "technology" | "specialty";
+  category: string;
+  level: string;
+  docId: string;
+}
+
+function buildPlan(opts: Options): Target[] {
+  const levels = opts.levels.length ? opts.levels : [...LEVELS];
+  const targets: Target[] = [];
+
+  const technologies = TECHNOLOGIES.filter((t) => {
+    if (opts.only.length) return opts.only.includes(t.id);
+    if (opts.categories.length) return opts.categories.includes(t.category);
+    return true;
+  });
+
+  for (const tech of technologies) {
+    for (const level of levels) {
+      targets.push({
+        key: tech.id,
+        label: tech.label,
+        kind: "technology",
+        category: tech.category,
+        level,
+        docId: `${tech.id}_${level}`,
+      });
+    }
+  }
+
+  // Los 3 stacks amplios que ya ofrecía The LINE general (frontend / backend / devops).
+  // Se saltan si el usuario filtró por tecnología o categoría.
+  const filtering = opts.only.length > 0 || opts.categories.length > 0;
+  if (opts.includeSpecialties && !filtering) {
+    for (const specialty of Object.keys(SPECIALTY_STACKS)) {
+      for (const level of levels) {
+        targets.push({
+          key: specialty,
+          label: `Stack ${specialty}`,
+          kind: "specialty",
+          category: specialty,
+          level,
+          docId: `${specialty}_${level}`,
+        });
+      }
+    }
+  }
+
+  return opts.limit > 0 ? targets.slice(0, opts.limit) : targets;
+}
+
+/* ────────────────────────────────── Firestore ────────────────────────────────── */
+
+function initFirestore(): Firestore {
+  if (!getApps().length) {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    initializeApp(
+      raw ? { credential: cert(JSON.parse(raw)) } : { credential: applicationDefault() }
+    );
+  }
+  return getFirestore();
+}
+
+async function existingCount(db: Firestore, docId: string): Promise<number> {
+  const snap = await db.collection(COLLECTION).doc(docId).get();
+  const questions = snap.data()?.questions;
+  return Array.isArray(questions) ? questions.length : 0;
+}
+
+/* ────────────────────────────────── Ejecución ────────────────────────────────── */
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const QUESTIONS_PER_TARGET = ALL_QUESTION_TYPES.reduce(
+  (sum, t) => sum + BANK_QUESTIONS_PER_TYPE[t],
+  0
+);
+
+function printPlan(targets: Target[], opts: Options) {
+  const calls = targets.length * ALL_QUESTION_TYPES.length;
+  console.log("\n📋 PLAN DE PRECARGA");
+  console.log("─".repeat(60));
+  console.log(`Combinaciones (tecnología × nivel) : ${targets.length}`);
+  console.log(`Llamadas a la IA                   : ~${calls}  (${ALL_QUESTION_TYPES.length} por combinación)`);
+  console.log(`Preguntas estimadas                : ~${targets.length * QUESTIONS_PER_TARGET}`);
+  console.log(`Pausa entre llamadas               : ${opts.delayMs} ms`);
+  console.log(
+    `Tiempo aproximado                  : ~${Math.round((calls * (3000 + opts.delayMs)) / 60000)} min`
+  );
+  console.log(`Regenerar existentes               : ${opts.force ? "SÍ (--force)" : "no"}`);
+  console.log("─".repeat(60));
+
+  const byCategory = new Map<string, number>();
+  for (const t of targets) byCategory.set(t.category, (byCategory.get(t.category) ?? 0) + 1);
+  for (const [cat, n] of [...byCategory.entries()].sort()) {
+    console.log(`  ${cat.padEnd(16)} ${n} combinaciones`);
+  }
+  console.log("");
+}
+
+async function main() {
+  const opts = parseArgs(process.argv.slice(2));
+
+  // Un id mal escrito en --only generaría un plan vacío o incompleto sin avisar.
+  const unknown = opts.only.filter((id) => !findTechnology(id));
+  if (unknown.length > 0) {
+    console.error(`❌ Tecnologías desconocidas en --only: ${unknown.join(", ")}`);
+    console.error(`   Válidas: ${TECHNOLOGIES.map((t) => t.id).join(", ")}\n`);
+    process.exit(1);
+  }
+
+  const targets = buildPlan(opts);
+
+  if (targets.length === 0) {
+    console.error("❌ El filtro no selecciona ninguna combinación. Revisa --only / --category / --levels.");
+    console.error(`   Tecnologías válidas: ${TECHNOLOGIES.map((t) => t.id).join(", ")}`);
+    process.exit(1);
+  }
+
+  printPlan(targets, opts);
+
+  if (opts.dryRun) {
+    console.log("🔍 --dry-run: no se ha escrito nada. Quita --dry-run y añade --yes para ejecutar.\n");
+    return;
+  }
+
+  if (!opts.confirmed) {
+    console.error("⚠️  Esto escribe en el Firestore del proyecto configurado (probablemente PRODUCCIÓN).");
+    console.error("   Revisa el plan de arriba y vuelve a lanzarlo con --yes para confirmar.\n");
+    process.exit(1);
+  }
+
+  if (!process.env.GROQ_API_KEY) {
+    console.error("❌ Falta GROQ_API_KEY. Defínela en .env.local antes de ejecutar.\n");
+    process.exit(1);
+  }
+
+  const db = initFirestore();
+
+  let created = 0;
+  let skipped = 0;
+  let failed = 0;
+  let totalQuestions = 0;
+  const startedAt = Date.now();
+
+  for (const [i, target] of targets.entries()) {
+    const progress = `[${i + 1}/${targets.length}]`;
+
+    try {
+      if (!opts.force) {
+        const already = await existingCount(db, target.docId);
+        if (already > 0) {
+          console.log(`${progress} ⏭️  ${target.docId} — ya existe (${already} preguntas)`);
+          skipped++;
+          continue;
+        }
+      }
+
+      console.log(`${progress} 🤖 ${target.docId} — generando (${target.label}, ${target.level})...`);
+
+      const questions: Question[] =
+        target.kind === "technology"
+          ? await buildTechnologyPool({ technology: target.key, level: target.level })
+          : await buildQuestionPool({
+              stack: SPECIALTY_STACKS[target.key],
+              level: target.level,
+            });
+
+      if (questions.length === 0) {
+        console.error(`${progress} ❌ ${target.docId} — la IA no devolvió preguntas`);
+        failed++;
+        continue;
+      }
+
+      await db.collection(COLLECTION).doc(target.docId).set({
+        key: target.key,
+        kind: target.kind,
+        label: target.label,
+        category: target.category,
+        level: target.level,
+        questions,
+        count: questions.length,
+        byType: countByType(questions),
+        generator: GENERATOR,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+
+      const mix = Object.entries(countByType(questions))
+        .filter(([, n]) => n > 0)
+        .map(([t, n]) => `${t}:${n}`)
+        .join(" ");
+      console.log(`${progress} ✅ ${target.docId} — ${questions.length} preguntas (${mix})`);
+
+      created++;
+      totalQuestions += questions.length;
+    } catch (err) {
+      console.error(`${progress} ❌ ${target.docId} —`, err instanceof Error ? err.message : err);
+      failed++;
+    }
+
+    if (opts.delayMs > 0 && i < targets.length - 1) await sleep(opts.delayMs);
+  }
+
+  const minutes = Math.round((Date.now() - startedAt) / 60000);
+  console.log("\n" + "─".repeat(60));
+  console.log("🎉 PRECARGA TERMINADA");
+  console.log(`   Creados   : ${created}`);
+  console.log(`   Saltados  : ${skipped} (ya existían)`);
+  console.log(`   Fallidos  : ${failed}`);
+  console.log(`   Preguntas : ${totalQuestions}`);
+  console.log(`   Duración  : ~${minutes} min`);
+  if (failed > 0) {
+    console.log("\n   Relanza el mismo comando: los ya creados se saltan y solo se reintentan los fallidos.");
+  }
+  console.log("─".repeat(60) + "\n");
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error("\n❌ Error fatal:", err);
+    process.exit(1);
+  });

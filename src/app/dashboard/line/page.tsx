@@ -3,7 +3,8 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { technologiesByCategory, CATEGORY_LABELS } from "@/lib/technologies";
 import { Terminal, Cpu, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { apiPost } from "@/lib/api";
 import { QuestionCard, QuestionTypeBadge } from "@/components/line/QuestionCard";
@@ -20,7 +21,8 @@ function LineContent() {
   // La forma de cada respuesta depende del tipo de su pregunta (índice, booleano o array).
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [score, setScore] = useState(0);
-  const [specialty, setSpecialty] = useState("frontend");
+  // En el modo práctica el usuario elige una tecnología concreta del catálogo (o un stack amplio).
+  const [technology, setTechnology] = useState("react");
   const [difficulty, setLevel] = useState("senior");
   const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +33,9 @@ function LineContent() {
     setAnswers([]);
     setCurrentQIndex(0);
     try {
-      // Las preguntas se generan EN SERVIDOR y llegan SIN la respuesta correcta.
-      const payload = jobId ? { jobId } : { specialty, level: difficulty };
+      // Las preguntas se sortean EN SERVIDOR de un repertorio ya existente y llegan SIN la
+      // respuesta correcta.
+      const payload = jobId ? { jobId } : { technology, level: difficulty };
       const data = await apiPost<{ sessionId: string; questions: PublicQuestion[] }>(
         "/api/line/start",
         payload
@@ -49,7 +52,14 @@ function LineContent() {
       setStatus("active");
     } catch (err) {
       console.error("Simulation failed to start:", err);
-      setError("Error al iniciar la simulación. Revisa tu conexión e inténtalo de nuevo.");
+      // `pool_not_seeded` = esa tecnología/nivel aún no está en el banco precargado. Es un caso
+      // esperado y accionable, no un fallo genérico: lo resuelve `npm run seed:questions`.
+      const code = err instanceof Error ? err.message : "";
+      setError(
+        code === "pool_not_seeded"
+          ? "Todavía no hay preguntas para esa tecnología y nivel. Prueba con otra combinación."
+          : "Error al iniciar la simulación. Revisa tu conexión e inténtalo de nuevo."
+      );
       setStatus("idle");
     }
   };
@@ -141,15 +151,30 @@ function LineContent() {
               {!jobId && (
                 <>
                   <div className="space-y-3">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-300 ml-1">Especialidad</label>
-                    <Select value={specialty} onValueChange={setSpecialty}>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-300 ml-1">Lenguaje o tecnología</label>
+                    <Select value={technology} onValueChange={setTechnology}>
                       <SelectTrigger className="bg-gray-50 border-none h-16 rounded-2xl font-bold text-lg px-6">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-2xl border-none shadow-apple-lg">
-                        <SelectItem value="frontend">Arquitectura Frontend</SelectItem>
-                        <SelectItem value="backend">Backend y Sistemas</SelectItem>
-                        <SelectItem value="devops">Cloud y DevOps</SelectItem>
+                      <SelectContent className="rounded-2xl border-none shadow-apple-lg max-h-[50vh]">
+                        <SelectGroup>
+                          <SelectLabel className="text-[9px] uppercase tracking-widest text-gray-400">Stacks completos</SelectLabel>
+                          <SelectItem value="frontend">Arquitectura Frontend</SelectItem>
+                          <SelectItem value="backend">Backend y Sistemas</SelectItem>
+                          <SelectItem value="devops">Cloud y DevOps</SelectItem>
+                        </SelectGroup>
+                        {technologiesByCategory().map(({ category, items }) => (
+                          <SelectGroup key={category}>
+                            <SelectLabel className="text-[9px] uppercase tracking-widest text-gray-400">
+                              {CATEGORY_LABELS[category]}
+                            </SelectLabel>
+                            {items.map((tech) => (
+                              <SelectItem key={tech.id} value={tech.id}>
+                                {tech.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

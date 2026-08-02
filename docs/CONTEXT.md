@@ -171,6 +171,35 @@ Efectos de diseño que conviene tener presentes:
 - **El repertorio no se publica.** `jobs` es `read: if true`; publicar el banco entero dejaría que
   un candidato se lo estudiara. El doc público solo lleva `assessmentReady` y `assessmentPoolSize`.
 
+### 3.0-ter The LINE general (modo práctica) *(desde 2026-08-02)*
+
+Además de la prueba de una vacante, cualquier usuario puede practicar eligiendo **tecnología y
+nivel**. El catálogo son 55 tecnologías agrupadas en 10 categorías
+([`src/lib/technologies.ts`](../src/lib/technologies.ts)), más los 3 stacks amplios históricos.
+
+**Aquí no se genera nada en tiempo de petición.** El banco se precarga con un script y
+`/api/line/start` solo lee un documento y sortea:
+
+```
+UNA VEZ, EN LOCAL                            CADA PRÁCTICA (por usuario)
+  npm run seed:questions -- --yes              POST /api/line/start {technology, level}
+    └─ por (tecnología × nivel):                 └─ lee line_question_pools/{tec}_{nivel}
+        5 llamadas (una por tipo)                └─ pickRandomQuestions(pool, 5)
+        ancladas en sources.ts                       · SIN llamada a IA
+        → line_question_pools/{tec}_{nivel}          · si no está precargado → 503
+```
+
+Si la combinación no está en el banco, el endpoint devuelve **503 `pool_not_seeded`** en vez de
+generar. Es deliberado: generar bajo demanda sobre un catálogo de 55 tecnologías × 4 niveles sería
+exactamente el disparador de coste y DDoS que el banco viene a cerrar.
+
+**El progreso ya se guarda**: `/api/line/submit` escribe el DNA (`user_skill_scores`) y el intento
+(`assessment_attempts`) tanto si hay vacante como si no — solo `candidate_matches` depende del
+`jobId`. Como el `tag` de cada pregunta es el id de la tecnología, practicar `postgresql` sube el
+score de `postgresql` en el CORE.
+
+Escala del banco completo: **232 combinaciones ≈ 5 800 preguntas ≈ 1 160 llamadas ≈ 77 min**.
+
 ### 3.1 The LINE — el flujo que sostiene el producto
 
 ```

@@ -325,27 +325,49 @@ describe("pickRandomQuestions", () => {
 });
 
 describe("normalizeSimulationParams", () => {
-  it("acepta valores válidos", () => {
+  it("acepta las especialidades históricas", () => {
     expect(normalizeSimulationParams("backend", "junior")).toEqual({
-      specialty: "backend",
+      subject: "backend",
+      kind: "specialty",
       level: "junior",
     });
   });
 
-  it("normaliza mayúsculas", () => {
-    expect(normalizeSimulationParams("DevOps", "MID")).toEqual({
-      specialty: "devops",
+  it("acepta cualquier tecnología del catálogo", () => {
+    expect(normalizeSimulationParams("postgresql", "mid")).toEqual({
+      subject: "postgresql",
+      kind: "technology",
       level: "mid",
+    });
+    expect(normalizeSimulationParams("rust", "master")).toEqual({
+      subject: "rust",
+      kind: "technology",
+      level: "master",
     });
   });
 
-  it("cae a valores por defecto ante entradas inventadas (evita repertorios infinitos)", () => {
+  it("normaliza mayúsculas y espacios", () => {
+    expect(normalizeSimulationParams("DevOps", "MID")).toEqual({
+      subject: "devops",
+      kind: "specialty",
+      level: "mid",
+    });
+    expect(normalizeSimulationParams("  React  ", "SENIOR")).toEqual({
+      subject: "react",
+      kind: "technology",
+      level: "senior",
+    });
+  });
+
+  it("cae a valores por defecto ante entradas inventadas (evita bancos infinitos)", () => {
     expect(normalizeSimulationParams("no-existe", "ultra")).toEqual({
-      specialty: "frontend",
+      subject: "frontend",
+      kind: "specialty",
       level: "senior",
     });
     expect(normalizeSimulationParams(undefined, null)).toEqual({
-      specialty: "frontend",
+      subject: "frontend",
+      kind: "specialty",
       level: "senior",
     });
   });
