@@ -12,6 +12,10 @@ config.edgeExternals = [
   "@opentelemetry/sdk-node",
   "@opentelemetry/instrumentation",
   "@opentelemetry/api",
+  // Bindings nativos del GitHub Engine — nunca bundlear en el Worker de Cloudflare.
+  // El GitHub Engine solo corre en Node.js (route handler con runtime="nodejs").
+  "tree-sitter",
+  "tree-sitter-typescript",
 ];
 
 export default config;

@@ -9,7 +9,15 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   // firebase-admin es un paquete de Node (solo se usa en route handlers). No debe empaquetarse.
-  serverExternalPackages: ["firebase-admin"],
+  // Paquetes con bindings nativos de Node.js — no bundlear con esbuild.
+  // firebase-admin: Admin SDK (usado en route handlers).
+  // tree-sitter / tree-sitter-typescript: bindings nativos del GitHub Engine.
+  // Ambos son incompatibles con Cloudflare Workers / edge runtime.
+  serverExternalPackages: [
+    "firebase-admin",
+    "tree-sitter",
+    "tree-sitter-typescript",
+  ],
   images: {
     remotePatterns: [
       {
