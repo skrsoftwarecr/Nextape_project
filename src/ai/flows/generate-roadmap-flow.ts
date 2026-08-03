@@ -5,7 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { generateJson } from '@/ai/generate';
+import { generateJsonWithFallback } from '@/ai/generate';
 
 const PRIORITIES = ['low', 'medium', 'high', 'critical'] as const;
 type Priority = (typeof PRIORITIES)[number];
@@ -100,7 +100,8 @@ REGLAS:
 
 Responde solo con el JSON.`;
 
-    const parsed = await generateJson(prompt, LenientRoadmap);
+    const { data: parsed, provider } = await generateJsonWithFallback(prompt, LenientRoadmap);
+    console.log(`[generateRoadmapFlow] Generado con proveedor: ${provider}`);
 
     const steps = parsed.steps.map((s) => ({
       title: s.title,

@@ -235,8 +235,10 @@ async function main() {
 
   let created = 0;
   let skipped = 0;
+  let incomplete = 0;
   let failed = 0;
   let totalQuestions = 0;
+  const incompleteTargets: string[] = [];
   const startedAt = Date.now();
 
   for (const [i, target] of targets.entries()) {
@@ -245,10 +247,14 @@ async function main() {
     try {
       if (!opts.force) {
         const already = await existingCount(db, target.docId);
-        if (already > 0) {
-          console.log(`${progress} ⏭️  ${target.docId} — ya existe (${already} preguntas)`);
+        if (already >= 20) {
+          console.log(`${progress} ⏭️  ${target.docId} — ya existe completo (${already} preguntas)`);
           skipped++;
           continue;
+        } else if (already > 0) {
+          console.log(
+            `${progress} 🔄 ${target.docId} — incompleto previo (${already} preguntas < 20), completando con IA...`
+          );
         }
       }
 
@@ -268,6 +274,8 @@ async function main() {
         continue;
       }
 
+      const isIncomplete = questions.length < 20;
+
       await db.collection(COLLECTION).doc(target.docId).set({
         key: target.key,
         kind: target.kind,
@@ -276,6 +284,7 @@ async function main() {
         level: target.level,
         questions,
         count: questions.length,
+        status: isIncomplete ? "incomplete" : "complete",
         byType: countByType(questions),
         generator: GENERATOR,
         updatedAt: FieldValue.serverTimestamp(),
@@ -285,9 +294,18 @@ async function main() {
         .filter(([, n]) => n > 0)
         .map(([t, n]) => `${t}:${n}`)
         .join(" ");
-      console.log(`${progress} ✅ ${target.docId} — ${questions.length} preguntas (${mix})`);
 
-      created++;
+      if (isIncomplete) {
+        console.warn(
+          `${progress} ⚠️  ${target.docId} — INCOMPLETA: solo ${questions.length} preguntas de 25 esperadas (${mix})`
+        );
+        incomplete++;
+        incompleteTargets.push(target.docId);
+      } else {
+        console.log(`${progress} ✅ ${target.docId} — ${questions.length} preguntas (${mix})`);
+        created++;
+      }
+
       totalQuestions += questions.length;
     } catch (err) {
       console.error(`${progress} ❌ ${target.docId} —`, err instanceof Error ? err.message : err);
@@ -300,19 +318,29 @@ async function main() {
   const minutes = Math.round((Date.now() - startedAt) / 60000);
   console.log("\n" + "─".repeat(60));
   console.log("🎉 PRECARGA TERMINADA");
-  console.log(`   Creados   : ${created}`);
-  console.log(`   Saltados  : ${skipped} (ya existían)`);
-  console.log(`   Fallidos  : ${failed}`);
-  console.log(`   Preguntas : ${totalQuestions}`);
-  console.log(`   Duración  : ~${minutes} min`);
-  if (failed > 0) {
-    console.log("\n   Relanza el mismo comando: los ya creados se saltan y solo se reintentan los fallidos.");
+  console.log(`   Creados     : ${created}`);
+  console.log(`   Incompletos : ${incomplete} (menos de 20 preguntas)`);
+  console.log(`   Saltados    : ${skipped} (ya existían)`);
+  console.log(`   Fallidos    : ${failed}`);
+  console.log(`   Preguntas   : ${totalQuestions}`);
+  console.log(`   Duración    : ~${minutes} min`);
+  if (incompleteTargets.length > 0) {
+    console.log(`\n   ⚠️ Combinaciones incompletas: ${incompleteTargets.join(", ")}`);
+  }
+  if (failed > 0 || incomplete > 0) {
+    console.log("\n   Relanza el mismo comando con --force en las incompletas para regenerarlas.");
   }
   console.log("─".repeat(60) + "\n");
+
 }
 
+import { deleteApp } from "firebase-admin/app";
+
 main()
-  .then(() => process.exit(0))
+  .then(async () => {
+    await Promise.all(getApps().map((app) => deleteApp(app)));
+    process.exit(0);
+  })
   .catch((err) => {
     console.error("\n❌ Error fatal:", err);
     process.exit(1);

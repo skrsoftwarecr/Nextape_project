@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { generateJson } from '@/ai/generate';
+import { generateJsonWithFallback } from '@/ai/generate';
 import { shuffle } from '@/lib/server/assessment';
 import { QUESTION_TYPES } from '@/types/question.types';
 import type { Question, QuestionType } from '@/types/question.types';
@@ -258,7 +258,11 @@ ${spec.rules}
 Responde solo con el JSON.`;
 
     const LenientOutput = z.object({ questions: z.array(LENIENT_BY_TYPE[type]) });
-    const parsed = await generateJson(prompt, LenientOutput);
+    console.log(`   ⏳ Generando tipo '${type}' (${count} preguntas)...`);
+    const { data: parsed, provider } = await generateJsonWithFallback(prompt, LenientOutput);
+    console.log(
+      `   ✅ Completado tipo '${type}': ${parsed.questions.length} preguntas (proveedor: ${provider.toUpperCase()})`
+    );
 
     // Solo se conserva `source` si es una URL que estaba en la lista: el modelo a veces inventa
     // enlaces plausibles, y una fuente inventada es peor que ninguna.
