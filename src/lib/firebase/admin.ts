@@ -51,7 +51,31 @@ export async function verifyRequestUid(authorizationHeader: string | null): Prom
   try {
     const decoded = await adminAuth().verifyIdToken(token);
     return decoded.uid;
-  } catch {
+  } catch (err) {
+    // El error se registra SIEMPRE. Antes se descartaba en silencio y el handler respondía 401,
+    // así que un servidor sin credenciales era indistinguible de un token inválido: la app decía
+    // "unauthorized" a un usuario perfectamente logueado y no había ninguna pista de por qué.
+    const message = err instanceof Error ? err.message : String(err);
+    if (!isCredentialsConfigured()) {
+      console.error(
+        "[admin] No se pudo verificar el token porque el Admin SDK NO tiene credenciales.\n" +
+          "        Define FIREBASE_SERVICE_ACCOUNT (JSON del service account) o\n" +
+          "        GOOGLE_APPLICATION_CREDENTIALS (ruta al JSON) en .env.local y reinicia el server.\n" +
+          `        Error original: ${message}`
+      );
+    } else {
+      console.warn("[admin] Token rechazado:", message);
+    }
     return null;
   }
+}
+
+/** ¿Hay alguna credencial de servidor disponible para el Admin SDK? */
+function isCredentialsConfigured(): boolean {
+  return Boolean(
+    process.env.FIREBASE_SERVICE_ACCOUNT ||
+      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+      process.env.GOOGLE_CLOUD_PROJECT ||
+      process.env.GCLOUD_PROJECT
+  );
 }
