@@ -69,11 +69,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Preguntas y Bancos de Exámenes
+    // Banco curado de preguntas (`BankQuestion`). SERVER-ONLY.
+    // ⚠️ Antes era `read: if isAuthenticated()`. Estos documentos incluyen `correctIndex`, así que
+    // cualquier usuario logueado podía leer la clave de respuestas y aprobar cualquier prueba —
+    // exactamente lo que invalida el "DNA verificado". El único consumidor es
+    // `sampleBankQuestions` (`src/lib/server/question-bank.ts`), que usa el Admin SDK y bypassa
+    // estas reglas, así que cerrarlo no rompe nada.
     match /questions/{qId} {
-      allow read: if isAuthenticated();
-      allow list: if isAuthenticated();
-      allow write: if false;
+      allow read, write: if false;
     }
 
     // Match de candidatos (Engine). Escritura solo vía servidor/Admin.

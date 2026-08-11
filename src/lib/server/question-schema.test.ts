@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { BankQuestion } from "@/types/question.types";
 import { stripAnswerKey } from "@/lib/server/assessment";
-import type { Question } from "@/types/job.types";
+import { toQuestion } from "@/lib/server/question-bank";
 
 describe("BankQuestion Schema & Helpers", () => {
   it("should format a valid BankQuestion and correctly strip the answer key for public exposure", () => {
@@ -22,17 +22,44 @@ describe("BankQuestion Schema & Helpers", () => {
       correctIndex: 0,
       difficultyScore: 0.8,
       version: "1.0.0",
-      createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+      createdAt: { seconds: 1735689600, nanoseconds: 0 },
     };
 
-    // Adapt to Question type for stripAnswerKey helper
-    const questionsList: Question[] = [mockQuestion as unknown as Question];
-    const stripped = stripAnswerKey(questionsList);
+    // `toQuestion` es la conversión oficial banco → tipo canónico (añade `type` y baraja opciones).
+    const stripped = stripAnswerKey([toQuestion(mockQuestion)]);
 
     expect(stripped).toHaveLength(1);
-    expect(stripped[0]).not.toHaveProperty("correctIndex");
-    expect(stripped[0].id).toBe("q-test-101");
-    expect(stripped[0].briefing).toContain("Next.js");
-    expect(stripped[0].options).toHaveLength(4);
+    const [publicQuestion] = stripped;
+    expect(publicQuestion).not.toHaveProperty("correctIndex");
+    expect(publicQuestion.id).toBe("q-test-101");
+    expect(publicQuestion.briefing).toContain("Next.js");
+    expect(publicQuestion.type).toBe("multiple_choice");
+    expect("options" in publicQuestion && publicQuestion.options).toHaveLength(4);
+  });
+
+  it("toQuestion baraja las opciones pero conserva cuál es la correcta", () => {
+    const bank: BankQuestion = {
+      id: "q-shuffle",
+      skill: "react",
+      level: "senior",
+      category: "architecture",
+      tag: "react",
+      briefing: "b",
+      text: "t",
+      options: ["CORRECTA", "b", "c", "d"],
+      correctIndex: 0,
+      difficultyScore: 0.5,
+      version: "1.0.0",
+    };
+
+    // En el banco la correcta está casi siempre en la posición 0. Si no se barajara, marcar
+    // siempre la primera opción aprobaría el examen entero.
+    const positions = new Set<number>();
+    for (let i = 0; i < 40; i++) {
+      const q = toQuestion(bank);
+      expect(q.options[q.correctIndex]).toBe("CORRECTA");
+      positions.add(q.correctIndex);
+    }
+    expect(positions.size).toBeGreaterThan(1);
   });
 });

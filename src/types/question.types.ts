@@ -108,6 +108,47 @@ export type PublicQuestion =
   | PublicTrueFalse
   | PublicOrdering;
 
+/* ─────────────────────────── Banco offline pre-aprobado ─────────────────────────── */
+
+/** Eje que evalúa una pregunta del banco curado. */
+export type BankCategory =
+  | "architecture"
+  | "performance"
+  | "security"
+  | "debugging"
+  | "refactoring";
+
+/**
+ * Pregunta del **banco curado a mano** (`src/lib/server/question-bank.ts`).
+ *
+ * Es el respaldo determinista: preguntas escritas y revisadas por el equipo, sin IA de por medio,
+ * para que The LINE pueda funcionar aunque el proveedor de IA esté caído o sin cuota. Se convierte
+ * a `Question` con `toQuestion()` antes de entrar al flujo normal de examen.
+ *
+ * Lleva más metadatos que una `Question` (`skill`, `category`, `difficultyScore`, `version`) porque
+ * describen el banco, no el examen: sirven para filtrar, versionar y auditar el contenido curado.
+ */
+export interface BankQuestion {
+  id: string;
+  /** Tecnología evaluada: id del catálogo de `src/lib/technologies.ts`. En minúsculas. */
+  skill: string;
+  /** Nivel objetivo: junior | mid | senior. */
+  level: string;
+  category: BankCategory;
+  /** Clave bajo la que se acredita el score en el DNA. En minúsculas. */
+  tag: string;
+  briefing: string;
+  text: string;
+  options: string[];
+  correctIndex: number;
+  /** Dificultad relativa (0–1) dentro de su nivel. Para ordenar y calibrar. */
+  difficultyScore: number;
+  /** Versión del contenido, para poder revisar y sustituir preguntas concretas. */
+  version: string;
+  /** Timestamp de Firestore, en su forma serializada. */
+  createdAt?: { seconds: number; nanoseconds: number };
+}
+
 /**
  * Respuesta del candidato a una pregunta. La forma depende del tipo:
  * - `multiple_choice` / `code_output` → `number` (índice elegido)
