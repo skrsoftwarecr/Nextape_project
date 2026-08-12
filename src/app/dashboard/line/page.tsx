@@ -188,7 +188,6 @@ function LineContent() {
                         <SelectItem value="junior">Junior</SelectItem>
                         <SelectItem value="mid">Mid</SelectItem>
                         <SelectItem value="senior">Senior</SelectItem>
-                        <SelectItem value="master">Master</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -217,7 +216,16 @@ function LineContent() {
           </div>
         </div>
       ) : (
-        <div className="fixed inset-0 z-[100] bg-black text-white p-6 md:p-12 flex flex-col items-center justify-center space-y-12">
+        /* El scroll vive en el overlay, NO en la tarjeta.
+           1) `justify-center` con contenido más alto que la pantalla desborda hacia ARRIBA y
+              recorta la cabecera sin dejar forma de llegar a ella. El envoltorio `min-h-full`
+              centra cuando cabe y crece cuando no, así que nunca se pierde nada por arriba.
+           2) La tarjeta tenía `backdrop-blur-3xl` junto a `overflow-y-auto`: al hacer scroll, el
+              navegador vuelve a muestrear el backdrop y deja bandas horizontales rasgadas — el
+              "fondo blanco entrecortado". Sobre un fondo negro sólido el desenfoque no aportaba
+              nada (no hay nada detrás que desenfocar), solo el artefacto. */
+        <div className="fixed inset-0 z-[100] bg-black text-white overflow-y-auto">
+         <div className="min-h-full flex flex-col items-center justify-center gap-12 p-6 md:p-12">
           <div className="flex items-center justify-between w-full max-w-4xl border-b border-white/10 pb-8">
              <div className="flex items-center gap-4">
                 <Terminal className="h-6 w-6 text-brand-blue" />
@@ -228,7 +236,7 @@ function LineContent() {
              </div>
           </div>
 
-          <div className="max-w-2xl w-full p-8 md:p-12 bg-white/5 rounded-[2.5rem] border border-white/10 space-y-10 backdrop-blur-3xl max-h-[70vh] overflow-y-auto">
+          <div className="max-w-2xl w-full p-8 md:p-12 bg-white/[0.06] rounded-[2.5rem] border border-white/10 space-y-10">
              <div className="space-y-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="inline-block px-3 py-1 bg-brand-blue/20 text-brand-blue rounded-full text-[9px] font-bold uppercase tracking-widest">
@@ -263,6 +271,7 @@ function LineContent() {
               <span className="text-xs font-mono text-brand-green">Cifrado</span>
             </div>
           </div>
+         </div>
         </div>
       )}
     </div>

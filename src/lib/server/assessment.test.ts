@@ -10,6 +10,7 @@ import {
   normalizeSimulationParams,
   normalizeStoredQuestions,
   countByType,
+  LEVELS,
   SPECIALTY_STACKS,
 } from "./assessment";
 import type {
@@ -339,10 +340,10 @@ describe("normalizeSimulationParams", () => {
       kind: "technology",
       level: "mid",
     });
-    expect(normalizeSimulationParams("rust", "master")).toEqual({
+    expect(normalizeSimulationParams("rust", "junior")).toEqual({
       subject: "rust",
       kind: "technology",
-      level: "master",
+      level: "junior",
     });
   });
 
@@ -353,6 +354,15 @@ describe("normalizeSimulationParams", () => {
       level: "mid",
     });
     expect(normalizeSimulationParams("  React  ", "SENIOR")).toEqual({
+      subject: "react",
+      kind: "technology",
+      level: "senior",
+    });
+  });
+
+  it("'master' ya no es un nivel válido: senior es el techo", () => {
+    expect(LEVELS).toEqual(["junior", "mid", "senior"]);
+    expect(normalizeSimulationParams("react", "master")).toEqual({
       subject: "react",
       kind: "technology",
       level: "senior",

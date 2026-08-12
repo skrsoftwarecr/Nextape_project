@@ -326,7 +326,6 @@ export default function ManageVacancyPage() {
                   <SelectItem value="junior">Junior</SelectItem>
                   <SelectItem value="mid">Mid</SelectItem>
                   <SelectItem value="senior">Senior</SelectItem>
-                  <SelectItem value="master">Master</SelectItem>
                 </SelectContent>
               </Select>
             </Field>

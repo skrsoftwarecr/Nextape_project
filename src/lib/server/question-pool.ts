@@ -133,7 +133,7 @@ export async function buildTechnologyPool({
 export interface BuildPoolInput {
   /** Skills a cubrir (se normalizan a minúsculas). */
   stack: string[];
-  /** Nivel objetivo: junior | mid | senior | master. */
+  /** Nivel objetivo: junior | mid | senior. */
   level: string;
 }
 

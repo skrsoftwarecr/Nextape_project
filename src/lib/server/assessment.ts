@@ -19,8 +19,14 @@ export const SPECIALTY_STACKS: Record<string, string[]> = {
   devops: ["kubernetes", "ci-cd", "aws", "terraform"],
 };
 
-/** Niveles válidos de una simulación. Debe coincidir con el enum del flow de IA. */
-export const LEVELS = ["junior", "mid", "senior", "master"] as const;
+/**
+ * Niveles válidos de una simulación, de menor a mayor. Debe coincidir con el enum del flow de IA.
+ *
+ * `senior` es el techo. Se retiró `master` (2026-08-03): un cuarto escalón por encima de senior no
+ * aportaba señal distinguible al evaluar y multiplicaba el coste de precarga del banco por 4/3.
+ * Los repertorios `*_master` que quedaran en Firestore dejan de ser alcanzables; se pueden borrar.
+ */
+export const LEVELS = ["junior", "mid", "senior"] as const;
 
 /**
  * Normaliza los parámetros de una simulación general (The LINE libre, sin vacante).

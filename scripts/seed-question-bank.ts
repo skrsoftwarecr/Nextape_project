@@ -23,7 +23,11 @@
  * relanzar sin perder trabajo ni pagar dos veces.
  */
 
-import { config } from "dotenv";
+// ⚠️ PRIMER import, sin excepción: carga `.env.local` antes de que se evalúe cualquier módulo que
+// lea `process.env` al importarse (`src/ai/genkit.ts` construye el cliente de Groq con la API key
+// en ese momento). Ver `scripts/load-env.ts`.
+import "./load-env";
+
 import { initializeApp, getApps, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import type { Firestore } from "firebase-admin/firestore";
@@ -38,10 +42,6 @@ import {
   ALL_QUESTION_TYPES,
 } from "@/lib/server/question-pool";
 import type { Question } from "@/types/question.types";
-
-// `.env.local` primero (convención de Next), con `.env` como respaldo.
-config({ path: ".env.local" });
-config();
 
 const COLLECTION = "line_question_pools";
 const GENERATOR = "seed-question-bank@v1";

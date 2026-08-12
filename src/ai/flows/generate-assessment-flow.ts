@@ -14,7 +14,8 @@ import { shuffle } from '@/lib/server/assessment';
 import { QUESTION_TYPES } from '@/types/question.types';
 import type { Question, QuestionType } from '@/types/question.types';
 
-const DIFFICULTIES = ['junior', 'mid', 'senior', 'master'] as const;
+// `senior` es el nivel máximo. Debe coincidir con `LEVELS` en `src/lib/server/assessment.ts`.
+const DIFFICULTIES = ['junior', 'mid', 'senior'] as const;
 type Difficulty = (typeof DIFFICULTIES)[number];
 
 const GenerateQuestionsInputSchema = z.object({
@@ -245,7 +246,7 @@ Estructura EXACTA del JSON:
 
 REGLAS:
 ${spec.rules}
-- "difficulty": uno de junior, mid, senior o master (el más cercano al nivel "${input.level}").
+- "difficulty": uno de junior, mid o senior (el más cercano al nivel "${input.level}").
 - "tag": DEBE ser EXACTAMENTE una de estas habilidades (en minúsculas): ${stack}. No inventes otras.${
       sources.length
         ? '\n- "source": DEBE ser una de las URLs listadas arriba, copiada tal cual. No inventes URLs.'

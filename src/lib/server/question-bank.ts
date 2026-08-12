@@ -1,6 +1,12 @@
-import type { BankQuestion } from "@/types/question.types";
-import type { Question } from "@/types/job.types";
+import type { BankQuestion, MultipleChoiceQuestion } from "@/types/question.types";
 import { adminDb } from "@/lib/firebase/admin";
+import { shuffle } from "./assessment";
+
+/**
+ * Techo de espera para la consulta al banco persistido. Pasado ese tiempo se usa el banco local:
+ * es preferible un examen del respaldo curado a dejar al candidato mirando un spinner.
+ */
+const FIRESTORE_TIMEOUT_MS = 1500;
 
 /**
  * Banco Inicial de Preguntas Pre-Aprobadas (Seed / Fallback Offline).
@@ -26,7 +32,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.8,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-nextjs-perf-01",
@@ -45,7 +51,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.85,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-ts-type-01",
@@ -64,7 +70,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.75,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-tailwind-css-01",
@@ -83,7 +89,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.7,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-react-debug-01",
@@ -102,7 +108,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.65,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
 
   // --- BACKEND / NODE.JS / POSTGRESQL / DOCKER / REDIS ---
@@ -123,7 +129,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.85,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-pg-sec-01",
@@ -142,7 +148,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.8,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-docker-arch-01",
@@ -161,7 +167,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.75,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-redis-arch-01",
@@ -180,7 +186,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.85,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
 
   // --- DEVOPS / KUBERNETES / CI-CD / AWS / TERRAFORM ---
@@ -201,7 +207,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.8,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-cicd-sec-01",
@@ -220,7 +226,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.85,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-tf-arch-01",
@@ -239,7 +245,7 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.8,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   },
   {
     id: "q-aws-sec-01",
@@ -258,33 +264,525 @@ export const INITIAL_QUESTION_BANK: BankQuestion[] = [
     correctIndex: 0,
     difficultyScore: 0.75,
     version: "1.0.0",
-    createdAt: { seconds: 1735689600, nanoseconds: 0 } as any,
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // BACKEND — RUNTIME Y FRAMEWORKS
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: "q-node-stream-01",
+    skill: "node.js",
+    level: "mid",
+    category: "performance",
+    tag: "node.js",
+    briefing: "Un servicio Node.js debe procesar ficheros CSV de varios GB y el contenedor muere por falta de memoria.",
+    text: "¿Cómo se procesa el fichero sin que el consumo de memoria crezca con su tamaño?",
+    options: [
+      "Leerlo como un Stream y procesarlo por chunks encadenando transformaciones con `pipeline()`",
+      "Usar `fs.readFileSync` y trocear el string resultante en memoria",
+      "Aumentar `--max-old-space-size` hasta que el fichero quepa en el heap",
+      "Cargar el fichero en un array y recorrerlo con `forEach` liberando cada elemento"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.6,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-node-shutdown-01",
+    skill: "node.js",
+    level: "senior",
+    category: "architecture",
+    tag: "node.js",
+    briefing: "Durante cada despliegue, los usuarios ven errores 502 porque los pods se reinician cortando peticiones en curso.",
+    text: "¿Qué debe hacer el proceso al recibir SIGTERM para desplegar sin cortar peticiones?",
+    options: [
+      "Dejar de aceptar conexiones nuevas, terminar las peticiones en vuelo y cerrar recursos antes de salir (graceful shutdown)",
+      "Llamar a `process.exit(0)` de inmediato para liberar el puerto cuanto antes",
+      "Ignorar SIGTERM y esperar a que el orquestador envíe SIGKILL",
+      "Reiniciar el servidor HTTP en el mismo proceso manteniendo el puerto abierto"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.8,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-express-err-01",
+    skill: "express",
+    level: "mid",
+    category: "debugging",
+    tag: "express",
+    briefing: "En una API Express, los errores lanzados dentro de handlers `async` no llegan al middleware de errores y la petición queda colgada.",
+    text: "¿Cuál es la causa y la solución correcta?",
+    options: [
+      "Express no captura promesas rechazadas: hay que envolver el handler y pasar el error a `next(err)`",
+      "El middleware de errores debe declararse antes que las rutas para interceptarlas",
+      "Hay que sustituir `async/await` por callbacks en todos los handlers",
+      "Basta con añadir un `try/catch` global con `process.on('uncaughtException')`"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.55,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-nestjs-di-01",
+    skill: "nestjs",
+    level: "senior",
+    category: "performance",
+    tag: "nestjs",
+    briefing: "Un servicio NestJS marcado con `scope: Scope.REQUEST` degrada el rendimiento de toda la cadena de dependencias.",
+    text: "¿Por qué ocurre y cuál es el enfoque correcto?",
+    options: [
+      "El scope de petición se propaga a quien lo inyecta, instanciando el árbol en cada request: conviene mantener los providers singleton y pasar el contexto como argumento",
+      "Es un bug del contenedor de NestJS que se corrige activando `useFactory`",
+      "Hay que marcar todos los providers como REQUEST para homogeneizar el ciclo de vida",
+      "El problema desaparece registrando el módulo como `@Global()`"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-django-orm-01",
+    skill: "django",
+    level: "mid",
+    category: "performance",
+    tag: "django",
+    briefing: "Un listado en Django hace una consulta por cada fila al acceder a una relación dentro del bucle de plantilla.",
+    text: "¿Cómo se elimina ese problema de N+1 consultas?",
+    options: [
+      "Precargar las relaciones con `select_related` (FK) o `prefetch_related` (M2M) en el queryset",
+      "Añadir un índice a la clave primaria de la tabla relacionada",
+      "Convertir el queryset a lista con `list()` antes de renderizar la plantilla",
+      "Activar el modo `DEBUG=False` para que Django agrupe las consultas"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.6,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-fastapi-block-01",
+    skill: "fastapi",
+    level: "senior",
+    category: "performance",
+    tag: "fastapi",
+    briefing: "Un endpoint `async def` de FastAPI llama a un cliente de base de datos síncrono y bajo carga la latencia se dispara en TODOS los endpoints.",
+    text: "¿Cuál es la causa raíz y la corrección adecuada?",
+    options: [
+      "La llamada bloqueante congela el event loop: hay que usar un cliente asíncrono o declarar el endpoint como `def` para que FastAPI lo ejecute en el threadpool",
+      "Faltan workers de Uvicorn: basta con subir `--workers` hasta que la latencia baje",
+      "Hay que envolver la llamada en `asyncio.create_task` para que no bloquee",
+      "El problema se resuelve aumentando el timeout del cliente de base de datos"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-spring-tx-01",
+    skill: "spring",
+    level: "senior",
+    category: "debugging",
+    tag: "spring",
+    briefing: "Un método anotado con `@Transactional` no abre transacción cuando se le llama desde otro método de la misma clase.",
+    text: "¿Por qué sucede?",
+    options: [
+      "La anotación se aplica mediante un proxy: una llamada interna no pasa por él, así que hay que invocarlo desde otro bean o auto-inyectarse",
+      "`@Transactional` solo funciona en métodos que devuelven void",
+      "Falta anotar la clase con `@Repository` para que Spring gestione la transacción",
+      "El nivel de aislamiento por defecto desactiva las transacciones anidadas"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-go-goroutine-01",
+    skill: "go",
+    level: "mid",
+    category: "debugging",
+    tag: "go",
+    briefing: "Un servicio en Go acumula goroutines bloqueadas hasta agotar la memoria: cada petición lanza una goroutine que escribe en un canal sin receptor.",
+    text: "¿Cuál es la forma idiomática de evitar esa fuga?",
+    options: [
+      "Propagar un `context` con cancelación y usar `select` con `ctx.Done()` para abandonar la escritura",
+      "Aumentar `GOMAXPROCS` para que el planificador libere las goroutines bloqueadas",
+      "Llamar a `runtime.GC()` periódicamente desde un ticker",
+      "Sustituir el canal por una variable global protegida con `sync.Mutex`"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.7,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // BASES DE DATOS
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: "q-pg-index-01",
+    skill: "postgresql",
+    level: "senior",
+    category: "performance",
+    tag: "postgresql",
+    briefing: "Una consulta filtra por `WHERE lower(email) = $1`, existe un índice sobre `email` y `EXPLAIN` sigue mostrando un Seq Scan.",
+    text: "¿Por qué no se usa el índice?",
+    options: [
+      "Aplicar una función sobre la columna invalida el índice normal: hace falta un índice de expresión sobre `lower(email)`",
+      "Los índices B-Tree no sirven para columnas de tipo texto",
+      "El planificador ignora los índices cuando la tabla tiene menos de un millón de filas",
+      "Falta ejecutar `REINDEX` después de cada inserción para mantenerlo válido"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-pg-pool-01",
+    skill: "postgresql",
+    level: "senior",
+    category: "architecture",
+    tag: "postgresql",
+    briefing: "Bajo carga, la aplicación agota el pool de conexiones y las peticiones esperan indefinidamente, aunque la CPU de la base está ociosa.",
+    text: "¿Cuál es la causa más probable y su corrección?",
+    options: [
+      "Transacciones abiertas durante llamadas externas lentas: acortar el alcance de la transacción y fijar timeouts de adquisición y de sentencia",
+      "El pool es demasiado pequeño: subirlo a varios miles de conexiones resuelve el problema",
+      "Falta ejecutar `VACUUM FULL` para liberar las conexiones muertas",
+      "El pool no debe usarse: conviene abrir una conexión nueva por consulta"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-pg-tx-01",
+    skill: "postgresql",
+    level: "mid",
+    category: "architecture",
+    tag: "postgresql",
+    briefing: "Dos procesos concurrentes leen el stock de un producto, comprueban que hay unidades y lo decrementan. El stock acaba en negativo.",
+    text: "¿Qué mecanismo evita esa condición de carrera?",
+    options: [
+      "Bloquear la fila con `SELECT ... FOR UPDATE` dentro de la transacción, o hacer el decremento condicional en una sola sentencia",
+      "Subir el nivel de aislamiento a READ UNCOMMITTED",
+      "Añadir un índice único sobre la columna de stock",
+      "Reintentar la operación en el cliente hasta que el stock sea positivo"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.7,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-mongo-index-01",
+    skill: "mongodb",
+    level: "mid",
+    category: "performance",
+    tag: "mongodb",
+    briefing: "Una consulta de MongoDB filtra por `status`, ordena por `createdAt` y devuelve un rango de fechas. El plan muestra COLLSCAN.",
+    text: "¿Cómo debe diseñarse el índice compuesto?",
+    options: [
+      "Igualdad primero, luego ordenación y por último el rango (regla ESR): `{ status: 1, createdAt: -1 }`",
+      "Un índice por cada campo por separado; Mongo los combinará automáticamente",
+      "Un índice de texto sobre toda la colección",
+      "Poner siempre el campo de rango en primera posición del índice"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.7,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-redis-persist-01",
+    skill: "redis",
+    level: "mid",
+    category: "architecture",
+    tag: "redis",
+    briefing: "Un script de mantenimiento ejecuta `KEYS user:*` sobre una instancia Redis de producción con millones de claves y el servicio se congela.",
+    text: "¿Cuál es la alternativa correcta?",
+    options: [
+      "Recorrer el keyspace con `SCAN` y su cursor, que itera en bloques sin bloquear el servidor",
+      "Ejecutar `KEYS` en una réplica de lectura, que no afecta al rendimiento",
+      "Aumentar el `timeout` del cliente para que soporte la espera",
+      "Usar `FLUSHDB` y repoblar solo las claves necesarias"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.65,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-mysql-charset-01",
+    skill: "mysql",
+    level: "junior",
+    category: "debugging",
+    tag: "mysql",
+    briefing: "Al guardar comentarios con emojis en MySQL, la aplicación falla con 'Incorrect string value'.",
+    text: "¿Cuál es la causa?",
+    options: [
+      "La columna usa `utf8` (3 bytes), que no cubre emojis: hay que migrarla a `utf8mb4`",
+      "MySQL no admite emojis en ninguna versión y hay que codificarlos en base64",
+      "Falta escapar los emojis antes de la inserción para evitar inyección",
+      "El tamaño del `VARCHAR` es insuficiente y hay que ampliarlo al doble"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.4,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-es-pagination-01",
+    skill: "elasticsearch",
+    level: "senior",
+    category: "performance",
+    tag: "elasticsearch",
+    briefing: "Una búsqueda paginada en Elasticsearch falla al pasar de la página 1000 con un error de límite de resultados.",
+    text: "¿Cuál es el enfoque correcto para paginación profunda?",
+    options: [
+      "Usar `search_after` con un criterio de orden único, en lugar de `from` + `size`",
+      "Subir `index.max_result_window` a un valor muy alto y mantener `from` + `size`",
+      "Traer todos los resultados y paginar en memoria en la aplicación",
+      "Reindexar los documentos ordenados para que las páginas altas sean accesibles"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // APIs Y ARQUITECTURA DISTRIBUIDA
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: "q-rest-idem-01",
+    skill: "rest",
+    level: "mid",
+    category: "architecture",
+    tag: "rest",
+    briefing: "Una pasarela de pagos reintenta las peticiones cuando expira el timeout, y algunos clientes acaban cobrados dos veces.",
+    text: "¿Qué mecanismo garantiza que el reintento no duplique el cobro?",
+    options: [
+      "Exigir una clave de idempotencia por operación y devolver el resultado original si la clave ya se procesó",
+      "Cambiar el endpoint de POST a GET para que sea idempotente por definición",
+      "Aumentar el timeout hasta que los reintentos dejen de producirse",
+      "Deduplicar en base de datos comparando importe y fecha de la petición"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.75,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-graphql-nplus1-01",
+    skill: "graphql",
+    level: "senior",
+    category: "performance",
+    tag: "graphql",
+    briefing: "Una consulta GraphQL que pide 100 posts con su autor genera 101 consultas a la base de datos.",
+    text: "¿Cuál es la solución estándar?",
+    options: [
+      "Agrupar las cargas por resolver con un DataLoader, que batchea las claves del mismo tick y cachea por petición",
+      "Prohibir las consultas anidadas mediante límite de profundidad",
+      "Cachear la respuesta completa en Redis con un TTL corto",
+      "Devolver siempre el autor completo embebido en el post, sin resolver"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.8,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-micro-saga-01",
+    skill: "microservices",
+    level: "senior",
+    category: "architecture",
+    tag: "microservices",
+    briefing: "Una compra debe reservar stock, cobrar y crear el envío, cada uno en un microservicio con su propia base de datos.",
+    text: "¿Cómo se mantiene la consistencia sin una transacción distribuida?",
+    options: [
+      "Aplicar el patrón Saga: pasos locales encadenados por eventos, con transacciones compensatorias si uno falla",
+      "Abrir una transacción XA de dos fases que abarque las tres bases de datos",
+      "Unificar las tres bases de datos en una sola para poder usar `BEGIN`/`COMMIT`",
+      "Ejecutar los tres pasos en paralelo y reconciliar las diferencias con un cron nocturno"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-micro-retry-01",
+    skill: "microservices",
+    level: "senior",
+    category: "architecture",
+    tag: "microservices",
+    briefing: "Un servicio se degrada y sus clientes reintentan de inmediato, multiplicando la carga y provocando una caída en cascada.",
+    text: "¿Qué combinación de patrones evita la avalancha de reintentos?",
+    options: [
+      "Backoff exponencial con jitter, un límite de reintentos y un circuit breaker que corte cuando el servicio esté caído",
+      "Reintentos inmediatos e ilimitados hasta que el servicio responda",
+      "Aumentar el número de réplicas del cliente para repartir los reintentos",
+      "Encolar todos los reintentos en memoria del cliente sin límite"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.85,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SEGURIDAD
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: "q-sec-pwd-01",
+    skill: "security",
+    level: "mid",
+    category: "security",
+    tag: "security",
+    briefing: "Una auditoría detecta que las contraseñas se guardan como `sha256(password + salt)`.",
+    text: "¿Por qué es insuficiente y qué debe usarse?",
+    options: [
+      "SHA-256 es rápida y permite miles de millones de intentos por segundo: hay que usar un hash lento y parametrizable como Argon2id o bcrypt",
+      "El problema es el salt: basta con generarlo más largo y aleatorio",
+      "Hay que cifrar las contraseñas con AES en lugar de hashearlas",
+      "Basta con aplicar SHA-256 varias veces seguidas en el propio código"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.7,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-sec-idor-01",
+    skill: "security",
+    level: "mid",
+    category: "security",
+    tag: "security",
+    briefing: "El endpoint `GET /api/invoices/{id}` verifica que el usuario esté autenticado y devuelve la factura solicitada.",
+    text: "¿Qué vulnerabilidad tiene y cómo se corrige?",
+    options: [
+      "IDOR: autenticar no es autorizar. Hay que comprobar en cada petición que la factura pertenece al usuario",
+      "CSRF: hay que añadir un token anti-CSRF a la petición GET",
+      "Ninguna: al exigir autenticación el recurso ya está protegido",
+      "Se corrige usando identificadores UUID en lugar de numéricos"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.7,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-sec-jwt-01",
+    skill: "security",
+    level: "senior",
+    category: "security",
+    tag: "security",
+    briefing: "Una SPA guarda el JWT de sesión en `localStorage` para enviarlo en cada petición.",
+    text: "¿Cuál es el riesgo principal y la mitigación adecuada?",
+    options: [
+      "Cualquier XSS puede leer el token y robar la sesión: conviene una cookie `HttpOnly`, `Secure` y `SameSite`, con tokens de vida corta",
+      "El riesgo es CSRF, y se mitiga moviendo el token a `sessionStorage`",
+      "El riesgo es que el token ocupe demasiado espacio; se mitiga comprimiéndolo",
+      "No hay riesgo mientras el JWT vaya firmado con un algoritmo fuerte"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.8,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TESTING E INFRAESTRUCTURA
+  // ─────────────────────────────────────────────────────────────────────────────
+  {
+    id: "q-testing-flaky-01",
+    skill: "testing",
+    level: "mid",
+    category: "debugging",
+    tag: "testing",
+    briefing: "Una suite de tests pasa en local y falla de forma intermitente en CI, con resultados distintos según el orden de ejecución.",
+    text: "¿Cuál es la causa más probable?",
+    options: [
+      "Estado compartido entre tests (base de datos, singletons, fechas): cada test debe crear y limpiar el suyo",
+      "CI tiene menos CPU y hay que ampliar los timeouts de todos los tests",
+      "Los tests deben ejecutarse siempre en orden alfabético para ser deterministas",
+      "Falta reintentar automáticamente los tests fallidos hasta que pasen"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.65,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-docker-cache-01",
+    skill: "docker",
+    level: "junior",
+    category: "performance",
+    tag: "docker",
+    briefing: "Cada build de la imagen reinstala todas las dependencias aunque solo haya cambiado una línea de código de la aplicación.",
+    text: "¿Cómo se aprovecha la caché de capas de Docker?",
+    options: [
+      "Copiar primero el manifiesto de dependencias, instalarlas, y copiar el código fuente después",
+      "Copiar todo el proyecto en una única instrucción `COPY . .` al principio del Dockerfile",
+      "Añadir `--no-cache` al build para que las capas se regeneren correctamente",
+      "Instalar las dependencias en la última capa, justo antes del `CMD`"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.4,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
+  },
+  {
+    id: "q-git-history-01",
+    skill: "git",
+    level: "junior",
+    category: "debugging",
+    tag: "git",
+    briefing: "Se detecta un bug que no existía hace dos semanas, en un historial con cientos de commits.",
+    text: "¿Cuál es la forma más eficiente de localizar el commit que lo introdujo?",
+    options: [
+      "`git bisect`, que hace una búsqueda binaria entre un commit bueno y uno malo conocidos",
+      "Revisar `git log` commit por commit desde el más reciente hacia atrás",
+      "Hacer `git revert` de todos los commits del periodo y reaplicarlos uno a uno",
+      "Comparar el diff completo de las dos semanas con `git diff` y leerlo entero"
+    ],
+    correctIndex: 0,
+    difficultyScore: 0.45,
+    version: "1.0.0",
+    createdAt: { seconds: 1735689600, nanoseconds: 0 },
   }
 ];
 
 /**
- * Desordena pseudo-aleatoriamente las opciones de una pregunta y ajusta `correctIndex`
- * para garantizar que la posición de la respuesta correcta cambie dinámicamente entre sesiones.
+ * Convierte una pregunta del banco al tipo canónico `Question`, desordenando las opciones.
+ *
+ * Se barajan porque en el banco la respuesta correcta está casi siempre en la posición 0: sin esto,
+ * un candidato que lo notara acertaría el examen entero marcando siempre la primera opción.
+ *
+ * Se permuta por ÍNDICE y no buscando el texto correcto con `indexOf`, para que dos opciones con
+ * el mismo texto no hagan que `correctIndex` apunte a la equivocada.
  */
-function shuffleOptions(question: BankQuestion): Question {
-  const originalOptions = [...question.options];
-  const correctAnswer = originalOptions[question.correctIndex];
-
-  // Algoritmo Fisher-Yates para desordenar
-  const shuffled = [...originalOptions];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-
-  const newCorrectIndex = shuffled.indexOf(correctAnswer);
+export function toQuestion(question: BankQuestion): MultipleChoiceQuestion {
+  const n = question.options.length;
+  const perm = shuffle([...Array(n).keys()]); // perm[posiciónNueva] = índiceOriginal
 
   return {
     id: question.id,
+    type: "multiple_choice",
     briefing: question.briefing,
     text: question.text,
-    options: shuffled,
-    correctIndex: newCorrectIndex,
+    options: perm.map((original) => question.options[original]),
+    correctIndex: perm.indexOf(question.correctIndex),
     difficulty: question.level,
     tag: question.tag.toLowerCase(),
   };
@@ -298,18 +796,28 @@ export async function sampleBankQuestions(
   requestedSkills: string[],
   _level: string = "senior",
   count: number = 5
-): Promise<Question[]> {
+): Promise<MultipleChoiceQuestion[]> {
   const normalizedSkills = requestedSkills.map((s) => s.toLowerCase().trim());
   
   const bankCandidates: BankQuestion[] = [];
 
-  // 1) Intentar consultar el banco persistido en Firestore
+  // 1) Intentar consultar el banco persistido en Firestore, con techo de tiempo.
+  //    El `try/catch` por sí solo no basta: sin credenciales o con la red degradada, el Admin SDK
+  //    se queda esperando en vez de fallar, y esta función —que debe responder en milisegundos—
+  //    bloquea el arranque del examen. Con el timeout, el respaldo local entra enseguida.
   try {
     const db = adminDb();
-    const snap = await db
+    const query = db
       .collection("questions")
       .where("skill", "in", normalizedSkills.slice(0, 10))
       .get();
+
+    const snap = await Promise.race([
+      query,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("firestore_timeout")), FIRESTORE_TIMEOUT_MS)
+      ),
+    ]);
 
     if (!snap.empty) {
       snap.forEach((doc) => {
@@ -317,38 +825,44 @@ export async function sampleBankQuestions(
       });
     }
   } catch (err) {
-    console.warn("[sampleBankQuestions] Firestore fetch warning, using fallback bank:", err);
+    console.warn(
+      "[sampleBankQuestions] Firestore no disponible, se usa el banco local:",
+      err instanceof Error ? err.message : err
+    );
   }
 
-  // 2) Si Firestore no tiene suficientes preguntas aún (modo inicial/fallback), filtrar el banco semilla
+  // 2) Si Firestore no tiene suficientes preguntas aún (modo inicial/fallback), filtrar el banco
+  //    semilla. `existingIds` se va actualizando en cada inserción: si se usa una foto tomada al
+  //    principio, la segunda pasada vuelve a añadir lo que añadió la primera y el candidato recibe
+  //    la misma pregunta dos veces en el mismo examen.
   if (bankCandidates.length < count) {
-    const matchedFallback = INITIAL_QUESTION_BANK.filter((q) =>
-      normalizedSkills.some((s) => q.skill.toLowerCase().includes(s) || s.includes(q.skill.toLowerCase()))
-    );
-
-    // Combinar y eliminar duplicados por ID
     const existingIds = new Set(bankCandidates.map((q) => q.id));
-    for (const item of matchedFallback) {
-      if (!existingIds.has(item.id)) {
-        bankCandidates.push(item);
-      }
+
+    const add = (item: BankQuestion) => {
+      if (existingIds.has(item.id)) return;
+      existingIds.add(item.id);
+      bankCandidates.push(item);
+    };
+
+    // Primero las que casan con el stack pedido.
+    for (const item of INITIAL_QUESTION_BANK) {
+      const skill = item.skill.toLowerCase();
+      if (normalizedSkills.some((s) => skill.includes(s) || s.includes(skill))) add(item);
     }
 
-    // Si aún faltan, incluir preguntas generales de la reserva
+    // Si aún faltan, se completa con el resto del banco para no devolver un examen corto.
     if (bankCandidates.length < count) {
       for (const item of INITIAL_QUESTION_BANK) {
-        if (!existingIds.has(item.id)) {
-          bankCandidates.push(item);
-          if (bankCandidates.length >= count * 2) break;
-        }
+        add(item);
+        if (bankCandidates.length >= count * 2) break;
       }
     }
   }
 
-  // 3) Barajar candidatos y seleccionar `count` preguntas
-  const shuffledCandidates = [...bankCandidates].sort(() => Math.random() - 0.5);
-  const selected = shuffledCandidates.slice(0, count);
+  // 3) Barajar candidatos y seleccionar `count`. Fisher-Yates: `sort(() => Math.random() - 0.5)`
+  //    da un reparto sesgado y con comparador inconsistente.
+  const selected = shuffle(bankCandidates).slice(0, count);
 
-  // 4) Desordenar las opciones para cada sesión individual
-  return selected.map(shuffleOptions);
+  // 4) Desordenar las opciones para cada sesión individual.
+  return selected.map(toQuestion);
 }

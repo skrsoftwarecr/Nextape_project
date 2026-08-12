@@ -198,7 +198,16 @@ exactamente el disparador de coste y DDoS que el banco viene a cerrar.
 `jobId`. Como el `tag` de cada pregunta es el id de la tecnología, practicar `postgresql` sube el
 score de `postgresql` en el CORE.
 
-Escala del banco completo: **232 combinaciones ≈ 5 800 preguntas ≈ 1 160 llamadas ≈ 77 min**.
+Escala del banco completo: **174 combinaciones ≈ 4 350 preguntas ≈ 870 llamadas ≈ 58 min**.
+
+**Niveles: `junior` | `mid` | `senior`.** Se retiró `master` (2026-08-03) — un cuarto escalón por
+encima de senior no daba señal distinguible al evaluar y multiplicaba por 4/3 el coste de precarga.
+Los documentos `*_master` que queden en Firestore ya no son alcanzables y se pueden borrar.
+
+**Respaldo sin IA:** [`question-bank.ts`](../src/lib/server/question-bank.ts) tiene un banco curado a
+mano (frontend, backend, bases de datos, APIs, seguridad, testing e infra) que funciona sin proveedor
+de IA ni credenciales. Su consulta a Firestore tiene techo de 1,5 s: si la base no responde, entra el
+banco local en vez de dejar al candidato esperando.
 
 ### 3.1 The LINE — el flujo que sostiene el producto
 
@@ -430,6 +439,48 @@ handler, `delete: if false` y ningún campo de estado. Añadido
 reabrir** (`active`, en vez de borrar: preserva los `candidate_matches` ya obtenidos) y
 **regenerar el repertorio** (`force: true`). `getLatestJobs` filtra las archivadas y
 `/api/line/start` devuelve 409 si la vacante está cerrada.
+
+### 6.10 🔴🆕 La clave de respuestas era legible por cualquier usuario · *resuelto 2026-08-03*
+
+`questions` —el banco curado, cuyos documentos incluyen `correctIndex`— tenía la regla
+`allow read: if isAuthenticated()`. **Cualquier usuario logueado podía leer la colección entera y
+con ella la respuesta correcta de todas las preguntas.** Eso invalida por completo el "DNA
+verificado": basta una consulta desde la consola del navegador para aprobar cualquier prueba.
+
+Su único consumidor (`sampleBankQuestions`) usa el Admin SDK, que bypassa las reglas, así que
+cerrarla a `read, write: if false` no rompe nada. Es la misma clasificación que `line_sessions`,
+`job_answer_keys` y `line_question_pools`: **toda colección que contenga una clave de respuesta es
+server-only**, sin excepción.
+
+### 6.11 ✅🆕 La rama no compilaba · *resuelto 2026-08-03*
+
+`typecheck` fallaba con 8 errores, así que `build` también (ya no se ignoran los errores de tipos) y
+The LINE no funcionaba. Causas: el tipo `BankQuestion` se usaba en tres archivos pero nunca se
+definió, y `question-bank.ts` devolvía preguntas sin el campo `type`, que la unión discriminada
+exige desde que existen los cinco tipos de prueba.
+
+De paso, tres defectos del mismo módulo:
+- `sampleBankQuestions` podía **repetir una pregunta** en el mismo examen: el conjunto de ids vistos
+  se tomaba como foto antes de la primera inserción y no se actualizaba.
+- La conversión buscaba la respuesta correcta con `indexOf` sobre el texto: con dos opciones de
+  texto idéntico, `correctIndex` acababa apuntando a la equivocada. Ahora permuta por índice.
+- La consulta a Firestore **no tenía timeout**: sin credenciales o con la red degradada, el Admin
+  SDK se queda esperando y bloquea el arranque del examen en una función que promete milisegundos.
+
+### 6.12 🟠🆕 El script de precarga no leía `.env.local` · *resuelto 2026-08-03*
+
+`scripts/seed-question-bank.ts` llamaba a `dotenv.config()` dentro de `main()`, pero los módulos ES
+se evalúan en el orden de sus `import` y `src/ai/genkit.ts` construye el cliente de Groq **al
+importarse**:
+
+```ts
+export const ai = genkit({ plugins: [groq({ apiKey: process.env.GROQ_API_KEY })] });
+```
+
+Resultado: el cliente se creaba con la clave a `undefined` y todas las generaciones fallaban, aunque
+`.env.local` tuviera la clave y la comprobación posterior del script la viera. Verificado
+experimentalmente. Resuelto con [`scripts/load-env.ts`](../scripts/load-env.ts), que carga el
+entorno por efecto secundario y debe ser **el primer import** de cualquier script.
 
 ### 6.8 Documentación desincronizada (arreglar al tocar cada área)
 
