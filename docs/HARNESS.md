@@ -39,6 +39,26 @@ npm test             # vitest run     → 54 pass / 5 skipped. No bajar.
 npm run build        # next build     → OK.
 ```
 
+### ⚠️ Nunca borres `package-lock.json` para regenerarlo
+
+Si hay que cambiar dependencias, edita `package.json` y ejecuta `npm install` **dejando el lockfile
+en su sitio**, para que npm lo actualice de forma incremental.
+
+Borrarlo y regenerarlo desde cero **rompe CI**: npm solo escribe en el lockfile nuevo los binarios
+opcionales de la plataforma donde se ejecuta. Regenerado en macOS, el lockfile pierde
+`@rollup/rollup-linux-x64-gnu` y compañía, y `npm ci` en los runners Linux falla con
+`Cannot find module @rollup/rollup-linux-x64-gnu` — un error que no aparece en ninguna máquina de
+desarrollo y que no tiene nada que ver con el cambio que se estaba haciendo.
+
+Comprobación rápida antes de commitear un lockfile tocado:
+
+```bash
+grep -c '"node_modules/@rollup/rollup-linux-x64-gnu"' package-lock.json   # debe ser 1
+```
+
+Si sale 0, recupera el lockfile anterior (`git checkout HEAD -- package-lock.json`) y repite el
+`npm install` sin borrarlo.
+
 ### Baseline verificado (tras los arreglos del 2026-08-01, Node 22)
 
 | Gate | Estado | Detalle |
