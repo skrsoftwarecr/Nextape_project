@@ -28,9 +28,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const body = await req.json().catch(() => ({}));
-  const githubUsername: string | undefined = body?.githubUsername;
-  const repoName: string | undefined = body?.repoName;
+  let body: Record<string, unknown> | null = null;
+  try {
+    body = await req.json();
+  } catch (jsonErr) {
+    console.warn('[github/evaluate] Error parseando JSON del cuerpo de la petición:', jsonErr);
+    return NextResponse.json({ error: 'invalid_json', message: 'El cuerpo de la petición no es un JSON válido' }, { status: 400 });
+  }
+
+  const githubUsername: string | undefined = typeof body?.githubUsername === 'string' ? body.githubUsername : undefined;
+  const repoName: string | undefined = typeof body?.repoName === 'string' ? body.repoName : undefined;
 
   if (!githubUsername) {
     return NextResponse.json({ error: 'missing_github_username' }, { status: 400 });

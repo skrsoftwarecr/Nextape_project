@@ -6,8 +6,8 @@
  * Selecciona máximo 5-8 archivos centrales por repo.
  */
 
-import { typescriptParser } from './parsers/typescript-parser';
-import { typescriptToIR } from './ir/typescript-to-ir';
+import { universalParser } from './parsers/universal-parser';
+import { buildUniversalIR } from './ir/universal-ir-builder';
 import type { EngineeringIR, FileIR } from './ir/types';
 import type { RepoSignals, EngineMetrics, GithubSkillScores } from '../../types/github.types';
 import { analyzeComplexity } from './analyzers/complexity.analyzer';
@@ -54,10 +54,10 @@ export function analyzeRepositorySources(
   const fileIRs: FileIR[] = [];
 
   for (const file of files) {
-    if (typescriptParser.canParse(file.filename)) {
+    if (universalParser.canParse(file.filename)) {
       try {
-        const parsedAST = typescriptParser.parse(file.content, file.filename);
-        const fileIR = typescriptToIR(
+        const parsedAST = universalParser.parse(file.content, file.filename);
+        const fileIR = buildUniversalIR(
           parsedAST.root,
           file.filename,
           parsedAST.language,

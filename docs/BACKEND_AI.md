@@ -122,3 +122,10 @@ la lógica de datos desde componentes.
 - Nombrar el flow y el prompt de forma única (`name:`), coincidiendo con el nombre de archivo.
 - Registrar el flow en `src/ai/dev.ts` (import por efecto secundario) para poder probarlo en Genkit Dev UI.
 - Validar y manejar `output` nulo del modelo; no asumir `output!` en producción.
+
+## 6. GitHub Evaluation Engine & Universal Parser (Multi-lenguaje)
+
+- **Universal Parser:** `src/services/github-engine/parsers/universal-parser.ts` delega la resolución de gramáticas de los 20 lenguajes soportados a `@kreuzberg/tree-sitter-language-pack` vía `getLanguage(langKey)`.
+- **Restricción de Runtime y Entorno:** Este módulo depende del binding nativo de `@kreuzberg/tree-sitter-language-pack`, que requiere Linux x64. La validación de ejecución real debe hacerse en Firebase Functions (producción) o WSL/Docker (desarrollo), nunca en Windows nativo.
+- **Universal IR Builder:** `src/services/github-engine/ir/universal-ir-builder.ts` transforma el AST en una representación intermedia unificada `FileIR` de manera puramente declarativa mediante `Set<string>` para funciones, clases, imports y complejidad.
+

@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview Flow de Interpretación Humana con Mistral AI.
  *

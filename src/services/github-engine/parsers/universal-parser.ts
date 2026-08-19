@@ -1,16 +1,18 @@
 /**
- * @fileOverview Universal Language Parser usando Tree-sitter.
+ * @fileOverview Universal Language Parser usando Tree-sitter y @kreuzberg/tree-sitter-language-pack.
  *
- * ⚠️ RUNTIME RESTRICTION — bindings nativos de Node.js.
- * Carga dinámicamente gramáticas de Tree-sitter para los 20 lenguajes soportados.
+ * ⚠️ RUNTIME RESTRICTION & ENVIRONMENT NOTE:
+ * Este módulo depende del binding nativo de @kreuzberg/tree-sitter-language-pack, que
+ * requiere Linux x64. La validación de ejecución real debe hacerse en Firebase Functions
+ * (producción) o WSL/Docker (desarrollo), nunca en Windows nativo.
  *
- * Mapea extensiones de archivo -> gramática de Tree-sitter.
+ * Mapea extensiones de archivo a las 20 gramáticas universales soportadas.
  */
 
 import type Parser from 'tree-sitter';
 import type { LanguageParser, ParsedAST, ASTNode } from './language-parser.interface';
 
-const EXTENSION_MAP: Record<string, string> = {
+export const EXTENSION_MAP: Record<string, string> = {
   // TypeScript / JavaScript
   '.ts': 'typescript',
   '.tsx': 'tsx',
@@ -93,60 +95,28 @@ class UniversalParserImpl implements LanguageParser {
   private readonly grammarCache: Map<string, unknown> = new Map();
   private readonly parserCache: Map<string, Parser> = new Map();
 
-  /** Carga la gramática requerida dinámicamente si está instalada */
+  /** Carga la gramática dinámicamente vía @kreuzberg/tree-sitter-language-pack */
   private loadLanguageGrammar(langKey: string): unknown | null {
     if (this.grammarCache.has(langKey)) {
       return this.grammarCache.get(langKey);
     }
 
     try {
-      let grammar: unknown = null;
-      switch (langKey) {
-        case 'typescript':
-        case 'tsx': {
-          const tsLang = require('tree-sitter-typescript');
-          grammar = langKey === 'tsx' ? tsLang.tsx : tsLang.typescript;
-          break;
-        }
-        case 'cpp':
-          grammar = require('tree-sitter-cpp');
-          break;
-        case 'c':
-          grammar = require('tree-sitter-c');
-          break;
-        case 'python':
-          grammar = require('tree-sitter-python');
-          break;
-        case 'javascript':
-          grammar = require('tree-sitter-javascript');
-          break;
-        case 'java':
-          grammar = require('tree-sitter-java');
-          break;
-        case 'go':
-          grammar = require('tree-sitter-go');
-          break;
-        case 'c_sharp':
-          grammar = require('tree-sitter-c-sharp');
-          break;
-        case 'php':
-          grammar = require('tree-sitter-php');
-          break;
-        case 'ruby':
-          grammar = require('tree-sitter-ruby');
-          break;
-        case 'rust':
-          grammar = require('tree-sitter-rust');
-          break;
-        case 'bash':
-          grammar = require('tree-sitter-bash');
-          break;
-        default:
-          return null;
+      // ÚNICO mecanismo de carga: resolución unificada de gramáticas
+      const langPack = require('@kreuzberg/tree-sitter-language-pack');
+      const grammar = typeof langPack.getLanguage === 'function'
+        ? langPack.getLanguage(langKey)
+        : null;
+
+      if (grammar) {
+        this.grammarCache.set(langKey, grammar);
       }
-      this.grammarCache.set(langKey, grammar);
       return grammar;
-    } catch {
+    } catch (err) {
+      console.error(
+        `[universal-parser] Falló cargar gramática para "${langKey}":`,
+        err instanceof Error ? err.message : err,
+      );
       return null;
     }
   }
@@ -196,3 +166,4 @@ class UniversalParserImpl implements LanguageParser {
 }
 
 export const universalParser: LanguageParser = new UniversalParserImpl();
+

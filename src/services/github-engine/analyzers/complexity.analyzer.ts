@@ -8,7 +8,7 @@
 import type { EngineeringIR } from '../ir/types';
 
 export interface ComplexityAnalysisResult {
-  score: number;
+  score: number | null;
   avgCyclomaticComplexity: number;
   maxCyclomaticComplexity: number;
   complexFunctionsCount: number;

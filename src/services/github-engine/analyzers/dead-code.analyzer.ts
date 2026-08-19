@@ -32,6 +32,7 @@ export function analyzeDeadCode(ir: EngineeringIR): DeadCodeAnalysisResult {
   }
 
   // Verificamos cuáles exportaciones no son referenciadas (aproximación heurística)
+  // TODO: heurística real de análisis de grafo de símbolos pendiente, actualmente siempre retorna 0
   const unusedCount = 0;
   for (const exp of allExports) {
     // Si la exportación es de tipo index o entry point principal, no se penaliza

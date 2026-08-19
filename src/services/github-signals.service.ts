@@ -5,6 +5,7 @@
  */
 
 import type { GithubRepo, RepoSignals } from '../types/github.types';
+import { EXTENSION_MAP } from './github-engine/parsers/universal-parser';
 
 const GITHUB_API_BASE = 'https://api.github.com';
 
@@ -62,13 +63,19 @@ export const GithubSignalsService = {
     // GET /repos/{owner}/{repo} para detalles generales
     const repoRes = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, { headers });
     if (!repoRes.ok) {
+      console.warn(`[github-signals] Error al obtener info del repositorio ${owner}/${repo} (status ${repoRes.status}): ${repoRes.statusText}`);
       throw new Error(`No se pudo obtener información del repositorio ${owner}/${repo}`);
     }
     const repoData = await repoRes.json();
 
     // GET /repos/{owner}/{repo}/languages
     const langRes = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/languages`, { headers });
-    const languages: Record<string, number> = langRes.ok ? await langRes.json() : {};
+    let languages: Record<string, number> = {};
+    if (langRes.ok) {
+      languages = await langRes.json();
+    } else {
+      console.warn(`[github-signals] Falló consulta /languages para ${owner}/${repo} (status ${langRes.status}): ${langRes.statusText}`);
+    }
 
     // GET /repos/{owner}/{repo}/commits (últimos 90 días)
     const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
@@ -85,6 +92,8 @@ export const GithubSignalsService = {
         lastCommitSHA = commits[0].sha ?? '';
         commitFrequency90d = commits.length;
       }
+    } else {
+      console.warn(`[github-signals] Falló consulta /commits para ${owner}/${repo} (status ${commitsRes.status}): ${commitsRes.statusText}`);
     }
 
     // Git Tree / Contenidos para buscar hasTests, hasCI, hasReadme
@@ -119,6 +128,8 @@ export const GithubSignalsService = {
           readmeLength = item.size ?? 0;
         }
       }
+    } else {
+      console.warn(`[github-signals] Falló consulta /git/trees para ${owner}/${repo} (status ${treeRes.status}): ${treeRes.statusText}`);
     }
 
     return {
@@ -137,7 +148,8 @@ export const GithubSignalsService = {
   },
 
   /**
-   * Descarga archivos de código fuente central (máx 8 archivos de TS/TSX) para análisis por el Engine.
+   * Descarga archivos de código fuente central (máx 8 archivos de cualquiera de los 20 lenguajes soportados)
+   * para análisis por el Engine.
    */
   async fetchCentralSourceFiles(
     owner: string,
@@ -150,25 +162,38 @@ export const GithubSignalsService = {
       { headers },
     );
 
-    if (!treeRes.ok) return [];
+    if (!treeRes.ok) {
+      console.warn(`[github-signals] Error al obtener árbol de archivos en ${owner}/${repo} (status ${treeRes.status}): ${treeRes.statusText}`);
+      return [];
+    }
 
     const treeData = await treeRes.json();
     const tree: Array<{ path: string; type: string; url: string; size?: number }> = treeData.tree ?? [];
+    const supportedExtensions = Object.keys(EXTENSION_MAP);
 
-    // Filtrar archivos TypeScript/TSX relevantes
+    // Filtrar archivos de código fuente relevantes para cualquiera de los 20 lenguajes soportados
     const candidateFiles = tree
       .filter((item) => {
         if (item.type !== 'blob') return false;
         const p = item.path.toLowerCase();
+        const matchesExtension = supportedExtensions.some((ext) => p.endsWith(ext));
         return (
-          (p.endsWith('.ts') || p.endsWith('.tsx')) &&
+          matchesExtension &&
           !p.endsWith('.d.ts') &&
           !p.includes('node_modules/') &&
           !p.includes('dist/') &&
-          !p.includes('.next/')
+          !p.includes('.next/') &&
+          !p.includes('build/') &&
+          !p.includes('vendor/')
         );
       })
       .slice(0, 8); // seleccionar hasta 8 archivos candidatos
+
+    if (candidateFiles.length === 0) {
+      console.warn(
+        `[github-signals] No se encontraron archivos analizables en ${owner}/${repo} para los lenguajes soportados.`,
+      );
+    }
 
     const fetchedFiles: Array<{ filename: string; content: string }> = [];
 
@@ -184,6 +209,8 @@ export const GithubSignalsService = {
             const decodedContent = Buffer.from(fileData.content, 'base64').toString('utf8');
             fetchedFiles.push({ filename: file.path, content: decodedContent });
           }
+        } else {
+          console.warn(`[github-signals] Falló descarga de ${file.path} (status ${fileRes.status}): ${fileRes.statusText}`);
         }
       } catch (err) {
         console.warn(`[github-signals] Error obteniendo ${file.path}:`, err);
