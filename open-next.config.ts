@@ -16,6 +16,7 @@ config.edgeExternals = [
   // El GitHub Engine solo corre en Node.js (route handler con runtime="nodejs").
   "tree-sitter",
   "tree-sitter-typescript",
+  "@kreuzberg/tree-sitter-language-pack",
 ];
 
 export default config;

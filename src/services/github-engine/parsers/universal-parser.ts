@@ -9,8 +9,16 @@
  * Mapea extensiones de archivo a las 20 gramáticas universales soportadas.
  */
 
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type Parser from 'tree-sitter';
 import type { LanguageParser, ParsedAST, ASTNode } from './language-parser.interface';
+
+/** Superficie del paquete nativo que este parser usa. */
+interface LanguagePackModule {
+  getLanguage?: (lang: string) => unknown;
+  configure?: (config: { cacheDir?: string }) => void;
+}
 
 export const EXTENSION_MAP: Record<string, string> = {
   // TypeScript / JavaScript
@@ -91,9 +99,41 @@ function convertNode(tsNode: Parser.SyntaxNode, maxDepth = 30, currentDepth = 0)
 class UniversalParserImpl implements LanguageParser {
   readonly language = 'universal';
 
+  private static cacheConfigured = false;
+
   private readonly ParserClass: typeof Parser = require('tree-sitter');
   private readonly grammarCache: Map<string, unknown> = new Map();
   private readonly parserCache: Map<string, Parser> = new Map();
+
+  /**
+   * Apunta la caché de gramáticas a un directorio escribible.
+   *
+   * El pack DESCARGA cada gramática la primera vez que se pide y la cachea. Por defecto usa
+   * `~/.cache/...`, que en un entorno serverless (Netlify Functions corre sobre Lambda) no es
+   * escribible: solo lo es el directorio temporal. Sin esto, la primera carga falla en producción
+   * con un error de descarga y el parser devuelve null — que es justo el síntoma que parecía
+   * "el lenguaje no está soportado en Linux".
+   *
+   * Se ejecuta una sola vez por proceso; los fallos no son fatales (se cae al comportamiento
+   * por defecto del pack).
+   */
+  private ensureCacheConfigured(langPack: LanguagePackModule): void {
+    if (UniversalParserImpl.cacheConfigured) return;
+    UniversalParserImpl.cacheConfigured = true;
+
+    try {
+      if (typeof langPack.configure === 'function') {
+        const dir = process.env.TREE_SITTER_CACHE_DIR
+          ?? join(tmpdir(), 'tree-sitter-language-pack');
+        langPack.configure({ cacheDir: dir });
+      }
+    } catch (err) {
+      console.warn(
+        '[universal-parser] No se pudo fijar el directorio de caché de gramáticas:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
 
   /** Carga la gramática dinámicamente vía @kreuzberg/tree-sitter-language-pack */
   private loadLanguageGrammar(langKey: string): unknown | null {
@@ -103,7 +143,8 @@ class UniversalParserImpl implements LanguageParser {
 
     try {
       // ÚNICO mecanismo de carga: resolución unificada de gramáticas
-      const langPack = require('@kreuzberg/tree-sitter-language-pack');
+      const langPack = require('@kreuzberg/tree-sitter-language-pack') as LanguagePackModule;
+      this.ensureCacheConfigured(langPack);
       const grammar = typeof langPack.getLanguage === 'function'
         ? langPack.getLanguage(langKey)
         : null;

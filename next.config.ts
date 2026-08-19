@@ -15,8 +15,12 @@ const nextConfig: NextConfig = {
   // Ambos son incompatibles con Cloudflare Workers / edge runtime.
   serverExternalPackages: [
     "firebase-admin",
+    // Bindings nativos del GitHub Engine. `@kreuzberg/tree-sitter-language-pack` es el que
+    // carga de verdad el parser universal (`require` dinámico): si el bundler lo toca, el
+    // parser devuelve null en producción y parece un fallo de plataforma.
     "tree-sitter",
     "tree-sitter-typescript",
+    "@kreuzberg/tree-sitter-language-pack",
   ],
   images: {
     remotePatterns: [
