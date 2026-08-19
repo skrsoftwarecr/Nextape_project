@@ -84,5 +84,12 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.recruiterId == request.auth.uid);
       allow write: if false; // Solo vía Admin/Server
     }
+
+    // Evidencia de GitHub (Engine determinístico + Mistral).
+    // Lectura del dueño autenticado, escritura SERVER-ONLY vía Admin SDK.
+    match /github_evidence/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
   }
 }

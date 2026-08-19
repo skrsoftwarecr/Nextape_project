@@ -130,6 +130,29 @@ Tipo: [`CandidateMatch`](../src/types/job.types.ts). `matchId = ${uid}_${jobId}`
 - ⚠️ Falta un tipo en `src/types` para esta colección (usa objetos ad-hoc). ⚠️ La UI no renderiza
   `summary` ni `resources[]` (se guardan pero no se muestran).
 
+### `github_evidence/{uid}` — 🔒 Evidencia del GitHub Evaluation Engine
+Tipo: [`GithubEvidence`](../src/types/github.types.ts). `uid = request.auth.uid`.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `uid` | string | PK = uid de Firebase Auth |
+| `githubUsername` | string | Nombre de usuario de GitHub evaluado |
+| `analyzedRepo` | string | Formato `"owner/repo"` |
+| `lastCommitSHA` | string | Clave de cache por commit |
+| `repoSignals` | `RepoSignals` | Señales brutas (lenguajes, commits 90d, tests, CI, readme) |
+| `metrics` | `EngineMetrics` | Métricas determinísticas AST (complejidad, acoplamiento, dead-code) |
+| `skillScores` | `GithubSkillScores` | Puntuaciones finales (architecture, testing, security, etc.) |
+| `aiFeedback` | `GithubAIFeedback \| null` | Feedback interpretado por Mistral AI (nunca código fuente) |
+| `analyzedAt` | Timestamp | Timestamp de servidor (`FieldValue.serverTimestamp()`) |
+| `engineVersion` | string | Versión del motor (ej. `"1.0.0"`) |
+
+- **Escritor:** `POST /api/github/evaluate` (Admin SDK) tras ejecutar el motor determinístico + Mistral.
+- **Lector:** Solo el dueño (`allow read: if isOwner(userId)`). Escritura `if false` para el cliente.
+- **Cache:** Si `lastCommitSHA` no cambia, no recalcula nada.
+- **Fórmula de `overall` (Skill Scores):**
+  $$\text{overall} = (\text{architecture} \times 0.25) + (\text{testing} \times 0.25) + (\text{security} \times 0.15) + (\text{maintainability} \times 0.20) + (\text{documentation} \times 0.15)$$
+  *Si el repositorio no tiene archivos parseables AST (0 archivos), `architecture`, `security` y `maintainability` son `null`, y `overall` se recalcula proporcionalmente sobre métricas disponibles (`testing` 62.5% + `documentation` 37.5%).*
+
 ### `core/{uid}`  — ⚠️ Colección fantasma
 - `CoreService` lee/escribe la colección `core`, **pero no existe regla para `core`**.
   Firestore **deniega por defecto** → toda operación falla. Además usa el `UserProfile` legacy.
