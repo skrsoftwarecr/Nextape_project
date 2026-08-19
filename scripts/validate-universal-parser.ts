@@ -9,6 +9,7 @@
  *   npx tsx scripts/validate-universal-parser.ts
  */
 
+import './load-env';
 import { universalParser } from '../src/services/github-engine/parsers/universal-parser';
 
 interface LanguageTestCase {

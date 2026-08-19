@@ -3,6 +3,7 @@
  * Ejecutar con: npx tsx scripts/test-github-engine.ts
  */
 
+import './load-env';
 import { typescriptParser } from '../src/services/github-engine/parsers/typescript-parser';
 import { typescriptToIR } from '../src/services/github-engine/ir/typescript-to-ir';
 import { analyzeRepositorySources } from '../src/services/github-engine';

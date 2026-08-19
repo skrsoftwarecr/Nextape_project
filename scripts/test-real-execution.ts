@@ -1,5 +1,6 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+// Debe ir PRIMERO: carga .env.local antes de que se evalúen los imports que leen
+// process.env al importarse (src/ai/genkit.ts construye el cliente de Groq ahí mismo).
+import './load-env';
 
 import { adminDb } from '../src/lib/firebase/admin';
 import { GithubSignalsService } from '../src/services/github-signals.service';

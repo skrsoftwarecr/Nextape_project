@@ -6,6 +6,7 @@ import { SkillsService } from "@/services/skills.service";
 import { UserService } from "@/services/users.service";
 import { UserProfile } from "@/types/user.types";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { GithubEvidenceCard } from "@/components/github/GithubEvidenceCard";
 import { getTechnicalGrade } from "@/lib/grading";
 
 export default function ProfilePage() {
@@ -111,6 +112,10 @@ export default function ProfilePage() {
         </div>
 
         <div className="space-y-8">
+           {/* Evaluación del código real del usuario. Disparo MANUAL: el componente solo lee el
+               último resultado al montarse y nunca llama al endpoint por su cuenta. */}
+           {user && <GithubEvidenceCard uid={user.uid} githubUrl={profile?.githubUrl} />}
+
            <div className="bg-gray-950 p-12 rounded-[3rem] text-white space-y-10 shadow-apple-lg relative overflow-hidden group">
              <Fingerprint className="h-12 w-12 text-brand-blue relative z-10" />
              <div className="space-y-4 relative z-10">
