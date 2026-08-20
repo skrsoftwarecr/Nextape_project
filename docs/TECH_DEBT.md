@@ -43,6 +43,7 @@ Ver detalle en [`CHANGELOG_FIXES.md`](./CHANGELOG_FIXES.md).
 | A5 | **`assessment_attempts` nunca se escribe**: The LINE salta esta colección → historial y métrica "Simulaciones" vacíos. | `dashboard/line/page.tsx`, `services/assessments.service.ts` | Persistir cada intento al terminar la simulación. |
 | A6 | **Media de últimos 3 intentos no implementada**: el blueprint la promete; el código sobrescribe el score. | `services/skills.service.ts` | Implementar histórico + promedio, o actualizar el blueprint. |
 | A7 | **The LINE solo guarda 1 skill** (`questions[0].tag`) aunque evalúe varias; y **sobrescribe** (reintento peor baja el score). | `dashboard/line/page.tsx` | Puntuar por tag y agregar (max/promedio) por skill. |
+| A8 | **Superficie de escritura activa sin uso en `user_roadmaps/{uid}`**: la regla `write: if isOwner(userId)` permanece activa en `firestore.rules`, pero el MVP del Roadmap Determinístico calcula on-demand client-side y no persiste snapshots. No compromete el DNA verificado (aislado por owner), pero representa una superficie de escritura sin consumidor activo. | `firestore.rules`, `docs/DATABASE.md`, `src/services/roadmap.service.ts` | Mantener documentada para V2 (cuando se active el historial de progreso/diffs) o restringir a `write: if false` hasta que V2 lo requiera. |
 
 ## 🟠 Inconsistencias de contenido / docs
 

@@ -37,6 +37,11 @@ genera **roadmaps** de mejora y calcula **compatibilidad** con vacantes. Dos rol
 - Consecuencia: los datos "verificados" (DNA) son **write:false** para el cliente; su integridad no depende
   del navegador. (Ver SECURITY / BACKEND_AI.)
 
+### Excepción consciente al patrón server-trust: Roadmap Determinístico
+El cómputo del Roadmap (`src/lib/roadmap-engine.ts`) se ejecuta **directamente en el cliente** (`RoadmapPage`), sin pasar por un route handler / Admin SDK.
+- **Justificación:** El Roadmap es una operación 100% de **sólo lectura y cálculo en memoria**. No escribe ni modifica ningún dato verificado (el DNA sigue protegido con `write:false` y el catálogo `skill_catalog`/`roadmap_routes` es inmutable para el cliente).
+- **Beneficio:** Cero latencia de servidor adicional y reactividad instantánea ante cambios de rol en la UI sin comprometer la integridad del sistema.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Browser (App Router · React 19 · 'use client')             │

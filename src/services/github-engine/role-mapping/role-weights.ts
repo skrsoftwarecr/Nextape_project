@@ -3,8 +3,11 @@
  * Define la ponderación técnica según el objetivo profesional del desarrollador.
  */
 
-export type TargetRole = 'frontend' | 'backend' | 'fullstack' | 'devops' | 'mobile';
-export type SeniorityLevel = 'junior' | 'mid' | 'senior';
+export const TARGET_ROLES = ['frontend', 'backend', 'fullstack', 'devops', 'mobile'] as const;
+export type TargetRole = (typeof TARGET_ROLES)[number];
+
+export const SENIORITY_LEVELS = ['junior', 'mid', 'senior'] as const;
+export type SeniorityLevel = (typeof SENIORITY_LEVELS)[number];
 
 export interface SkillWeights {
   architecture: number;

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:questions": "tsx scripts/seed-question-bank.ts",
+    "seed:catalog": "tsx scripts/seed-skill-catalog.ts",
     "grammars:predownload": "tsx scripts/predownload-grammars.ts"
   },
   "dependencies": {
