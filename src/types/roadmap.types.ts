@@ -17,8 +17,14 @@ import type { FirestoreTimestamp } from "./firebase.types";
 // Enumeraciones del Roadmap
 // ─────────────────────────────────────────────────────────
 
-/** Estado de una skill en el roadmap del usuario concreto. */
-export type RoadmapItemStatus = "completed" | "gap" | "blocked";
+/**
+ * Estado de una skill en el roadmap del usuario concreto.
+ * - 'completed': score >= targetScore
+ * - 'gap': score < targetScore con evidencia real (THE LINE, GitHub, o inferencia por categoría)
+ * - 'blocked': gap pero con prerequisitos no dominados
+ * - 'unknown': sin evidencia suficiente para evaluar (ni THE LINE, ni GitHub, ni inferencia por categoría)
+ */
+export type RoadmapItemStatus = "completed" | "gap" | "blocked" | "unknown";
 
 /**
  * Nivel de prioridad calculado con la fórmula:
@@ -58,8 +64,12 @@ export type SkillDimension =
 /**
  * Origen del score de una skill en el cómputo del roadmap.
  * Usado para trazabilidad en el resultado final.
+ * - 'line': The LINE directo (evidencia específica de esta skill)
+ * - 'github': GitHub Engine proxy (evidencia por dimensión agregada)
+ * - 'category-inferred': inferido del promedio de THE LINE en la misma categoría
+ * - 'none': sin evidencia alguna (ni directa, ni proxy, ni inferible)
  */
-export type ScoreSource = "line" | "github" | "none";
+export type ScoreSource = "line" | "github" | "category-inferred" | "none";
 
 // ─────────────────────────────────────────────────────────
 // Colección skill_catalog/{skillId}
@@ -143,8 +153,9 @@ export interface RoadmapItem {
   /**
    * Estado determinado por el algoritmo para este usuario concreto:
    * - 'completed': score >= targetScore
-   * - 'gap': score < targetScore Y todos los prerequisitos dominados
+   * - 'gap': score < targetScore Y todos los prerequisitos dominados Y hay evidencia real
    * - 'blocked': score < targetScore Y al menos un prerequisito no dominado
+   * - 'unknown': sin evidencia suficiente para evaluar (no contribuye a la priorización)
    */
   status: RoadmapItemStatus;
   /**
@@ -190,6 +201,34 @@ export interface ComputeRoadmapInput {
     maintainability: number | null;
     documentation: number;
   };
+}
+
+// ─────────────────────────────────────────────────────────
+// Output de computeRoadmap() — con indicador de precisión
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Nivel de precisión del roadmap según disponibilidad de evidencia GitHub.
+ * - 'high': usuario tiene GitHub conectado, el roadmap usa THE LINE + GitHub Engine
+ * - 'standard': roadmap basado únicamente en THE LINE (sin GitHub conectado)
+ * 
+ * Nota: 'standard' NO es penalización — es una invitación a mejorar precisión.
+ * El frontend debe mostrar mensaje no alarmista: "Conecta GitHub para ruta más precisa".
+ */
+export type RoadmapPrecision = "high" | "standard";
+
+/**
+ * Resultado de computeRoadmap() con indicador de precisión agregado.
+ */
+export interface ComputeRoadmapResult {
+  /** Items del roadmap ordenados topológicamente con prioridad. */
+  items: RoadmapItem[];
+  /** 
+   * Nivel de precisión: 'high' con GitHub conectado, 'standard' sin GitHub.
+   * Se calcula en base a si githubScores está disponible y si hay skills 
+   * con scoreSource='none' que tendrían mejor evidencia con GitHub.
+   */
+  precision: RoadmapPrecision;
 }
 
 // ─────────────────────────────────────────────────────────

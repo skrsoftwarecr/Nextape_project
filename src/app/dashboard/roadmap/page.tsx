@@ -105,14 +105,14 @@ export default function RoadmapPage() {
       const githubScores = githubDoc?.skillScores;
 
       // 6. Computar roadmap determinístico
-      const computedItems = computeRoadmap({
+      const computedResult = computeRoadmap({
         route,
         catalog,
         dna,
         githubScores,
       });
 
-      setItems(computedItems);
+      setItems(computedResult.items);
     } catch (error) {
       console.error("Error computing roadmap:", error);
       setErrorMsg("Ocurrió un error al procesar el roadmap determinístico.");

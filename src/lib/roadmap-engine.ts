@@ -23,9 +23,11 @@
 import { SENIORITY_THRESHOLDS } from "@/services/github-engine/role-mapping/role-weights";
 import type {
   ComputeRoadmapInput,
+  ComputeRoadmapResult,
   RoadmapItem,
   RoadmapItemStatus,
   RoadmapPriority,
+  RoadmapPrecision,
   ScoreSource,
   Skill,
 } from "@/types/roadmap.types";
@@ -34,19 +36,66 @@ import type {
 // §2.2 — Score Resolution
 // ─────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────
+// §2.2 — Score Resolution
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Calcula el promedio de scores de THE LINE por categoría.
+ * Usado para inferencia conservadora cuando no hay evidencia directa.
+ *
+ * @param catalog - Catálogo completo de skills
+ * @param dna - Scores del usuario de THE LINE
+ * @returns Map de category → promedio de scores en esa categoría
+ */
+function calculateCategoryAverages(
+  catalog: Skill[],
+  dna: Record<string, number>
+): Map<string, number> {
+  const categoryScores = new Map<string, number[]>();
+
+  // Agrupar scores de THE LINE por categoría
+  for (const skill of catalog) {
+    const score = dna[skill.id] ?? dna[skill.id.toLowerCase()];
+    if (score !== undefined && typeof score === "number") {
+      if (!categoryScores.has(skill.category)) {
+        categoryScores.set(skill.category, []);
+      }
+      categoryScores.get(skill.category)!.push(score);
+    }
+  }
+
+  // Calcular promedio por categoría
+  const categoryAverages = new Map<string, number>();
+  for (const [category, scores] of categoryScores.entries()) {
+    if (scores.length > 0) {
+      const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      categoryAverages.set(category, avg);
+    }
+  }
+
+  return categoryAverages;
+}
+
 /**
  * Resuelve el score real de una skill para el usuario.
  *
  * Orden de prioridad:
  *   1. user_skill_scores (The LINE): evidencia directa y específica de la skill.
  *   2. github_evidence (GitHub Engine): proxy por dimensión agregada — menos preciso.
- *   3. 0: sin evidencia → gap forzado. Conservador y honesto.
+ *   3. Inferencia por categoría: promedio de THE LINE en skills de la misma categoría.
+ *   4. null: sin evidencia alguna → status='unknown', no 'gap' con score=0.
+ *
+ * Regla de negocio: GitHub nunca penaliza. Sin GitHub, usamos inferencia de categoría
+ * antes de caer a "sin datos". Un usuario con 75% promedio en testing no tiene 0%
+ * en unit-testing solo porque no conectó GitHub — es más honesto inferir ~75%.
  */
 function resolveScore(
   skill: Skill,
   dna: Record<string, number>,
-  githubScores: ComputeRoadmapInput["githubScores"]
-): { score: number; source: ScoreSource } {
+  githubScores: ComputeRoadmapInput["githubScores"],
+  categoryAverages: Map<string, number>
+): { score: number | null; source: ScoreSource } {
   // 1. The LINE — evidencia directa
   const lineScore = dna[skill.id] ?? dna[skill.id.toLowerCase()];
   if (lineScore !== undefined && typeof lineScore === "number") {
@@ -61,8 +110,14 @@ function resolveScore(
     }
   }
 
-  // 3. Sin datos → gap forzado
-  return { score: 0, source: "none" };
+  // 3. Inferencia por categoría — promedio de THE LINE en la misma categoría
+  const categoryAvg = categoryAverages.get(skill.category);
+  if (categoryAvg !== undefined) {
+    return { score: categoryAvg, source: "category-inferred" };
+  }
+
+  // 4. Sin datos → null (se marcará como 'unknown', no 'gap')
+  return { score: null, source: "none" };
 }
 
 // ─────────────────────────────────────────────────────────
@@ -205,27 +260,49 @@ function kahnSort(
  * Función pura: mismos inputs → mismo output. Sin efectos secundarios.
  * Ejecuta en cliente (<1ms para el catálogo MVP de 18 skills).
  *
+ * CAMBIO ARQUITECTÓNICO — THE LINE como fuente obligatoria:
+ * Requiere al menos una evaluación real en user_skill_scores (THE LINE).
+ * Sin evaluaciones, lanza error indicando que debe completar THE LINE primero.
+ *
  * @param input - Ruta, catálogo de skills, DNA del usuario, y scores del GitHub Engine opcionales.
- * @returns Array ordenado de RoadmapItem con prerequisitos respetados y prioridad calculada.
+ * @returns Resultado con items ordenados + indicador de precisión ('high' con GitHub, 'standard' sin GitHub).
+ * @throws Error si el usuario no tiene ninguna evaluación de THE LINE.
  */
-export function computeRoadmap(input: ComputeRoadmapInput): RoadmapItem[] {
+export function computeRoadmap(input: ComputeRoadmapInput): ComputeRoadmapResult {
   const { route, catalog, dna, githubScores } = input;
+
+  // ═══════════════════════════════════════════════════════════
+  // CAMBIO 1 — Validación: al menos una evaluación de THE LINE
+  // ═══════════════════════════════════════════════════════════
+  const hasLineEvaluation = Object.keys(dna).length > 0;
+  if (!hasLineEvaluation) {
+    throw new Error(
+      "ROADMAP_REQUIRES_LINE_EVALUATION: Completa al menos una evaluación en THE LINE para generar tu roadmap."
+    );
+  }
+
   const targetScore = SENIORITY_THRESHOLDS[route.toLevel];
 
   // Filtrar el catálogo a solo las skills que aparecen en esta ruta
   const routeSkillIds = new Set(Object.keys(route.skillWeights));
   const routeSkills = catalog.filter((skill) => routeSkillIds.has(skill.id));
 
+  // ═══════════════════════════════════════════════════════════
+  // Calcular promedios por categoría para inferencia
+  // ═══════════════════════════════════════════════════════════
+  const categoryAverages = calculateCategoryAverages(catalog, dna);
+
   // Construir mapas de prerequisitos y dominio
   const prereqMap = new Map<string, string[]>();
   const dominated = new Set<string>();
-  const scoreMap = new Map<string, { score: number; source: ScoreSource }>();
+  const scoreMap = new Map<string, { score: number | null; source: ScoreSource }>();
 
   for (const skill of routeSkills) {
     prereqMap.set(skill.id, skill.prerequisites);
-    const resolved = resolveScore(skill, dna, githubScores);
+    const resolved = resolveScore(skill, dna, githubScores, categoryAverages);
     scoreMap.set(skill.id, resolved);
-    if (resolved.score >= targetScore) {
+    // Solo marcar como dominado si hay score real (no null)
+    if (resolved.score !== null && resolved.score >= targetScore) {
       dominated.add(skill.id);
     }
   }
@@ -237,7 +314,8 @@ export function computeRoadmap(input: ComputeRoadmapInput): RoadmapItem[] {
   for (const skill of routeSkills) {
     const { score } = scoreMap.get(skill.id)!;
     const weight = route.skillWeights[skill.id] ?? 0;
-    const deficit = Math.max(0, targetScore - score);
+    // Si score es null (unknown), déficit = 0 para no inflar prioridad artificialmente
+    const deficit = score !== null ? Math.max(0, targetScore - score) : 0;
     deficitMap.set(skill.id, deficit);
     priorityMap.set(skill.id, rawPriority(deficit, weight));
   }
@@ -259,7 +337,11 @@ export function computeRoadmap(input: ComputeRoadmapInput): RoadmapItem[] {
 
     // Determinar status
     let status: RoadmapItemStatus;
-    if (dominated.has(skillId)) {
+    
+    // Si score es null → 'unknown' (sin evidencia suficiente)
+    if (score === null) {
+      status = "unknown";
+    } else if (dominated.has(skillId)) {
       status = "completed";
     } else {
       const prereqs = prereqMap.get(skillId) ?? [];
@@ -284,7 +366,7 @@ export function computeRoadmap(input: ComputeRoadmapInput): RoadmapItem[] {
       status,
       priority,
       order: idx + 1,
-      currentScore: score,
+      currentScore: score ?? 0, // Para UI, mostrar 0 si null pero status='unknown' indica que no es gap real
       targetScore,
       deficit,
       blockedBy,
@@ -293,7 +375,52 @@ export function computeRoadmap(input: ComputeRoadmapInput): RoadmapItem[] {
     };
   });
 
-  return items;
+  // ═══════════════════════════════════════════════════════════
+  // CAMBIO 2 y 3 — Calcular indicador de precisión
+  // ═══════════════════════════════════════════════════════════
+  const precision = calculatePrecision(items, routeSkills, githubScores);
+
+  return {
+    items,
+    precision,
+  };
+}
+
+/**
+ * Calcula el nivel de precisión del roadmap según la calidad de evidencia disponible.
+ *
+ * Lógica actualizada:
+ * - 'high': mayoría de skills tienen evidencia directa (line, github, o category-inferred)
+ * - 'standard': muchas skills en 'unknown' (sin datos suficientes para evaluar)
+ *
+ * La precisión refleja la confianza en el roadmap, no solo si GitHub está conectado.
+ * Un roadmap con muchas inferencias por categoría es 'high' si esas inferencias son razonables.
+ */
+function calculatePrecision(
+  items: RoadmapItem[],
+  routeSkills: Skill[],
+  githubScores: ComputeRoadmapInput["githubScores"]
+): RoadmapPrecision {
+  // Contar skills por tipo de evidencia
+  const unknownCount = items.filter((item) => item.status === "unknown").length;
+  const totalCount = items.length;
+  
+  // Si más del 30% son 'unknown', la precisión es 'standard'
+  const unknownRatio = unknownCount / totalCount;
+  if (unknownRatio > 0.3) {
+    return "standard";
+  }
+
+  // Si tenemos GitHub Y está aportando evidencia real, es 'high'
+  if (githubScores) {
+    const hasGithubEvidence = items.some((item) => item.scoreSource === "github");
+    if (hasGithubEvidence) {
+      return "high";
+    }
+  }
+
+  // Si la mayoría de skills tienen evidencia (directa o inferida), es 'high'
+  return "high";
 }
 
 // ─────────────────────────────────────────────────────────
