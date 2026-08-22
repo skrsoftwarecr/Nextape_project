@@ -91,5 +91,21 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       allow write: if false;
     }
+
+    // Catálogo curado de skills del Roadmap Determinístico.
+    // Lectura pública (usuario autenticado). Escritura SERVER-ONLY via Admin SDK
+    // (script seed:catalog o futuro endpoint de administración).
+    match /skill_catalog/{skillId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Rutas de progresión curadas del Roadmap Determinístico.
+    // Mismo patrón que skill_catalog: lectura autenticada, escritura server-only.
+    match /roadmap_routes/{routeId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
   }
 }
+

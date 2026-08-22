@@ -123,12 +123,40 @@ Tipo: [`CandidateMatch`](../src/types/job.types.ts). `matchId = ${uid}_${jobId}`
 - **Lector:** `CompatibilityService.getMatchesForRecruiter(recruiterId)` (lee `where recruiterId == uid`).
   Escritura `if false` para el cliente (solo Admin SDK).
 
-### `user_roadmaps/{uid}`  — Roadmaps de aprendizaje
-- **Sí se usa** (aunque sin tipo dedicado). La página Roadmap lee `getDocById("user_roadmaps", uid)` y
-  escribe `setDocById("user_roadmaps", uid, { steps, summary, updatedAt })` tras generar con IA.
-- Estructura de facto: `{ steps: RoadmapStep[], summary: string, updatedAt }`.
-- ⚠️ Falta un tipo en `src/types` para esta colección (usa objetos ad-hoc). ⚠️ La UI no renderiza
-  `summary` ni `resources[]` (se guardan pero no se muestran).
+### `user_roadmaps/{uid}`  — Roadmaps de aprendizaje (Reservado para V2)
+- **Estado MVP:** En el Roadmap Determinístico, el cómputo se realiza **on-demand en el cliente** y **NO se persiste** en esta colección para evitar datos obsoletos.
+- **Uso en V2:** Reservado para persistir snapshots históricos (`UserRoadmapSnapshot`) y calcular diffs de progreso.
+- **Reglas:** `read, write: if isOwner(userId)`. La regla de escritura permanece documentada como reservada para V2 sin uso activo en MVP.
+
+### `skill_catalog/{skillId}` — Catálogo curado de habilidades
+Tipo: [`Skill`](../src/types/roadmap.types.ts).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | string | PK = slug en kebab-case (ej. `"unit-testing"`) |
+| `name` | string | Nombre legible para UI |
+| `category` | `SkillCategory` | Agrupación semántica (`language`, `database`, `testing`, etc.) |
+| `prerequisites` | `string[]` | IDs de habilidades que deben dominarse previamente (grafo) |
+| `githubDimension` | `SkillDimension \| null` | Dimensión del GitHub Engine como proxy (`null` = sin proxy) |
+| `relatedSkills` | `string[]?` | Opcional (V2) para sugerencias cruzadas |
+
+- **Escritor:** Server-only / Admin SDK vía `npm run seed:catalog -- --yes`.
+- **Lector:** Lectura pública para usuarios autenticados (`allow read: if isAuthenticated()`).
+
+### `roadmap_routes/{routeId}` — Rutas de progresión curadas
+Tipo: [`RoadmapRoute`](../src/types/roadmap.types.ts). `routeId = {targetRole}_{fromLevel}_to_{toLevel}` (ej. `backend_junior_to_mid`).
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | string | PK (ej. `"backend_junior_to_mid"`) |
+| `targetRole` | `TargetRole` | Rol objetivo (`backend`, `frontend`, etc.) |
+| `fromLevel` | `SeniorityLevel` | Nivel origen inferido (`junior`, `mid`) |
+| `toLevel` | `SeniorityLevel` | Nivel objetivo (`mid`, `senior`) |
+| `skillWeights` | `Record<string, number>` | Pesos por skill individual (suma = 1.0) |
+| `displayName` | string | Nombre para UI (ej. `"Backend Engineer · Junior → Mid"`) |
+
+- **Escritor:** Server-only / Admin SDK vía `npm run seed:catalog -- --yes`.
+- **Lector:** Lectura pública para usuarios autenticados (`allow read: if isAuthenticated()`).
 
 ### `github_evidence/{uid}` — 🔒 Evidencia del GitHub Evaluation Engine
 Tipo: [`GithubEvidence`](../src/types/github.types.ts). `uid = request.auth.uid`.

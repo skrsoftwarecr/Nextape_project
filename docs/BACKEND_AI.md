@@ -55,9 +55,12 @@ export const ai = genkit({
 - Usado por: `The LINE` (`src/app/dashboard/line/page.tsx` y `src/app/line/page.tsx`) y por
   `JobService.generateJobAssessment`.
 
-### Flow: `generateRoadmap` — `src/ai/flows/generate-roadmap-flow.ts`
-- **Input**: `{ currentSkills: {name, score}[], targetRole="Tech Lead", gaps: string[] }`.
-- **Output**: `{ steps: RoadmapStep[], summary }`, `RoadmapStep = { title, description, estimatedHours, priority(low|medium|high|critical), resources[] }`.
+### Flow: `generateRoadmap` — `src/ai/flows/generate-roadmap-flow.ts` (⚠️ DEPRECADO)
+- **Estado:** Deprecado para el Roadmap principal.
+- **Razón:** El Roadmap ha migrado a una arquitectura 100% determinística (`src/lib/roadmap-engine.ts`) basada en grafos de dependencias, pesos por rol/ruta y ordenamiento topológico Kahn.
+- **Input**: `{ currentSkills: {name, score}[], targetRole: TargetRole, gaps: string[] }`.
+- **Output**: `{ steps: RoadmapStep[], summary }`.
+- Se conserva en el codebase por si en V2 se reintroduce IA para generar explicaciones puntuales de temas, pero el flujo principal ya no lo invoca.
 - **Prompt**: genera 4 pasos concretos hacia el rol objetivo según skills actuales y gaps.
 - Usado por: página Roadmap (ver FRONTEND).
 
