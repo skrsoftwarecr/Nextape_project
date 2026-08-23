@@ -27,6 +27,19 @@ function adminApp(): App {
   if (getApps().length) return getApp();
   if (cachedApp) return cachedApp;
 
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  // ⚠️ LOGS TEMPORALES DE DIAGNÓSTICO — REMOVER DESPUÉS DE DIAGNOSTICAR EL 401
+  // ═══════════════════════════════════════════════════════════════════════════════════
+  console.log("[DIAGNOSTICO] FIREBASE_SERVICE_ACCOUNT existe:", 
+    !!process.env.FIREBASE_SERVICE_ACCOUNT);
+  console.log("[DIAGNOSTICO] Longitud del valor:", 
+    process.env.FIREBASE_SERVICE_ACCOUNT?.length ?? 0);
+  console.log("[DIAGNOSTICO] Primeros 30 caracteres:", 
+    process.env.FIREBASE_SERVICE_ACCOUNT?.slice(0, 30) ?? "N/A");
+  console.log("[DIAGNOSTICO] Todas las env vars que empiezan con FIREBASE:", 
+    Object.keys(process.env).filter(k => k.startsWith("FIREBASE")));
+  // ═══════════════════════════════════════════════════════════════════════════════════
+
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   cachedApp = initializeApp(
     serviceAccountJson
