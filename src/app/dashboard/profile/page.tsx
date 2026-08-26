@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Fingerprint, Zap, Loader2, User as UserIcon } from "lucide-react";
+import { Fingerprint, Zap, Loader2, User as UserIcon, Github, ArrowRight } from "lucide-react";
 import { SkillsService } from "@/services/skills.service";
 import { UserService } from "@/services/users.service";
 import { UserProfile } from "@/types/user.types";
 import { useAuthUser } from "@/hooks/use-auth-user";
-import { GithubEvidenceCard } from "@/components/github/GithubEvidenceCard";
+import Link from "next/link";
 import { getTechnicalGrade } from "@/lib/grading";
 
 export default function ProfilePage() {
@@ -112,9 +112,22 @@ export default function ProfilePage() {
         </div>
 
         <div className="space-y-8">
-           {/* Evaluación del código real del usuario. Disparo MANUAL: el componente solo lee el
-               último resultado al montarse y nunca llama al endpoint por su cuenta. */}
-           {user && <GithubEvidenceCard uid={user.uid} githubUrl={profile?.githubUrl} />}
+           {/* La tarjeta completa vive en /dashboard/github, con su entrada de menú: aquí quedaba
+               en la tercera columna bajo el DNA y en pantallas pequeñas nadie la encontraba. */}
+           <Link href="/dashboard/github" className="block">
+             <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-50 hover:shadow-apple-lg transition-shadow space-y-4">
+               <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
+                 <Github className="h-6 w-6 text-white" />
+               </div>
+               <h3 className="text-xl font-bold italic">Evidencia de GitHub.</h3>
+               <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                 Analiza tu código real y súmalo a tu identidad técnica.
+               </p>
+               <span className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-brand-blue">
+                 Abrir <ArrowRight className="h-3 w-3" />
+               </span>
+             </div>
+           </Link>
 
            <div className="bg-gray-950 p-12 rounded-[3rem] text-white space-y-10 shadow-apple-lg relative overflow-hidden group">
              <Fingerprint className="h-12 w-12 text-brand-blue relative z-10" />

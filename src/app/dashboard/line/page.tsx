@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { technologiesByCategory, CATEGORY_LABELS } from "@/lib/technologies";
+import { LEVELS, LEVEL_LABELS } from "@/lib/levels";
 import { Terminal, Cpu, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiGet } from "@/lib/api";
 import { QuestionCard, QuestionTypeBadge } from "@/components/line/QuestionCard";
 import type { Answer, PublicQuestion } from "@/types/question.types";
 
@@ -25,6 +26,41 @@ function LineContent() {
   const [technology, setTechnology] = useState("react");
   const [difficulty, setLevel] = useState("senior");
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Qué combinaciones tienen repertorio precargado (`subject → niveles`).
+   *
+   * El selector mostraba las 55 tecnologías del catálogo pero solo 13 estaban precargadas: el 76 %
+   * de las opciones devolvía 503 y el usuario lo interpretaba, con razón, como "The LINE está
+   * roto". Ahora solo se ofrece lo que de verdad se puede practicar.
+   */
+  const [available, setAvailable] = useState<Record<string, string[]> | null>(null);
+
+  useEffect(() => {
+    if (jobId) return; // la prueba de una vacante usa su propio repertorio
+    apiGet<{ available: Record<string, string[]> }>("/api/line/catalog")
+      .then((res) => setAvailable(res.available))
+      .catch((err) => {
+        // Sin catálogo se muestra el listado completo: es preferible a dejar el selector vacío.
+        console.error("[line] no se pudo cargar el catálogo disponible:", err);
+        setAvailable({});
+      });
+  }, [jobId]);
+
+  // Si la tecnología elegida por defecto no está precargada, se salta a la primera que sí lo esté.
+  useEffect(() => {
+    if (!available) return;
+    const subjects = Object.keys(available);
+    if (subjects.length === 0) return;
+    if (!available[technology]) setTechnology(subjects.includes("react") ? "react" : subjects[0]);
+  }, [available, technology]);
+
+  const levelsForTechnology = available?.[technology] ?? [...LEVELS];
+
+  useEffect(() => {
+    if (!levelsForTechnology.includes(difficulty)) setLevel(levelsForTechnology[0] ?? "senior");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [technology, available]);
 
   const startSimulation = async () => {
     setStatus("loading");
@@ -159,22 +195,38 @@ function LineContent() {
                       <SelectContent className="rounded-2xl border-none shadow-apple-lg max-h-[50vh]">
                         <SelectGroup>
                           <SelectLabel className="text-[9px] uppercase tracking-widest text-gray-400">Stacks completos</SelectLabel>
-                          <SelectItem value="frontend">Arquitectura Frontend</SelectItem>
-                          <SelectItem value="backend">Backend y Sistemas</SelectItem>
-                          <SelectItem value="devops">Cloud y DevOps</SelectItem>
-                        </SelectGroup>
-                        {technologiesByCategory().map(({ category, items }) => (
-                          <SelectGroup key={category}>
-                            <SelectLabel className="text-[9px] uppercase tracking-widest text-gray-400">
-                              {CATEGORY_LABELS[category]}
-                            </SelectLabel>
-                            {items.map((tech) => (
-                              <SelectItem key={tech.id} value={tech.id}>
-                                {tech.label}
+                          {[
+                            { id: "frontend", label: "Arquitectura Frontend" },
+                            { id: "backend", label: "Backend y Sistemas" },
+                            { id: "devops", label: "Cloud y DevOps" },
+                          ]
+                            .filter((s) => !available || available[s.id])
+                            .map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.label}
                               </SelectItem>
                             ))}
-                          </SelectGroup>
-                        ))}
+                        </SelectGroup>
+                        {technologiesByCategory()
+                          .map(({ category, items }) => ({
+                            category,
+                            // Solo lo que tiene repertorio precargado. Ofrecer una opción que
+                            // devuelve 503 es peor que no ofrecerla.
+                            items: available ? items.filter((t) => available[t.id]) : items,
+                          }))
+                          .filter(({ items }) => items.length > 0)
+                          .map(({ category, items }) => (
+                            <SelectGroup key={category}>
+                              <SelectLabel className="text-[9px] uppercase tracking-widest text-gray-400">
+                                {CATEGORY_LABELS[category]}
+                              </SelectLabel>
+                              {items.map((tech) => (
+                                <SelectItem key={tech.id} value={tech.id}>
+                                  {tech.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -185,9 +237,11 @@ function LineContent() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-apple-lg">
-                        <SelectItem value="junior">Junior</SelectItem>
-                        <SelectItem value="mid">Mid</SelectItem>
-                        <SelectItem value="senior">Senior</SelectItem>
+                        {levelsForTechnology.map((lv) => (
+                          <SelectItem key={lv} value={lv}>
+                            {LEVEL_LABELS[lv] ?? lv}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

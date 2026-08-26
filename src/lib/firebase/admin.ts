@@ -27,25 +27,39 @@ function adminApp(): App {
   if (getApps().length) return getApp();
   if (cachedApp) return cachedApp;
 
-  // ═══════════════════════════════════════════════════════════════════════════════════
-  // ⚠️ LOGS TEMPORALES DE DIAGNÓSTICO — REMOVER DESPUÉS DE DIAGNOSTICAR EL 401
-  // ═══════════════════════════════════════════════════════════════════════════════════
-  console.log("[DIAGNOSTICO] FIREBASE_SERVICE_ACCOUNT existe:", 
-    !!process.env.FIREBASE_SERVICE_ACCOUNT);
-  console.log("[DIAGNOSTICO] Longitud del valor:", 
-    process.env.FIREBASE_SERVICE_ACCOUNT?.length ?? 0);
-  console.log("[DIAGNOSTICO] Primeros 30 caracteres:", 
-    process.env.FIREBASE_SERVICE_ACCOUNT?.slice(0, 30) ?? "N/A");
-  console.log("[DIAGNOSTICO] Todas las env vars que empiezan con FIREBASE:", 
-    Object.keys(process.env).filter(k => k.startsWith("FIREBASE")));
-  // ═══════════════════════════════════════════════════════════════════════════════════
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-  cachedApp = initializeApp(
-    serviceAccountJson
-      ? { credential: cert(JSON.parse(serviceAccountJson)) }
-      : { credential: applicationDefault() }
-  );
+  // Diagnóstico de arranque. Un fallo de credenciales aquí se manifiesta como 401 en todos los
+  // endpoints, así que sin esto es indistinguible de un problema de sesión del usuario.
+  // NUNCA se registra el contenido de la clave: solo si existe y si es JSON válido.
+  if (!raw) {
+    console.error(
+      "[admin] FIREBASE_SERVICE_ACCOUNT no está definida. Se intentará usar credenciales por " +
+        "defecto (ADC), que NO existen en Netlify. Todos los /api/* responderán 401.",
+    );
+  }
+
+  let credential;
+  if (raw) {
+    try {
+      credential = cert(JSON.parse(raw));
+    } catch (err) {
+      // Causa habitual en Netlify: el JSON se pegó con comillas envolventes, o el panel
+      // transformó los `\n` de la clave privada en saltos de línea reales, que rompen el JSON.
+      // Sin este mensaje el síntoma es un 401 idéntico al de "variable ausente".
+      console.error(
+        `[admin] FIREBASE_SERVICE_ACCOUNT existe (${raw.length} caracteres) pero NO es JSON ` +
+          "válido. Debe ser el JSON del service account COMPLETO, en una sola línea y SIN " +
+          "comillas alrededor, conservando los \\n de la clave privada como texto. " +
+          `Error del parser: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
+    }
+  } else {
+    credential = applicationDefault();
+  }
+
+  cachedApp = initializeApp({ credential });
   return cachedApp;
 }
 
