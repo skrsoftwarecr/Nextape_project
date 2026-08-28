@@ -16,49 +16,72 @@ import { getAuth, type Auth } from "firebase-admin/auth";
  * (scores/DNA, intentos, claves de respuestas) debe pasar por aquí y nunca por el
  * Web SDK del cliente. La inicialización es perezosa para no ejecutarse en build.
  *
- * Credenciales:
- * - En Firebase App Hosting / Google Cloud usa Application Default Credentials (ADC).
- * - En local, define `FIREBASE_SERVICE_ACCOUNT` (JSON del service account en una sola
- *   variable) o `GOOGLE_APPLICATION_CREDENTIALS` (ruta al JSON). Ver `.env.example`.
+ * Credenciales: ver `resolveCredential()` justo debajo.
  */
+
+/**
+ * Resuelve las credenciales del Admin SDK admitiendo DOS formatos:
+ *
+ *  A) `FIREBASE_SERVICE_ACCOUNT` — el JSON completo del service account en una variable.
+ *  B) `FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` — tres variables
+ *     simples.
+ *
+ * El formato B existe porque el A falla con facilidad en los paneles web de hosting: son ~2 400
+ * caracteres con `\n` incrustados dentro de la clave privada, y basta con que el panel los
+ * convierta en saltos reales, o que alguien lo pegue entre comillas, para que el JSON deje de
+ * parsear. El síntoma es un 401 en todos los endpoints, que no se parece en nada a la causa.
+ *
+ * En el formato B se aceptan los `\n` de la clave privada tanto escapados como reales.
+ */
+function resolveCredential() {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+  if (raw) {
+    try {
+      return cert(JSON.parse(raw));
+    } catch (err) {
+      console.error(
+        `[admin] FIREBASE_SERVICE_ACCOUNT existe (${raw.length} caracteres) pero NO es JSON ` +
+          "válido. Debe ser el JSON COMPLETO, en una sola línea, SIN comillas alrededor y " +
+          "conservando los \\n de la clave privada como texto. Alternativa más robusta: usar " +
+          "FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY. " +
+          `Error del parser: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      throw err;
+    }
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (projectId && clientEmail && privateKey) {
+    return cert({
+      projectId,
+      clientEmail,
+      // Los paneles de hosting guardan los saltos como `\n` literales; Firebase necesita saltos
+      // reales. Se normaliza aquí para que ambas formas funcionen.
+      privateKey: privateKey.replace(/\\n/g, "\n"),
+    });
+  }
+
+  console.error(
+    "[admin] NO hay credenciales del Admin SDK. Define en el hosting UNA de estas dos opciones:\n" +
+      "        A) FIREBASE_SERVICE_ACCOUNT = el JSON completo del service account\n" +
+      "        B) FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY\n" +
+      "        En Netlify, la variable debe tener alcance 'Functions' (no solo 'Builds') y estar\n" +
+      "        en el contexto 'Production'. Sin esto TODOS los /api/* responden 401.",
+  );
+  return applicationDefault();
+}
+
 let cachedApp: App | undefined;
 
 function adminApp(): App {
   if (getApps().length) return getApp();
   if (cachedApp) return cachedApp;
 
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-
-  // Diagnóstico de arranque. Un fallo de credenciales aquí se manifiesta como 401 en todos los
-  // endpoints, así que sin esto es indistinguible de un problema de sesión del usuario.
-  // NUNCA se registra el contenido de la clave: solo si existe y si es JSON válido.
-  if (!raw) {
-    console.error(
-      "[admin] FIREBASE_SERVICE_ACCOUNT no está definida. Se intentará usar credenciales por " +
-        "defecto (ADC), que NO existen en Netlify. Todos los /api/* responderán 401.",
-    );
-  }
-
-  let credential;
-  if (raw) {
-    try {
-      credential = cert(JSON.parse(raw));
-    } catch (err) {
-      // Causa habitual en Netlify: el JSON se pegó con comillas envolventes, o el panel
-      // transformó los `\n` de la clave privada en saltos de línea reales, que rompen el JSON.
-      // Sin este mensaje el síntoma es un 401 idéntico al de "variable ausente".
-      console.error(
-        `[admin] FIREBASE_SERVICE_ACCOUNT existe (${raw.length} caracteres) pero NO es JSON ` +
-          "válido. Debe ser el JSON del service account COMPLETO, en una sola línea y SIN " +
-          "comillas alrededor, conservando los \\n de la clave privada como texto. " +
-          `Error del parser: ${err instanceof Error ? err.message : String(err)}`,
-      );
-      throw err;
-    }
-  } else {
-    credential = applicationDefault();
-  }
-
+  const credential = resolveCredential();
   cachedApp = initializeApp({ credential });
   return cachedApp;
 }
@@ -86,8 +109,10 @@ export async function verifyRequestUid(authorizationHeader: string | null): Prom
     if (!isCredentialsConfigured()) {
       console.error(
         "[admin] No se pudo verificar el token porque el Admin SDK NO tiene credenciales.\n" +
-          "        Define FIREBASE_SERVICE_ACCOUNT (JSON del service account) o\n" +
-          "        GOOGLE_APPLICATION_CREDENTIALS (ruta al JSON) en .env.local y reinicia el server.\n" +
+          "        Define en el hosting UNA de estas dos opciones:\n" +
+          "          A) FIREBASE_SERVICE_ACCOUNT = JSON completo del service account\n" +
+          "          B) FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY\n" +
+          "        En Netlify: alcance 'Functions' (no solo 'Builds') y contexto 'Production'.\n" +
           `        Error original: ${message}`
       );
     } else {
@@ -99,8 +124,14 @@ export async function verifyRequestUid(authorizationHeader: string | null): Prom
 
 /** ¿Hay alguna credencial de servidor disponible para el Admin SDK? */
 function isCredentialsConfigured(): boolean {
+  const hasSplitVars = Boolean(
+    process.env.FIREBASE_PROJECT_ID &&
+      process.env.FIREBASE_CLIENT_EMAIL &&
+      process.env.FIREBASE_PRIVATE_KEY
+  );
   return Boolean(
     process.env.FIREBASE_SERVICE_ACCOUNT ||
+      hasSplitVars ||
       process.env.GOOGLE_APPLICATION_CREDENTIALS ||
       process.env.GOOGLE_CLOUD_PROJECT ||
       process.env.GCLOUD_PROJECT
