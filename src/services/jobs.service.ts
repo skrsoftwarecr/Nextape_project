@@ -21,7 +21,17 @@ export const JobService = {
       orderBy("postedAt", "desc"),
       limit(20)
     );
-    return jobs.filter((job) => job.active !== false);
+    // Se descartan además las vacantes inservibles: sin `createdBy` no hay empresa a la que
+    // entregar la candidatura, y sin `requiredSkills` el match siempre da 0 % y la prueba no
+    // evalúa el puesto. Aparecían como ofertas reales con 0 % y sin datos — indistinguible de
+    // un fallo. Son restos de seed antiguo con otro esquema.
+    return jobs.filter(
+      (job) =>
+        job.active !== false &&
+        Boolean(job.createdBy) &&
+        Array.isArray(job.requiredSkills) &&
+        job.requiredSkills.length > 0
+    );
   },
 
   /**

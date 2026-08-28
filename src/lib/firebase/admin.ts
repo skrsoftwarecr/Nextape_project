@@ -99,7 +99,9 @@ export async function verifyRequestUid(authorizationHeader: string | null): Prom
     : null;
   if (!token) return null;
   try {
-    const decoded = await adminAuth().verifyIdToken(token);
+    // `true` = comprueba revocación: un token robado o de una cuenta deshabilitada deja de valer
+    // al instante, en vez de seguir siendo válido hasta que expire (~1 h).
+    const decoded = await adminAuth().verifyIdToken(token, true);
     return decoded.uid;
   } catch (err) {
     // El error se registra SIEMPRE. Antes se descartaba en silencio y el handler respondía 401,

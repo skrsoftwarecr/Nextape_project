@@ -4,7 +4,9 @@ service firebase.storage {
     // Archivos por usuario. Lectura restringida a usuarios autenticados (antes era pública
     // para cualquiera). Escritura solo del dueño y con límite de tamaño. (docs/TECH_DEBT B7)
     match /users/{userId}/{allPaths=**} {
-      allow read: if request.auth != null;
+      // Solo el dueño. Antes bastaba con estar autenticado, y con registro abierto eso equivale
+      // a "cualquiera": conociendo un uid se podían leer los archivos de otro usuario.
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null
                    && request.auth.uid == userId
                    && request.resource.size < 5 * 1024 * 1024;

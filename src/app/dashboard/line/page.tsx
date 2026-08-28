@@ -62,6 +62,23 @@ function LineContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [technology, available]);
 
+  /**
+   * Bloquea el scroll del documento mientras el examen ocupa la pantalla.
+   *
+   * Sin esto la página sigue desplazándose DETRÁS del overlay. En móvil, al desplazarse la barra
+   * de direcciones del navegador colapsa, el viewport cambia de altura y un elemento `fixed` queda
+   * momentáneamente descuadrado: se ve una franja del fondo del `body` (#F5F5F7, gris claro) por
+   * la parte superior. De ahí el "se corta arriba y se ve el fondo de detrás".
+   */
+  useEffect(() => {
+    if (status !== "active") return;
+    const { overflow } = document.body.style;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = overflow;
+    };
+  }, [status]);
+
   const startSimulation = async () => {
     setStatus("loading");
     setError(null);
@@ -278,8 +295,8 @@ function LineContent() {
               navegador vuelve a muestrear el backdrop y deja bandas horizontales rasgadas — el
               "fondo blanco entrecortado". Sobre un fondo negro sólido el desenfoque no aportaba
               nada (no hay nada detrás que desenfocar), solo el artefacto. */
-        <div className="fixed inset-0 z-[100] bg-black text-white overflow-y-auto">
-         <div className="min-h-full flex flex-col items-center justify-center gap-12 p-6 md:p-12">
+        <div className="fixed inset-0 z-[100] h-[100dvh] bg-black text-white overflow-y-auto overscroll-contain">
+         <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-12 p-6 md:p-12">
           <div className="flex items-center justify-between w-full max-w-4xl border-b border-white/10 pb-8">
              <div className="flex items-center gap-4">
                 <Terminal className="h-6 w-6 text-brand-blue" />
@@ -314,16 +331,6 @@ function LineContent() {
                question={questions[currentQIndex]}
                onAnswer={handleAnswer}
              />
-          </div>
-          <div className="flex gap-10">
-            <div className="text-center">
-              <span className="block text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1">Latencia</span>
-              <span className="text-xs font-mono">12ms</span>
-            </div>
-            <div className="text-center">
-              <span className="block text-[8px] font-bold uppercase tracking-widest text-gray-500 mb-1">Seguridad</span>
-              <span className="text-xs font-mono text-brand-green">Cifrado</span>
-            </div>
           </div>
          </div>
         </div>

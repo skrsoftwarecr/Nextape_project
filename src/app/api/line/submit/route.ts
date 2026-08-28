@@ -106,7 +106,17 @@ export async function POST(req: NextRequest) {
       try {
         const jobSnap = await adminDb().collection("jobs").doc(jobId).get();
         const job = jobSnap.data();
-        if (job && job.createdBy) {
+        if (!job) {
+          console.error(`[line/submit] la sesión apunta a jobId=${jobId} que ya no existe.`);
+        } else if (!job.createdBy) {
+          // Antes esto se saltaba en silencio: el candidato completaba la prueba, veía su score,
+          // y el reclutador NUNCA recibía la candidatura. Una vacante sin dueño no puede
+          // notificar a nadie, así que al menos queda constancia en el log.
+          console.error(
+            `[line/submit] jobId=${jobId} no tiene createdBy: la candidatura de ${uid} no se ` +
+              "puede entregar a ninguna empresa. Vacante huérfana; debe retirarse del listado.",
+          );
+        } else {
           const requiredSkills: string[] = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
           const userSnap = await adminDb().collection("users").doc(uid).get();
           const candidateName: string = userSnap.data()?.name || userSnap.data()?.displayName || "Candidato";

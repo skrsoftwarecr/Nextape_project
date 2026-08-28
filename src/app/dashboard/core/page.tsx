@@ -105,7 +105,7 @@ export default function CorePage() {
               <div className="space-y-2">
                  <h4 className="font-bold text-xl">Potencial.</h4>
                  <p className="text-sm text-gray-400 font-medium leading-relaxed italic">
-                   {grade === "C" || grade === "N/A" ? "Necesitas más datos para calcular tu percentil." : `Tu nivel actual es superior al promedio en ${grade}.`}
+                   {grade === "N/A" ? "Completa una prueba en The LINE para calcular tu grado técnico." : `Tu grado técnico actual es ${grade}.`}
                  </p>
               </div>
            </Card>

@@ -102,14 +102,19 @@ export async function POST(req: NextRequest) {
         examSize = Math.min(Math.max(job.examQuestionCount, 3), 20);
       }
 
+      // Una vacante sin skills no puede producir un examen que evalúe el puesto, y sin dueño no
+      // hay a quién entregar la candidatura. Antes ambos casos seguían adelante en silencio.
+      if (!Array.isArray(job.requiredSkills) || job.requiredSkills.length === 0 || !job.createdBy) {
+        console.error(`[line/start] jobId=${jobId} incompleta (skills/createdBy). No evaluable.`);
+        return NextResponse.json({ error: "job_incomplete" }, { status: 409 });
+      }
+
       const keyRef = adminDb().collection("job_answer_keys").doc(jobId);
 
       pool = await loadOrCreatePool(
         keyRef,
         {
-          stack: Array.isArray(job.requiredSkills) && job.requiredSkills.length
-            ? job.requiredSkills
-            : SPECIALTY_STACKS.frontend,
+          stack: job.requiredSkills,
           level: job.level || "senior",
         },
         { jobId }

@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setMetrics] = useState({
-    dnaIntegrity: 0,
+    dnaIntegrity: null as number | null,
     assessmentsCount: 0,
     jobsMatchCount: 0,
     activeVacancies: 0,
@@ -56,7 +56,9 @@ export default function DashboardPage() {
         } else {
           const skillData = await SkillsService.getSkills(user.uid);
           const scores = skillData?.scores || {};
-          const avgScore = Math.round(calculateAverageScore(scores) ?? 0);
+          // `null` cuando no hay ninguna evaluación: no es un 0, es "aún sin medir".
+          const avg = calculateAverageScore(scores);
+          const avgScore = avg === null ? null : Math.round(avg);
 
           const qAttempts = query(collection(db, "assessment_attempts"), where("userId", "==", user.uid));
           const attemptsSnap = await getDocs(qAttempts);
@@ -169,11 +171,10 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
-          { label: "Integridad del DNA", value: `${stats.dnaIntegrity}%`, color: "bg-brand-blue" },
+          { label: "Integridad del DNA", value: stats.dnaIntegrity === null ? "—" : `${stats.dnaIntegrity}%`, color: "bg-brand-blue" },
           { label: "Simulaciones", value: stats.assessmentsCount.toString(), color: "bg-brand-green" },
-          { label: "Sinc. CORE", value: "En vivo", color: "bg-brand-purple" },
           { label: "Oportunidades", value: stats.jobsMatchCount.toString(), color: "bg-brand-orange" }
         ].map((m, idx) => (
           <Card key={idx} className="border-none shadow-apple rounded-[2rem] overflow-hidden bg-white group hover:shadow-apple-lg transition-all border border-gray-50/50">

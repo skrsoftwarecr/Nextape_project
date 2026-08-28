@@ -2,19 +2,18 @@
 
 import { useEffect, useState, useCallback } from "react";
 import {
-  Clock,
   Zap,
   Loader2,
   Map,
-  Target,
   CheckCircle2,
   Lock,
   AlertCircle,
   Sparkles,
   ArrowRight,
-  ShieldAlert,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { apiGet } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase/client";
 import { RoadmapService } from "@/services/roadmap.service";
@@ -55,6 +54,21 @@ export default function RoadmapPage() {
   const [computing, setComputing] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  /**
+   * Skills que además se pueden practicar en The LINE (tienen repertorio precargado).
+   *
+   * Cierra el ciclo roadmap → práctica → DNA: sin esto el roadmap dice qué te falta pero no
+   * ofrece cómo cubrirlo. Solo se muestra el atajo cuando la skill existe de verdad en el banco;
+   * enviar al usuario a una combinación sin preguntas sería peor que no ofrecer nada.
+   */
+  const [practicable, setPracticable] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    apiGet<{ available: Record<string, string[]> }>("/api/line/catalog")
+      .then((res) => setPracticable(res.available))
+      .catch(() => setPracticable({}));
+  }, []);
 
   const calculateUserRoadmap = useCallback(async (uid: string, role: TargetRole) => {
     setComputing(true);
@@ -149,227 +163,265 @@ export default function RoadmapPage() {
     );
   }
 
-  const completedCount = items.filter((i) => i.status === "completed").length;
-  const gapsCount = items.filter((i) => i.status === "gap").length;
-  const blockedCount = items.filter((i) => i.status === "blocked").length;
+  const completed = items.filter((i) => i.status === "completed");
+  const available = items.filter((i) => i.status === "gap");
+  const blocked = items.filter((i) => i.status === "blocked");
+
+  // El motor ya ordena topológicamente y prioriza: el primer hueco disponible ES el siguiente paso.
+  const [nextStep, ...restAvailable] = available;
+  const evaluated = completed.length + available.length + blocked.length;
+  const progress = evaluated > 0 ? Math.round((completed.length / evaluated) * 100) : 0;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 max-w-5xl mx-auto pb-20">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-brand-blue/10 text-brand-blue text-[10px] font-bold uppercase tracking-widest rounded-full">
-              Determinístico · Sin IA
-            </span>
-            <span className="px-3 py-1 bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-widest rounded-full">
-              Nivel actual inferido: {inferredLevel.toUpperCase()}
-            </span>
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight text-black italic">Roadmap de Progresión.</h1>
-          <p className="text-gray-500 font-medium">
-            Ruta de habilidades y prerequisitos calculada de forma 100% determinística a partir de tu DNA técnico.
+          <h1 className="text-4xl font-bold tracking-tight text-black italic">Roadmap.</h1>
+          <p className="text-gray-500 font-medium text-sm">
+            Tu ruta hacia {ROLE_OPTIONS.find((r) => r.id === targetRole)?.label ?? targetRole},
+            calculada a partir de tu DNA técnico.
           </p>
         </div>
         <Button
-          disabled={computing || !user}
+          variant="outline"
           onClick={() => user && calculateUserRoadmap(user.uid, targetRole)}
-          className="h-12 px-6 bg-brand-blue rounded-xl font-bold uppercase tracking-widest text-[10px] shadow-apple hover:scale-105 transition-all text-white"
+          disabled={computing}
+          className="rounded-2xl h-12 px-6 border-gray-200 font-bold uppercase tracking-widest text-[10px]"
         >
-          {computing ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          Recalcular Ruta
+          {computing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          Recalcular
         </Button>
       </header>
 
-      {/* Selector de Rol Objetivo */}
-      <section className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-apple space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-brand-blue/10 flex items-center justify-center text-brand-blue">
-            <Target className="h-4 w-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-black uppercase tracking-wider">Rol Objetivo</h2>
-            <p className="text-xs text-gray-400">
-              Selecciona la especialidad técnica para resolver los pesos de ruta y dependencias.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 pt-1">
-          {ROLE_OPTIONS.map((role) => {
-            const isSelected = targetRole === role.id;
-            return (
-              <button
-                key={role.id}
-                type="button"
-                disabled={computing}
-                onClick={() => handleRoleChange(role.id)}
-                className={cn(
-                  "px-5 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider",
-                  isSelected
-                    ? "bg-black text-white shadow-md scale-105"
-                    : "bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-black"
-                )}
-              >
-                {role.label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Métricas de estado del Roadmap */}
-      {items.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-apple flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Dominadas</span>
-              <p className="text-2xl font-black text-emerald-600">{completedCount}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-apple flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Brechas Críticas (Gaps)</span>
-              <p className="text-2xl font-black text-brand-blue">{gapsCount}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-brand-blue flex items-center justify-center">
-              <Zap className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-apple flex items-center justify-between">
-            <div className="space-y-1">
-              <span className="text-xs text-gray-400 font-bold uppercase tracking-wider">Bloqueadas por Prereq</span>
-              <p className="text-2xl font-black text-amber-500">{blockedCount}</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
-              <Lock className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Rol objetivo */}
+      <div className="flex flex-wrap gap-2">
+        {ROLE_OPTIONS.map((role) => (
+          <button
+            key={role.id}
+            onClick={() => handleRoleChange(role.id)}
+            className={cn(
+              "px-5 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-colors",
+              targetRole === role.id
+                ? "bg-black text-white"
+                : "bg-white text-gray-500 border border-gray-100 hover:text-black"
+            )}
+          >
+            {role.label}
+          </button>
+        ))}
+      </div>
 
       {errorMsg && (
-        <div className="p-6 bg-amber-50/70 border border-amber-200 rounded-2xl flex items-start gap-4 text-amber-900 text-sm">
-          <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="font-bold">Información de ruta</p>
-            <p>{errorMsg}</p>
-          </div>
+        <div className="p-6 bg-brand-orange/5 border border-brand-orange/20 rounded-[2rem] flex items-start gap-4 text-sm">
+          <AlertCircle className="h-5 w-5 text-brand-orange shrink-0 mt-0.5" />
+          <p className="font-medium text-gray-700">{errorMsg}</p>
         </div>
       )}
 
-      {/* Lista ordenada topológicamente */}
-      <div className="grid grid-cols-1 gap-4">
-        {items.length > 0 ? (
-          items.map((item) => {
-            const isCompleted = item.status === "completed";
-            const isBlocked = item.status === "blocked";
-            const isGap = item.status === "gap";
-
-            return (
+      {items.length === 0 && !errorMsg ? (
+        <div className="p-16 text-center bg-white rounded-[2.5rem] border border-dashed border-gray-200 flex flex-col items-center space-y-5">
+          <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center">
+            <Map className="h-7 w-7 text-gray-300" />
+          </div>
+          <div className="space-y-2">
+            <p className="text-lg font-bold italic">Aún no podemos trazar tu ruta.</p>
+            <p className="text-sm text-gray-400 max-w-sm mx-auto leading-relaxed">
+              Completa una prueba en The LINE para que tu DNA técnico tenga datos con los que
+              calcular tu progresión.
+            </p>
+          </div>
+          <Link href="/dashboard/line">
+            <Button className="bg-black text-white rounded-2xl h-12 px-8 font-bold uppercase tracking-widest text-[10px]">
+              Ir a The LINE <ArrowRight className="ml-2 h-3 w-3" />
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <>
+          {/* Progreso hacia el nivel objetivo */}
+          <section className="bg-white rounded-[2.5rem] p-8 shadow-apple border border-gray-50 space-y-5">
+            <div className="flex justify-between items-end">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-gray-300 block mb-1">
+                  Progreso hacia {inferredLevel === "junior" ? "mid" : "senior"}
+                </span>
+                <span className="text-3xl font-black italic tracking-tighter">
+                  {completed.length}
+                  <span className="text-gray-300"> / {evaluated}</span>
+                </span>
+                <span className="text-xs text-gray-400 font-medium ml-2">habilidades dominadas</span>
+              </div>
+              <span className="text-4xl font-black italic tracking-tighter text-brand-blue">{progress}%</span>
+            </div>
+            <div className="h-3 rounded-full bg-gray-50 overflow-hidden border border-gray-100">
               <div
-                key={item.skillId}
-                className={cn(
-                  "bg-white rounded-2xl p-6 border shadow-apple transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6",
-                  isCompleted && "border-emerald-100 bg-emerald-50/10 opacity-90",
-                  isGap && "border-blue-100",
-                  isBlocked && "border-gray-200 bg-gray-50/40"
-                )}
-              >
-                <div className="flex gap-5 items-start md:items-center flex-1">
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0",
-                      isCompleted && "bg-emerald-100 text-emerald-700",
-                      isGap && "bg-brand-blue/10 text-brand-blue",
-                      isBlocked && "bg-gray-200 text-gray-500"
+                className="h-full bg-brand-blue rounded-full transition-all duration-700"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </section>
+
+          {/* SIGUIENTE PASO — el motor calcula exactamente esto; es lo único que hay que decidir hoy */}
+          {nextStep && (
+            <section className="bg-gray-950 text-white rounded-[2.5rem] p-10 shadow-apple-lg space-y-8 relative overflow-hidden">
+              <div className="relative z-10 space-y-6">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-blue">
+                  Tu siguiente paso
+                </span>
+                <div className="space-y-3">
+                  <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter leading-none">
+                    {nextStep.skillName}
+                  </h2>
+                  <p className="text-sm text-gray-400 font-medium">
+                    {CATEGORY_LABELS[nextStep.category] ?? nextStep.category}
+                    {nextStep.scoreSource !== "none" && (
+                      <> · medido con {nextStep.scoreSource === "line" ? "The LINE" : "tu código de GitHub"}</>
                     )}
-                  >
-                    {item.order}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+                    <span className="text-gray-500">Ahora {nextStep.currentScore}%</span>
+                    <span className="text-brand-blue">Objetivo {nextStep.targetScore}%</span>
                   </div>
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-md bg-gray-100 text-gray-600">
-                        {CATEGORY_LABELS[item.category] || item.category}
-                      </span>
-                      {item.scoreSource !== "none" && (
-                        <span className="text-[9px] font-semibold uppercase tracking-wider text-gray-400">
-                          Fuente: {item.scoreSource === "line" ? "The LINE" : "GitHub Engine"}
-                        </span>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden relative">
+                    <div
+                      className="h-full bg-brand-blue rounded-full"
+                      style={{ width: `${Math.min(nextStep.currentScore, 100)}%` }}
+                    />
+                    <div
+                      className="absolute top-0 bottom-0 border-l-2 border-dashed border-white/40"
+                      style={{ left: `${Math.min(nextStep.targetScore, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 font-medium">
+                    Te faltan {nextStep.deficit} puntos para alcanzar el nivel objetivo.
+                  </p>
+                </div>
+
+                {practicable[nextStep.skillId] && (
+                  <Link href={`/dashboard/line?technology=${encodeURIComponent(nextStep.skillId)}`}>
+                    <Button className="h-14 px-8 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-2xl font-bold uppercase tracking-widest text-[10px]">
+                      Practicar en The LINE <ArrowRight className="ml-2 h-3 w-3" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
+              <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-brand-blue/10 rounded-full blur-3xl" />
+            </section>
+          )}
+
+          {/* Resto de habilidades disponibles */}
+          {restAvailable.length > 0 && (
+            <section className="space-y-4">
+              <SectionTitle icon={Zap} label="Disponibles ahora" count={restAvailable.length} />
+              <div className="space-y-3">
+                {restAvailable.map((item) => (
+                  <div
+                    key={item.skillId}
+                    className="bg-white rounded-2xl p-5 border border-gray-50 shadow-apple flex flex-wrap items-center gap-4"
+                  >
+                    <div className="flex-grow min-w-0 space-y-1">
+                      <p className="font-bold truncate">{item.skillName}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300">
+                        {CATEGORY_LABELS[item.category] ?? item.category}
+                      </p>
+                    </div>
+                    <ScoreGap item={item} />
+                    {practicable[item.skillId] && (
+                      <Link href={`/dashboard/line?technology=${encodeURIComponent(item.skillId)}`}>
+                        <Button variant="ghost" className="rounded-xl text-brand-blue font-bold uppercase tracking-widest text-[9px]">
+                          Practicar
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Bloqueadas — lo importante es POR QUÉ, que el motor ya calcula y antes no se leía bien */}
+          {blocked.length > 0 && (
+            <section className="space-y-4">
+              <SectionTitle icon={Lock} label="Se desbloquean después" count={blocked.length} />
+              <div className="space-y-3">
+                {blocked.map((item) => (
+                  <div
+                    key={item.skillId}
+                    className="bg-gray-50/60 rounded-2xl p-5 border border-gray-100 flex flex-wrap items-center gap-4"
+                  >
+                    <div className="flex-grow min-w-0 space-y-1.5">
+                      <p className="font-bold text-gray-500 truncate">{item.skillName}</p>
+                      {item.blockedBy.length > 0 && (
+                        <p className="text-[11px] text-gray-400 font-medium">
+                          Domina primero{" "}
+                          <span className="text-gray-600 font-bold">{item.blockedBy.join(", ")}</span>
+                        </p>
                       )}
                     </div>
-                    <h3 className="text-lg font-bold text-black flex items-center gap-2">
-                      {item.skillName}
-                      {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
-                      {isBlocked && <Lock className="h-4 w-4 text-amber-500 shrink-0" />}
-                    </h3>
-                    {isBlocked && item.blockedBy.length > 0 && (
-                      <p className="text-xs text-amber-600 font-medium">
-                        Requiere dominar primero: {item.blockedBy.join(", ")}
-                      </p>
-                    )}
+                    <Lock className="h-4 w-4 text-gray-300 shrink-0" />
                   </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-6 self-end md:self-center">
-                  <div className="text-right">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Score</span>
-                    <span className="text-sm font-bold text-black">
-                      {item.currentScore}% / <span className="text-gray-400">{item.targetScore}%</span>
-                    </span>
-                  </div>
-
-                  <div className="text-right min-w-[80px]">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Prioridad</span>
-                    <span
-                      className={cn(
-                        "text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1",
-                        item.priority === "critical" && "text-brand-red",
-                        item.priority === "high" && "text-amber-600",
-                        item.priority === "medium" && "text-brand-blue",
-                        item.priority === "low" && "text-gray-500",
-                        item.priority === "none" && "text-emerald-600"
-                      )}
-                    >
-                      {item.priority !== "none" && <Zap className="h-3 w-3" />}
-                      {item.priority}
-                    </span>
-                  </div>
-
-                  <div className="text-right min-w-[100px]">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 block">Estado</span>
-                    <span
-                      className={cn(
-                        "text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full",
-                        isCompleted && "bg-emerald-100 text-emerald-800",
-                        isGap && "bg-blue-100 text-blue-800",
-                        isBlocked && "bg-amber-100 text-amber-800"
-                      )}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
-                </div>
+                ))}
               </div>
-            );
-          })
-        ) : (
-          !errorMsg && (
-            <div className="p-16 text-center bg-white rounded-[2.5rem] border border-dashed border-gray-200 flex flex-col items-center space-y-4">
-              <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center">
-                <Map className="h-7 w-7 text-gray-300" />
+            </section>
+          )}
+
+          {/* Dominadas — logro, no ruido: compactas y al final */}
+          {completed.length > 0 && (
+            <section className="space-y-4">
+              <SectionTitle icon={CheckCircle2} label="Ya dominas" count={completed.length} />
+              <div className="flex flex-wrap gap-2">
+                {completed.map((item) => (
+                  <span
+                    key={item.skillId}
+                    className="inline-flex items-center gap-2 bg-white border border-gray-100 rounded-full py-2 px-4 text-xs font-bold text-gray-600 shadow-apple"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 text-brand-green" />
+                    {item.skillName}
+                  </span>
+                ))}
               </div>
-              <div className="space-y-1">
-                <p className="text-lg font-bold text-black">Sin datos para este rol.</p>
-                <p className="text-xs text-gray-400 max-w-xs mx-auto">
-                  Selecciona Backend Junior→Mid para ver el grafo determinístico de habilidades.
-                </p>
-              </div>
-            </div>
-          )
-        )}
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SectionTitle({
+  icon: Icon,
+  label,
+  count,
+}: {
+  icon: typeof Zap;
+  label: string;
+  count: number;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Icon className="h-4 w-4 text-gray-300" />
+      <h2 className="text-[11px] font-black uppercase tracking-widest text-gray-400">{label}</h2>
+      <span className="text-[11px] font-bold text-gray-300">{count}</span>
+    </div>
+  );
+}
+
+/** Score actual frente al objetivo, en una barra compacta. */
+function ScoreGap({ item }: { item: RoadmapItem }) {
+  return (
+    <div className="w-32 shrink-0 space-y-1.5">
+      <div className="flex justify-between text-[10px] font-bold">
+        <span className="text-gray-500">{item.currentScore}%</span>
+        <span className="text-gray-300">{item.targetScore}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+        <div
+          className="h-full bg-brand-blue rounded-full"
+          style={{ width: `${Math.min(item.currentScore, 100)}%` }}
+        />
       </div>
     </div>
   );

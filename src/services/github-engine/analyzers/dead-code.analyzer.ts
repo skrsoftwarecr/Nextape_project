@@ -23,27 +23,15 @@ export function analyzeDeadCode(ir: EngineeringIR): DeadCodeAnalysisResult {
     };
   }
 
-  // Coleccionamos todas las fuentes importadas o referencias
-  const importedIdentifiers = new Set<string>();
-  for (const file of ir.files) {
-    for (const imp of file.imports) {
-      importedIdentifiers.add(imp.source);
-    }
-  }
-
-  // Verificamos cuáles exportaciones no son referenciadas (aproximación heurística)
-  // TODO: heurística real de análisis de grafo de símbolos pendiente, actualmente siempre retorna 0
+  // ⚠️ SIN IMPLEMENTAR. El IR solo guarda el `source` del import (la ruta del módulo), no los
+  // identificadores importados, así que no se puede saber qué exports quedan sin referenciar.
+  //
+  // Antes esto devolvía SIEMPRE 100 ("0 % de código muerto") para cualquier repositorio, y ese
+  // 100 falso se propagaba con peso a `security` y `maintainability`, que se enseñan al usuario
+  // como análisis determinístico de su código. Devolver `null` es la respuesta honesta: no se ha
+  // medido. El mismo patrón que ya usa el resto del motor para "no analizable".
+  const score = null;
   const unusedCount = 0;
-  for (const exp of allExports) {
-    // Si la exportación es de tipo index o entry point principal, no se penaliza
-    if (exp.name === 'default' || exp.name === 'main' || exp.name.startsWith('use')) {
-      continue;
-    }
-  }
-
-  // Para repositorios en muestra pequeña (5-8 archivos), asignamos score base de mantenibilidad limpia
-  // basado en la proporción de exports bien estructurados.
-  const score = Math.max(0, Math.min(100, 100 - unusedCount * 15));
 
   return {
     score,

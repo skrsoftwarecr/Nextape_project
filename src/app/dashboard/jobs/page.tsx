@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Briefcase, DollarSign, Clock, Search, Loader2, ArrowRight } from "lucide-react";
+import { MapPin, Briefcase, DollarSign, Search, Loader2, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { JobService } from "@/services/jobs.service";
@@ -94,8 +94,8 @@ export default function JobsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-500">
                   <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-brand-blue" /> {job.location || "Remoto"}</div>
                   <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-brand-blue" /> {job.type || "Tiempo completo"}</div>
-                  <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-brand-blue" /> {job.salary || "Competitivo"}</div>
-                  <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-brand-blue" /> Sincronizado</div>
+                  <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-brand-blue" /> {job.salary || "No especificado"}</div>
+                  
                 </div>
 
                 <div className="flex flex-wrap gap-2">

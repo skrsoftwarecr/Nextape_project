@@ -44,10 +44,10 @@ export interface AnalyzerResults {
 }
 
 export function mapSkills(results: AnalyzerResults): { metrics: EngineMetrics; skillScores: GithubSkillScores } {
+  // `deadCode` ya no entra en la condición: su analizador está sin implementar y devuelve null,
+  // así que exigirlo dejaría TODO repositorio como "no analizable".
   const hasASTData =
-    results.coupling.score !== null &&
-    results.complexity.score !== null &&
-    results.deadCode.score !== null;
+    results.coupling.score !== null && results.complexity.score !== null;
 
   const metrics: EngineMetrics = {
     complexityScore: results.complexity.score,
@@ -69,11 +69,11 @@ export function mapSkills(results: AnalyzerResults): { metrics: EngineMetrics; s
   if (hasASTData) {
     const cPlx = results.complexity.score!;
     const cCpl = results.coupling.score!;
-    const cDead = results.deadCode.score!;
-
     architecture = Math.round(cCpl * 0.6 + cPlx * 0.4);
-    security = Math.round(cPlx * 0.5 + cCpl * 0.3 + cDead * 0.2);
-    maintainability = Math.round(cPlx * 0.4 + cDead * 0.3 + cCpl * 0.3);
+    // Se reparte el peso que tenía `deadCode` entre las dos señales que SÍ se miden, en lugar de
+    // rellenarlo con un valor fijo. Los pesos siguen sumando 1.00 en cada fórmula.
+    security = Math.round(cPlx * 0.625 + cCpl * 0.375);
+    maintainability = Math.round(cPlx * 0.575 + cCpl * 0.425);
 
     // Ponderación estándar (pesos suman 1.00)
     overall = Math.round(

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
-import { SPECIALTY_STACKS } from "@/lib/server/assessment";
 import { buildQuestionPool, QUESTIONS_PER_EXAM } from "@/lib/server/question-pool";
 
 export const runtime = "nodejs";
@@ -61,11 +60,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!Array.isArray(job.requiredSkills) || job.requiredSkills.length === 0) {
+      return NextResponse.json({ error: "job_without_skills" }, { status: 400 });
+    }
+
     const pool = await buildQuestionPool({
-      stack:
-        Array.isArray(job.requiredSkills) && job.requiredSkills.length
-          ? job.requiredSkills
-          : SPECIALTY_STACKS.frontend,
+      // Sin fallback: generar preguntas de frontend para una vacante de backend produce un
+      // examen que no evalúa el puesto, y nadie lo nota porque no hay error.
+      stack: job.requiredSkills,
       level: job.level || "senior",
     });
 
