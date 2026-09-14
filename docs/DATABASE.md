@@ -73,8 +73,11 @@ Tipo: [`AssessmentSession`](../src/types/assessment.types.ts).
 Colecciones de **confianza**, escritas/leídas SOLO por el Admin SDK (reglas `read, write: if false`).
 - `line_sessions`: `{ userId, jobId?, questions (con correctIndex), createdAt }`. Sesión de una simulación;
   guarda la clave de respuestas. Se borra al enviar (`/api/line/submit`).
-- `job_answer_keys`: `{ jobId, questions (con correctIndex), updatedAt }`. Clave de la prueba de una vacante
-  (el doc público `jobs` guarda las preguntas **sin** clave).
+- `job_answer_keys`: `{ jobId, questions (con clave), covered, missing, source: "bank", updatedAt }`. Repertorio
+  de la prueba de una vacante, **compuesto desde `line_question_pools` sin IA** ([`job-pool.ts`](../src/lib/server/job-pool.ts)):
+  hasta 30 preguntas por skill (máx. 8 skills), del nivel de la vacante o del más cercano con banco. `covered`
+  indica de qué nivel salió cada skill y `missing` qué skills no tienen banco. El doc público `jobs` no lleva
+  preguntas: solo `assessmentReady`, `assessmentPoolSize` y `assessmentMissingSkills`.
 
 ### `jobs/{jobId}`  — Vacantes
 Tipo: [`JobOpportunity`](../src/types/job.types.ts).
@@ -82,21 +85,24 @@ Tipo: [`JobOpportunity`](../src/types/job.types.ts).
 | Campo | Tipo | Notas |
 |---|---|---|
 | `id` | string? | id de documento |
-| `title`, `company`, `description`, `salary`, `location`, `type`, `level` | string | `company` hoy hardcodeado a `"Empresa NEXTAPE"` |
-| `requiredSkills` | string[] | normalizadas a minúsculas |
-| `assessmentQuestions` | `Question[]?` | generadas por IA (Genkit) |
+| `title`, `company`, `description`, `salary`, `location`, `type`, `level` | string | `company` editable (se prefija con el nombre del perfil) |
+| `requiredSkills` | string[] | Ids canónicos del catálogo (`src/lib/technologies.ts`) elegidos con `SkillPicker`. Las vacantes antiguas en texto libre ("React.js", "Node") se resuelven por alias |
+| `examQuestionCount` | `number \| null`? | Preguntas por examen fijadas por el reclutador (10–30). Vacío/`null` = automático: **10 si el candidato tiene GitHub analizado, 20 si no** |
+| `assessmentReady` / `assessmentPoolSize` / `assessmentMissingSkills` | boolean / number / string[] | Estado del repertorio; lo escribe el servidor al componerlo |
 | `createdBy` | string | uid del reclutador |
 | `postedAt` | Timestamp | |
 | `applicantsCount` | number? | |
 
 - Leído por `JobService.getLatestJobs` (`orderBy(postedAt desc) limit 20`) y `getJob`.
-- Creado/actualizado desde `dashboard/vacancies/new` (client `addDoc` + `JobService.generateJobAssessment` `updateDoc`).
+- Creada desde `dashboard/vacancies/new` (client `addDoc`) y editada en `dashboard/vacancies/[id]`. Su repertorio lo
+  compone `POST /api/jobs/assessment` al publicar (o `/api/line/start` con el primer candidato, si faltaba); al
+  cambiar las skills en `[id]` se recompone automáticamente.
 - ✅ **Reglas corregidas (B1):** el reclutador **dueño** (`createdBy == uid`) puede crear y actualizar su
   vacante; sin borrado desde cliente; no puede reasignar `createdBy`. La creación de vacantes ya no está bloqueada.
 
-#### Subtipo `Question` (embebido en `jobs.assessmentQuestions` y generado por IA)
-`id, briefing, text, options[4], correctIndex (0-3), difficulty, tag`.
-- ⚠️ `correctIndex` viaja al cliente (lectura pública de `jobs`). Un candidato puede leer las respuestas.
+#### Preguntas de la vacante
+Ya **no se embeben** en `jobs` (lectura pública): el campo heredado `assessmentQuestions` se borra al componer el
+repertorio. Las preguntas viven con su clave en `job_answer_keys/{jobId}` (server-only).
 
 ### `questions/{qId}`  — Banco de preguntas (no usado activamente)
 Tipo: `Question`. Reglas: lectura autenticada, escritura `if false`.
@@ -158,28 +164,59 @@ Tipo: [`RoadmapRoute`](../src/types/roadmap.types.ts). `routeId = {targetRole}_{
 - **Escritor:** Server-only / Admin SDK vía `npm run seed:catalog -- --yes`.
 - **Lector:** Lectura pública para usuarios autenticados (`allow read: if isAuthenticated()`).
 
-### `github_evidence/{uid}` — 🔒 Evidencia del GitHub Evaluation Engine
-Tipo: [`GithubEvidence`](../src/types/github.types.ts). `uid = request.auth.uid`.
+### `github_evidence/{uid}` — 🔒 Perfil de GitHub agregado (todos los repositorios)
+Tipo: [`GithubEvidence`](../src/types/github.types.ts). `uid = request.auth.uid`. Motor `engineVersion: "2.0.0"`.
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `uid` | string | PK = uid de Firebase Auth |
-| `githubUsername` | string | Nombre de usuario de GitHub evaluado |
-| `analyzedRepo` | string | Formato `"owner/repo"` |
-| `lastCommitSHA` | string | Clave de cache por commit |
-| `repoSignals` | `RepoSignals` | Señales brutas (lenguajes, commits 90d, tests, CI, readme) |
-| `metrics` | `EngineMetrics` | Métricas determinísticas AST (complejidad, acoplamiento, dead-code) |
-| `skillScores` | `GithubSkillScores` | Puntuaciones finales (architecture, testing, security, etc.) |
-| `aiFeedback` | `GithubAIFeedback \| null` | Feedback interpretado por Mistral AI (nunca código fuente) |
-| `analyzedAt` | Timestamp | Timestamp de servidor (`FieldValue.serverTimestamp()`) |
-| `engineVersion` | string | Versión del motor (ej. `"1.0.0"`) |
+| `githubUsername` | string | Cuenta de GitHub analizada |
+| `analyzedRepo` | string | Heredado del análisis de un repo. En perfiles multi-repo: `"N repositorios"` |
+| `reposAnalyzed` / `reposWithCode` / `filesAnalyzed` | number | Repos combinados, cuántos tenían código analizable y archivos parseados en total |
+| `repos` | `GithubRepoSummary[]` | Por repo: `fullName`, `overall` (`null` sin código analizable), `hasASTData`, `filesAnalyzed`, `mainLanguage` |
+| `languagesBytes` / `parsedLanguages` | `Record<string, number>` | Bytes por lenguaje según GitHub y archivos parseados por gramática del motor |
+| `identity` | `{ verified, method, linkedLogin }` | `verified: true` solo si la cuenta de Firebase tiene vinculado ese mismo GitHub (proveedor `github.com`). `linkedLogin`: la cuenta vinculada cuando no coincide con la analizada. Se vincula con «Verificar con GitHub» (`linkGithubAccount`) |
+| `lastCommitSHA` | string | Heredado; vacío en perfiles agregados (la caché vive por repo) |
+| `repoSignals` | `RepoSignals` | Agregado: lenguajes sumados, `repo: "*"` |
+| `metrics` | `EngineMetrics` | Complejidad y acoplamiento ponderados por archivos; `deadCodeScore: null` |
+| `skillScores` | `GithubSkillScores` | Agregado (ver abajo) |
+| `aiFeedback` | `GithubAIFeedback \| null` | Lectura de Mistral sobre los scores agregados (nunca código fuente). `null` si el proveedor falla: no se inventa texto |
+| `analyzedAt` | Timestamp | Timestamp de servidor |
+| `engineVersion` | string | `"2.0.0"` |
 
-- **Escritor:** `POST /api/github/evaluate` (Admin SDK) tras ejecutar el motor determinístico + Mistral.
-- **Lector:** Solo el dueño (`allow read: if isOwner(userId)`). Escritura `if false` para el cliente.
-- **Cache:** Si `lastCommitSHA` no cambia, no recalcula nada.
+#### Subcolección `github_evidence/{uid}/repos/{owner__repo}` — 🔒 evidencia por repositorio
+Tipo: `GithubRepoEvidence`. Id = `owner/repo` en minúsculas con `/` → `__` (`repoDocId`).
+Campos: `uid, githubUsername, fullName, pushedAt, lastCommitSHA, repoSignals, metrics, skillScores, filesAnalyzed,
+parsedLanguages, analyzedAt, engineVersion`.
+
+- **Escritores (Admin SDK):** `POST /api/github/evaluate` analiza UN repo y escribe la subcolección (sin IA);
+  `POST /api/github/aggregate` combina la subcolección en el doc raíz (1 llamada a Mistral). El cliente orquesta
+  `/api/github/repos` → `evaluate` por repo (3 a la vez) → `aggregate`: así cada petición cabe en el tiempo de
+  una Netlify Function aunque el usuario tenga decenas de repositorios.
+- **Lector:** solo el dueño, del doc y de la subcolección (dos reglas: la de un documento no cubre sus
+  subcolecciones). Escritura `if false` para el cliente.
+- **Caché:** un repo no se reanaliza si coinciden `lastCommitSHA` y `engineVersion`; `/api/github/repos` lo marca
+  `analyzed` comparando además `pushedAt`, y el cliente lo salta.
+- **Selección de archivos:** hasta 12 por repo, repartidos por turnos entre lenguajes (primero los archivos con más
+  código), excluyendo dependencias, generados, `.d.ts` y minificados. Motor: 20 lenguajes (`EXTENSION_MAP`).
+- **Agregación** (`aggregateRepoEvidence`): arquitectura, seguridad y mantenibilidad = media ponderada por archivos
+  analizados **solo de repos con AST** (`null` si ninguno); testing y documentación = media de todos los repos
+  (peso mínimo 1).
+- **Consumidores:** `GithubEvidenceCard`, el roadmap (`githubScores` por dimensión) y The LINE: con
+  `reposWithCode > 0` **y `identity.verified`** el examen es de **10 preguntas en vez de 20**. Sin verificar no
+  compensa: cualquiera puede escribir el usuario de GitHub de otra persona.
+- **Límites:** `repos` 12/h, `evaluate` 150/h y `aggregate` 20/h por usuario (`api_rate_limits`), y como mucho los
+  100 repos con push más reciente. `repos` borra de la subcolección los que ya no están en esa lista (borrados,
+  renombrados o fuera del tope), y `aggregate` reutiliza la lectura de Mistral si los scores no cambiaron.
 - **Fórmula de `overall` (Skill Scores):**
   $$\text{overall} = (\text{architecture} \times 0.25) + (\text{testing} \times 0.25) + (\text{security} \times 0.15) + (\text{maintainability} \times 0.20) + (\text{documentation} \times 0.15)$$
   *Si el repositorio no tiene archivos parseables AST (0 archivos), `architecture`, `security` y `maintainability` son `null`, y `overall` se recalcula proporcionalmente sobre métricas disponibles (`testing` 62.5% + `documentation` 37.5%).*
+
+### `api_rate_limits/{scope}:{uid}` — 🔒 Límites de peticiones por usuario
+`{ uid, scope, windowStart (ms), count, updatedAt }`. Ventana fija de 1 h por endpoint
+([`rate-limit.ts`](../src/lib/server/rate-limit.ts)). Protege el `GITHUB_TOKEN` compartido (5000 req/h para toda la
+plataforma) y el coste de Mistral.
+- **Escritor:** los endpoints de GitHub (Admin SDK, en transacción). **Cliente:** `read, write: if false`.
 
 ### `core/{uid}`  — ⚠️ Colección fantasma
 - `CoreService` lee/escribe la colección `core`, **pero no existe regla para `core`**.

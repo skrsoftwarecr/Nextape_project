@@ -36,9 +36,12 @@ Helpers: `isAuthenticated()`, `isOwner(userId)`.
 | `assessment_attempts/{id}` | **owner** | **`if false`** | ✅ **(B8/B2)** Lista solo del dueño; creación solo en servidor (Admin). |
 | `line_sessions/{id}` | — | — (`if false`) | ✅ Server-only. Guarda la clave de respuestas de una simulación. Solo Admin. |
 | `job_answer_keys/{jobId}` | — | — (`if false`) | ✅ Server-only. Clave de respuestas de la prueba de una vacante. Solo Admin. |
-| `jobs/{jobId}` | público | **owner (`createdBy`)** | ✅ **(B1)** El reclutador dueño crea/edita; sin borrado; sin reasignar `createdBy`. ✅ `assessmentQuestions` ahora se guarda **sin `correctIndex`**. |
+| `jobs/{jobId}` | público | **owner (`createdBy`)** | ✅ **(B1)** El reclutador dueño crea/edita; sin borrado; sin reasignar `createdBy`. ✅ Las preguntas ya no se guardan en `jobs`. ✅ El dueño no puede escribir `assessmentReady`, `assessmentPoolSize`, `assessmentMissingSkills` ni `applicantsCount` (los escribe el servidor). |
 | `questions/{qId}` | autenticado | `if false` | ⚠️ Banco no usado activamente; contiene claves. Restringir si se usa. |
 | `candidate_matches/{id}` | `userId==uid \|\| recruiterId==uid` | `if false` | ✅ **(A4)** El campo `recruiterId` ya existe en `CandidateMatch`; lo escribe el servidor (`/api/line/submit`, Admin SDK) al postular con The LINE. El reclutador solo lee matches de sus vacantes (`recruiterId==uid`). |
+| `github_evidence/{uid}` | owner | `if false` | ✅ Perfil GitHub agregado; lo escribe `/api/github/aggregate` (Admin). `identity.verified` distingue una cuenta vinculada por OAuth de un usuario de GitHub escrito a mano. |
+| `github_evidence/{uid}/repos/{repoId}` | owner | `if false` | ✅ Evidencia por repositorio (`/api/github/evaluate`, Admin). Regla propia: la del documento no cubre la subcolección. |
+| `api_rate_limits/{id}` | — | — (`if false`) | ✅ Server-only. Contadores de límite por usuario; si el cliente pudiera escribirlos, reiniciaría su propio límite. |
 | `core/{uid}` | — sin regla — | — sin regla — | ✅ Resuelto: el módulo `core` roto fue eliminado (el CORE real es `user_skill_scores`). |
 
 **Deny-by-default:** cualquier colección sin `match` explícito queda denegada (correcto), pero varias
@@ -82,8 +85,15 @@ El valor central de NEXTAPE es el **"DNA técnico verificado"**. La integridad e
    Admin SDK. El cliente no puede escribir `user_skill_scores` (`write:false`).
 3. **Autenticación**: los route handlers verifican el Firebase ID token (`verifyRequestUid`); el cliente
    lo adjunta con `apiPost`. No se confía en ningún `uid` del body.
-4. **Vacantes**: `/api/jobs/assessment` guarda la clave en `job_answer_keys` (server-only) y solo las
-   preguntas públicas (sin clave) en el doc `jobs`.
+4. **Vacantes**: `/api/jobs/assessment` compone el repertorio desde el banco y lo guarda con su clave en
+   `job_answer_keys` (server-only); el doc público `jobs` no lleva preguntas, solo `assessmentReady`,
+   `assessmentPoolSize` y `assessmentMissingSkills`.
+5. **GitHub**: `/api/github/evaluate` valida usuario y nombre de repositorio antes de interpolarlos en la API de
+   GitHub con el token del servidor (un nombre como `..` normalizaría la URL a otro endpoint) y solo acepta
+   repos de la cuenta analizada (`repo_not_owned`). Límites por usuario en `repos`/`evaluate`/`aggregate`
+   (`api_rate_limits`) y tope de 100 repos por análisis. El examen solo se acorta a 10 preguntas si la cuenta
+   está **verificada** (la misma que el usuario vinculó por OAuth): analizar el GitHub de otra persona no compensa.
+   Riesgo residual: los límites son por cuenta, así que muchas cuentas pueden sumar cuota.
 
 > Resultado: el DNA **no es falsificable desde el cliente** y las respuestas correctas nunca salen al
 > navegador. Requisito operativo: credenciales del Admin SDK (ADC o `FIREBASE_SERVICE_ACCOUNT`) y la

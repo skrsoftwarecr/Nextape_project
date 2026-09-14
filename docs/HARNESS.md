@@ -361,6 +361,10 @@ Cada fase tiene criterio de aceptación verificable. **No empezar una fase con l
 | ✅ 1.3 | Validar longitud de `answers` ([§6.7](./CONTEXT.md)) | `qa-test-engineer` | **Hecho 2026-08-01.** `isValidAnswerSet()` + 6 tests; `answers` inválido → 400 |
 | ✅ 1.6 | **Repertorio por vacante** — generar el banco al publicar y sortear X por candidato | `backend-ai-engineer` | **Hecho 2026-08-02.** `buildQuestionPool()` + `pickRandomQuestions()` estratificado; `/api/line/start` ya no llama a la IA en el camino normal |
 | ✅ 1.7 | Anclar la generación en el catálogo de fuentes del equipo | `rag-engineer` | **Hecho 2026-08-02.** `sources.ts` (13 categorías) + campo `source` por pregunta, descartando URLs inventadas |
+| ✅ 1.8 | **Prueba de vacante sin IA**: componer el repertorio desde `line_question_pools` | `backend-ai-engineer` | **Hecho 2026-09-14.** `job-pool.ts` + alias canónicos; `jobs/assessment` y `line/start` sin llamadas al modelo; errores 422/409 explícitos; `SkillPicker` en los formularios |
+| ✅ 1.9 | **Tamaño de examen compensado por GitHub** (10 con GitHub, 20 sin él; override 10–30) | `backend-ai-engineer` | **Hecho 2026-09-14.** `examSizeFor` + `hasGithubEvidence`; `/api/line/catalog` devuelve `examSize` |
+| ✅ 1.10 | **GitHub multi-repo** (todos los repositorios, 20 lenguajes) | `backend-ai-engineer` + `frontend-engineer` | **Hecho 2026-09-14.** `repos` → `evaluate` por repo → `aggregate`; subcolección con regla propia; tests de agregación y selección de archivos |
+| 1.11 | Ampliar el banco a ~50 preguntas por combinación (`seed:questions --top-up`) | quien tenga una API key de IA válida | Cada `line_question_pools/*` ≥ 50. **Bloqueado:** Groq 401, NVIDIA 410/404, Mistral 429 (2026-09-14) |
 | 1.4 | Rate limiting en los endpoints que llaman al LLM ([§6.6](./CONTEXT.md)) | `backend-ai-engineer` + `security-auditor` | N.º de generaciones por usuario/hora acotado y testeado |
 | 1.5 | Tests de los 3 route handlers (Admin SDK mockeado) | `qa-test-engineer` | Cubiertos 401 / 403 / happy path. Tests totales > 14 |
 

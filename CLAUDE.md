@@ -43,7 +43,7 @@ Antes de dar por terminado un cambio: `typecheck` + `lint` + `test` en verde (es
 
 ```
 src/app/            Rutas App Router. App = src/app/dashboard/*  |  API = src/app/api/* (server-trust)
-src/app/api/        Route handlers (Node runtime, Admin SDK): line/start, line/submit, jobs/assessment
+src/app/api/        Route handlers (Node runtime, Admin SDK): line/{start,submit,catalog}, jobs/assessment, github/{repos,evaluate,aggregate}
 src/components/     ui/ (shadcn) · auth/ (AuthGuard, AuthModal) · layout/ (DashboardShell)
 src/services/       Capa de datos (LECTURA desde cliente): users, skills(read), jobs, assessments(read)
 src/lib/firebase/   client.ts (Web SDK, cliente) · admin.ts (Admin SDK, SOLO servidor)
@@ -82,7 +82,7 @@ Estas reglas son **vinculantes**. Si una tarea requiere romper una, **detente y 
 ### 4.2 Datos
 7. **Firestore solo vía `src/services/*` o los helpers de `src/lib/firebase/firestore.ts`.** No uses el
    SDK crudo en componentes nuevos.
-8. **Skills siempre en minúsculas** (`skill.toLowerCase()`) al leer/escribir scores o `requiredSkills`.
+8. **Skills siempre en minúsculas y con su id canónico** (`canonicalSkillKey`, "Next.js" → `nextjs`) al leer/escribir scores o `requiredSkills`.
    Es una invariante del match. No la rompas.
 9. **Timestamps con `Timestamp.now()`** de `firebase/firestore`, nunca `new Date()`.
 10. **Al añadir/cambiar una colección o tipo:** actualiza tipo (`src/types/*.types.ts`), servicio,

@@ -171,7 +171,73 @@ Registro de las correcciones aplicadas al sanear el sistema. Cada fase referenci
 ### Verificación Fase 7
 - `npm run typecheck` ✅ · `npm run lint` ✅ (0 errores, 23 warnings) · `npm test` ✅ · `npm run build` ✅.
 
+## Iteración 2026-09-14 — GitHub multi-repo, examen 10/20 y pruebas de vacante desde el banco
+
+### Pruebas THE LINE de vacantes (el error al postular)
+- **Causa:** el repertorio se generaba con IA dentro de la función. Con Groq devolviendo 401 (clave inválida) y
+  los modelos de NVIDIA retirados (410), `buildQuestionPool` devolvía 0 preguntas y el candidato recibía un
+  error. Además, las dos únicas vacantes de producción (`job_1`, `job_2`) son documentos de seed sin `createdBy`
+  ni `requiredSkills`: no pueden tener prueba ni entregar candidaturas a ninguna empresa.
+- **Fix:** `src/lib/server/job-pool.ts` compone el repertorio desde `line_question_pools`, sin IA: ids canónicos
+  con alias, nivel más cercano con banco, ≤ 30 preguntas por skill. Lo usan `/api/jobs/assessment` y
+  `/api/line/start`, con errores explícitos (`no_bank_for_skills`, `job_without_bank`, `job_incomplete`,
+  `job_closed`) que la pantalla traduce a mensajes concretos.
+- Formularios de vacante con `SkillPicker`: solo tecnologías con banco. Al cambiar las skills en
+  «Gestionar vacante» la prueba se recompone sola.
+- `calculateMatch` y `/api/line/submit` usan la clave canónica: "Next.js" en la vacante casa con el DNA `nextjs`.
+
+### The LINE: 10 preguntas con GitHub, 20 sin él
+- `examSizeFor` sustituye las 5 preguntas fijas. `job.examQuestionCount` pasa a ser un override de 10–30
+  (vacío = automático).
+- `/api/line/catalog` devuelve `examSize` y `hasGithub`; la pantalla lo explica antes de empezar y acepta
+  `?technology=&level=` (los enlaces del roadmap).
+- `npm run seed:questions -- --top-up --target=50 --yes` amplía el banco sin reemplazar lo existente.
+
+### GitHub: todos los repositorios
+- Antes se analizaba un único repo (el último con push). Ahora `/api/github/repos` → `/api/github/evaluate`
+  por repo → `/api/github/aggregate`, con la subcolección `github_evidence/{uid}/repos` y su regla.
+- Selección de archivos repartida entre lenguajes (≤ 12 por repo), listado paginado sin forks ni archivados,
+  detección de tests y CI ampliada a más ecosistemas e identidad verificada vía OAuth de GitHub.
+- La lectura de Mistral devuelve `null` si falla (antes devolvía un texto genérico inventado).
+- Validación de usuario y nombre de repo antes de llamar a la API con el token del servidor.
+- Tras la auditoría de seguridad: el examen de 10 preguntas solo aplica con la cuenta **verificada** (antes bastaba
+  con analizar el GitHub de otra persona); límites por usuario en `repos`/`evaluate`/`aggregate`
+  (`api_rate_limits`), tope de 100 repos, limpieza de repos borrados o renombrados, y Mistral solo se vuelve a
+  llamar si cambian los scores.
+- Reglas: el dueño de una vacante ya no puede escribir `assessmentReady`, `assessmentPoolSize`,
+  `assessmentMissingSkills` ni `applicantsCount`.
+- «Verificar con GitHub» (`linkGithubAccount`, `linkWithPopup`): vincula GitHub sin cerrar sesión. Si la sesión ya
+  tiene otro GitHub vinculado, el servidor devuelve cuál (`identity.linkedLogin`) y se ofrece analizar ese.
+- **Bug del motor encontrado en la verificación E2E:** tree-sitter lanzaba `Invalid argument` con archivos de más
+  de 32 KiB y el motor los descartaba en silencio. Como la selección prioriza los archivos con más código, en
+  `rust-lang/mdBook` se perdían todos los `.rs`. `universal-parser.ts` ajusta `bufferSize` al archivo.
+
+### Roadmap
+- Escalera Junior → Mid → Senior con «Estás aquí» y «Meta», umbral visible por skill, origen del score correcto
+  (The LINE / GitHub / promedio de pruebas parecidas / sin datos), sección «Sin medir todavía» en vez de 0 % y una
+  acción concreta por skill (practicar en The LINE o analizar GitHub).
+
+### IA
+- `generateJson` cae a NVIDIA también ante 401/403/404/410 y no reintenta errores no transitorios.
+
+### Verificación
+- `npm run typecheck` ✅ · `npm run lint` ✅ (0 errores, 21 warnings) · `npm test` ✅ (123 pasan; los 8 de reglas
+  necesitan emulador) · `npm run build` ✅.
+- **E2E contra producción** con usuarios temporales y limpieza verificada (`qa-test-engineer`): 21/21 casos
+  (vacantes, práctica general, GitHub multi-repo) y, tras los fixes de seguridad, 12/12 (identidad verificada
+  10/20, vínculo real de GitHub, Rust en `rust-lang/mdBook`, poda, 429 del límite). Análisis por repo: ~1,2 s.
+- **Revisión** (`code-reviewer`) y **auditoría de seguridad** (`security-auditor`): hallazgos corregidos y
+  re-verificados; sin bloqueadores. Riesgo residual documentado en TECH_DEBT A9.
+
 ## Pendiente (siguiente)
+- **IA:** sustituir `GROQ_API_KEY` (401) en `.env.local` y Netlify; sin proveedor no se puede ampliar el banco.
+- **Reglas:** desplegar `firestore.rules` (subcolección `github_evidence/{uid}/repos`, `api_rate_limits` y campos
+  protegidos de `jobs`).
+- **Datos:** decidir qué hacer con `job_1`/`job_2` (seed sin dueño ni skills, ocultos del listado): son las
+  únicas vacantes de producción y ninguna puede tener The LINE.
+- **Límites:** son por cuenta; muchas cuentas pueden sumar cuota del `GITHUB_TOKEN`. Valorar un límite global.
+- **Roadmap:** `roadmap-engine.ts` busca el DNA por id exacto, sin alias (`canonicalSkillKey`); solo afecta a DNA
+  histórico guardado con claves no canónicas.
 - **B3/B4** Configurar `GROQ_API_KEY` + `FIREBASE_SERVICE_ACCOUNT` en Netlify (ver DEPLOYMENT).
 - **#4** Migrar el SDK crudo de Firestore de las páginas restantes (`dashboard`, `vacancies`, `vacancies/new`)
   a métodos de `JobService` (regla CLAUDE.md §4.2.7). `candidates` ya migrado en la Fase 8.

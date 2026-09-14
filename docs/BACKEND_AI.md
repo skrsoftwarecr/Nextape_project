@@ -17,9 +17,13 @@ NEXTAPE tiene una **capa de confianza en servidor** sobre Firebase:
 ### Route handlers (server-trust)
 | Endpoint | Qué hace |
 |---|---|
-| `POST /api/line/start` | Genera preguntas (o carga la clave de una vacante), crea `line_sessions` (server-only) y devuelve preguntas **sin `correctIndex`** (`PublicQuestion`). |
+| `POST /api/line/start` | Sortea preguntas de un repertorio existente —`line_question_pools` (práctica) o `job_answer_keys` (vacante; si falta, lo compone desde el banco)—, crea `line_sessions` (server-only) y devuelve preguntas **sin clave** (`PublicQuestion`). Tamaño: 10 con GitHub analizado, 20 sin él, o `job.examQuestionCount` (10–30). Sin IA. |
 | `POST /api/line/submit` | Corrige contra la clave de la sesión, escribe el DNA (`user_skill_scores`, mejor score/skill) y el intento (`assessment_attempts`) con Admin SDK, borra la sesión. Si la sesión tiene `jobId` (postulación a una vacante), además escribe/actualiza `candidate_matches/{userId_jobId}` e incrementa `jobs.applicantsCount` la primera vez (best-effort). |
-| `POST /api/jobs/assessment` | (Reclutador dueño) genera la prueba de una vacante: preguntas públicas sin clave en `jobs`, clave en `job_answer_keys` (server-only). |
+| `POST /api/jobs/assessment` | (Reclutador dueño) compone el repertorio de la vacante desde el banco (`src/lib/server/job-pool.ts`, sin IA) en `job_answer_keys` (server-only); el doc `jobs` solo recibe `assessmentReady/PoolSize/MissingSkills`. 422 `no_bank_for_skills` si no llega a 10 preguntas. |
+| `GET /api/line/catalog` | Qué tecnología × nivel tienen banco, y el tamaño de examen del usuario (`examSize`, `hasGithub`). Nunca devuelve preguntas. |
+| `POST /api/github/repos` | Lista los repos propios de una cuenta (paginado) y marca los ya analizados con la versión actual del motor. |
+| `POST /api/github/evaluate` | Analiza UN repositorio con el motor determinístico (sin IA) → `github_evidence/{uid}/repos/{owner__repo}`. Caché por commit. |
+| `POST /api/github/aggregate` | Combina todos los repos analizados → `github_evidence/{uid}` + lectura de Mistral (nullable) + identidad verificada. |
 
 Todos verifican el ID token con `verifyRequestUid` (Admin). Nunca confían en un `uid` del body.
 `src/lib/server/assessment.ts` contiene la lógica pura (`gradeAnswers`, `stripAnswerKey`, `SPECIALTY_STACKS`).
@@ -42,6 +46,9 @@ export const ai = genkit({
   `src/ai/generate.ts` → `generateJson(prompt, zodSchema)`: llama al modelo, limpia fences de markdown,
   `JSON.parse` y **valida con Zod** (con un reintento). Los flows usan un esquema *lenient* para tolerar
   variaciones del modelo y luego normalizan a los tipos estrictos.
+- **Fallback de proveedor:** si Groq está limitado (429) **o no disponible** (401/403/404/410: clave inválida,
+  modelo retirado), `generateJson` pasa a NVIDIA; los errores no transitorios no se reintentan. Ningún
+  endpoint de The LINE depende de la IA en tiempo de petición: la IA solo precarga el banco.
 
 ### Dev server — `src/ai/dev.ts`
 - Scripts: `genkit:dev` / `genkit:watch` (`genkit start -- tsx src/ai/dev.ts`).

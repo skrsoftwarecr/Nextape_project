@@ -27,7 +27,8 @@ Da a los route handlers permiso para escribir el DNA de forma segura.
 > El código ya lo soporta: `src/lib/firebase/admin.ts` hace `JSON.parse(FIREBASE_SERVICE_ACCOUNT)`.
 
 ### 2) API Key de Groq → variable en Netlify (OBLIGATORIO para la IA)
-La usan `/api/line/start`, `/api/jobs/assessment` y el roadmap. Groq es el proveedor de IA del proyecto
+La usa la precarga del banco de preguntas (`npm run seed:questions`); The LINE y las pruebas de vacantes ya no
+dependen de ella en tiempo de petición. Groq es el proveedor de IA del proyecto
 (modelos open-source tipo Llama), elegido por su bajo coste frente a Gemini.
 
 1. Consíguela en **Groq Console** (https://console.groq.com/keys).
@@ -73,11 +74,17 @@ firebase deploy --only firestore:rules,storage:rules   # usa .firebaserc → stu
 
 ## Checklist de verificación post-deploy
 1. **Login**: entra con Email y con Google/GitHub → debe redirigir a `/dashboard` y crear `users/{uid}`.
-2. **The LINE** (`/dashboard/line`): inicia una simulación → deben cargar 5 preguntas (si falla aquí,
-   revisa `GROQ_API_KEY` y `FIREBASE_SERVICE_ACCOUNT` en Netlify → *Functions logs*).
-3. Responde las 5 → pantalla de resultado con % → ve a **CORE** y verifica que aparece el score.
+2. **The LINE** (`/dashboard/line`): inicia una simulación → deben cargar 20 preguntas (10 si el usuario tiene
+   su GitHub analizado). Si falla, revisa `FIREBASE_SERVICE_ACCOUNT` en Netlify → *Functions logs*.
+3. Respóndelas → pantalla de resultado con % → ve a **CORE** y verifica que aparece el score.
 4. **Roadmap**: genera un roadmap (necesita Groq).
-5. **Reclutador**: crea una vacante en `/dashboard/vacancies/new` → debe guardarse y generar la prueba.
+5. **Reclutador**: crea una vacante en `/dashboard/vacancies/new` → debe guardarse y componer su prueba desde el
+   banco (aviso «The LINE lista con un repertorio de N preguntas»). Como candidato, postula y responde: la
+   candidatura debe aparecer en `/dashboard/candidates` del reclutador.
+5b. **GitHub** (`/dashboard/github`): «Analizar todos mis repositorios» → progreso por repositorio y perfil
+   agregado. Requiere `GITHUB_TOKEN` y `firestore.rules` desplegadas (`github_evidence/{uid}/repos`,
+   `api_rate_limits`). Para que The LINE baje a 10 preguntas, el usuario debe tener vinculado ese GitHub
+   («Verificar con GitHub»).
 6. **Reglas**: intenta escribir `user_skill_scores` desde la consola del navegador → debe fallar
    (prueba de que el DNA no es falsificable).
 

@@ -37,7 +37,7 @@ Dos roles, `developer` y `recruiter`, con navegación distinta sobre el mismo da
 
 | Módulo | Qué hace | Dónde vive |
 |---|---|---|
-| **The LINE** | Simulación técnica generada por IA (5 preguntas de opción múltiple sobre escenarios de producción). Es el **motor de todo**: sin LINE no hay DNA. | [`dashboard/line/`](../src/app/dashboard/line/page.tsx) + [`api/line/*`](../src/app/api/line/) |
+| **The LINE** | Simulación técnica con preguntas de cinco tipos sorteadas de un banco precargado: **10 si el usuario tiene su GitHub analizado y verificado, 20 si no** (la evidencia de código compensa la otra mitad). Es el **motor de todo**: sin LINE no hay DNA. | [`dashboard/line/`](../src/app/dashboard/line/page.tsx) + [`api/line/*`](../src/app/api/line/) |
 | **CORE** | La identidad técnica persistida: un score 0–100 por skill. | [`dashboard/core/`](../src/app/dashboard/core/page.tsx) → `user_skill_scores` |
 | **Roadmap** | Plan de mejora generado por IA a partir de los gaps del CORE. | [`dashboard/roadmap/`](../src/app/dashboard/roadmap/page.tsx) |
 | **Jobs / Compatibility** | Match entre `job.requiredSkills` y el DNA. | [`dashboard/jobs/`](../src/app/dashboard/jobs/page.tsx), [`match.ts`](../src/lib/match.ts) |
@@ -138,22 +138,29 @@ Dos detalles de integridad que no son obvios:
 
 ### 3.0 Repertorio de preguntas *(desde 2026-08-02)*
 
-The LINE ya **no genera preguntas cuando un candidato hace la prueba**. La IA se invoca una sola
-vez, al publicar la vacante, para construir un **repertorio** que se guarda en Firestore; cada
-candidato responde un **sorteo** de ese banco.
+The LINE ya **no genera preguntas cuando un candidato hace la prueba**, y desde 2026-09-14 **tampoco al
+publicar la vacante**: el repertorio de cada vacante se **compone desde el banco precargado**
+(`line_question_pools`) en [`job-pool.ts`](../src/lib/server/job-pool.ts). Generarlo con IA dentro de
+una Netlify Function dejaba vacantes sin prueba en cuanto el proveedor fallaba (Groq 401, NVIDIA 410):
+el candidato pulsaba "Postular" y recibía un error.
 
 ```
 PUBLICAR VACANTE (1 vez)                      HACER LA PRUEBA (por candidato)
   POST /api/jobs/assessment                     POST /api/line/start
-    └─ buildQuestionPool()                        └─ lee job_answer_keys/{jobId}
-        ├─ por skill: 3 llamadas a Groq           └─ pickRandomQuestions(pool, N)
-        │   (multiple_choice + 2 tipos                · estratificado por skill Y tipo
-        │    rotativos, ancladas en sources.ts)       · SIN llamada a IA
-        ├─ dedupe + re-id
-        └─ job_answer_keys/{jobId}.questions
+    └─ composeJobPoolFromBank()                   └─ lee job_answer_keys/{jobId}
+        ├─ skills → ids canónicos (alias)         │   (si falta, lo compone ahí, en transacción)
+        ├─ banco del nivel de la vacante          └─ pickRandomQuestions(pool, examSizeFor(...))
+        │   o del más cercano                         · 10 con GitHub analizado, 20 sin él
+        ├─ ≤ 30 preguntas/skill, ≤ 8 skills           · o job.examQuestionCount (10–30)
+        ├─ < 10 preguntas → 422 no_bank_for_skills    · estratificado por skill Y tipo
+        └─ job_answer_keys/{jobId}.questions          · SIN llamada a IA
 ```
 
-Los tipos **rotan entre skills** en vez de generarse los cinco para cada una: con 5 skills serían
+Cada vacante sigue teniendo **su** prueba (un subconjunto propio sorteado del banco) y cada candidato
+un sorteo de ella. El formulario de vacantes solo deja elegir tecnologías con banco
+([`SkillPicker`](../src/components/vacancies/SkillPicker.tsx)), así que una vacante publicada es evaluable.
+
+En la precarga de los stacks amplios (`buildQuestionPool`), los tipos **rotan entre skills** en vez de generarse los cinco para cada una: con 5 skills serían
 25 llamadas, y rotando son 15 con la misma variedad en el repertorio global. Cada skill recibe
 opción múltiple —el tipo más fiable, que hace de columna vertebral— más dos tipos distintos.
 
@@ -184,7 +191,7 @@ nivel**. El catálogo son 55 tecnologías agrupadas en 10 categorías
 UNA VEZ, EN LOCAL                            CADA PRÁCTICA (por usuario)
   npm run seed:questions -- --yes              POST /api/line/start {technology, level}
     └─ por (tecnología × nivel):                 └─ lee line_question_pools/{tec}_{nivel}
-        5 llamadas (una por tipo)                └─ pickRandomQuestions(pool, 5)
+        5 llamadas (una por tipo)                └─ pickRandomQuestions(pool, 10 | 20)
         ancladas en sources.ts                       · SIN llamada a IA
         → line_question_pools/{tec}_{nivel}          · si no está precargado → 503
 ```
@@ -200,6 +207,10 @@ score de `postgresql` en el CORE.
 
 Escala del banco completo: **174 combinaciones ≈ 4 350 preguntas ≈ 870 llamadas ≈ 58 min**.
 
+**Variedad con exámenes de 20.** Un repertorio de ~25 preguntas hace que casi todos vean las mismas.
+`npm run seed:questions -- --top-up --target=50 --yes` amplía cada combinación hasta ~50 **añadiendo**
+preguntas deduplicadas, sin reemplazar las existentes (requiere un proveedor de IA operativo).
+
 **Niveles: `junior` | `mid` | `senior`.** Se retiró `master` (2026-08-03) — un cuarto escalón por
 encima de senior no daba señal distinguible al evaluar y multiplicaba por 4/3 el coste de precarga.
 Los documentos `*_master` que queden en Firestore ya no son alcanzables y se pueden borrar.
@@ -213,15 +224,16 @@ banco local en vez de dejar al candidato esperando.
 
 ```
 [cliente] dashboard/line/page.tsx
-   │ apiPost("/api/line/start", { jobId } | { specialty, level })
+   │ apiPost("/api/line/start", { jobId } | { technology, level })
    ▼
 [servidor] api/line/start/route.ts                             ← runtime "nodejs"
    1. verifyRequestUid(Authorization: Bearer)          → 401 si falla
-   2. ¿jobId?  SÍ → lee job_answer_keys/{jobId}  (server-only)
-      │             └─ si no existe → generateQuestions(job.requiredSkills, job.level)   ⚠️ ver §6.4
-      └─ NO → generateQuestions(SPECIALTY_STACKS[specialty], level)  → Groq
+   2. ¿jobId?  SÍ → vacante activa con createdBy y requiredSkills   (409 job_closed / job_incomplete)
+      │             └─ lee job_answer_keys/{jobId}; si no existe → composeJobPoolFromBank (409 job_without_bank)
+      └─ NO → lee line_question_pools/{technology}_{level}           (503 pool_not_seeded)
+   2b. N = examSizeFor(github_evidence/{uid}, job.examQuestionCount) → 10 | 20 | 10–30
    3. crea line_sessions/{id} = { userId, jobId, questions CON correctIndex, createdAt }
-   4. responde { sessionId, questions: stripAnswerKey(...) }        ← SIN la clave
+   4. responde { sessionId, questions: stripAnswerKey(...), examSize } ← SIN la clave
    ▼
 [cliente] el usuario responde; se acumulan índices en answers[]
    │ apiPost("/api/line/submit", { sessionId, answers })
@@ -246,12 +258,31 @@ banco local en vez de dejar al candidato esperando.
 ### 3.2 Generación de la prueba de una vacante
 
 ```
-[reclutador] apiPost("/api/jobs/assessment", { jobId })
+[reclutador] apiPost("/api/jobs/assessment", { jobId, force? })
    → valida job.createdBy === uid  → 403
-   → generateQuestions(job.requiredSkills, job.level)
-   → job_answer_keys/{jobId} = { questions CON clave }     ← server-only, read/write: false
-   → jobs/{jobId}.assessmentQuestions = stripAnswerKey(...) ← público, sin clave
+   → composeJobPoolFromBank(job.requiredSkills, job.level)          ← sin IA
+   → < 10 preguntas → 422 no_bank_for_skills (+ jobs.assessmentMissingSkills)
+   → job_answer_keys/{jobId} = { questions CON clave, covered, missing }   ← server-only
+   → jobs/{jobId}: assessmentReady, assessmentPoolSize, assessmentMissingSkills (sin preguntas)
 ```
+
+### 3.2-bis Evidencia de GitHub — todos los repositorios *(desde 2026-09-14)*
+
+```
+[cliente] GithubEvidenceCard (disparo SIEMPRE manual)
+   1. POST /api/github/repos      → repos propios (paginado; sin forks, archivados ni vacíos) + analyzed
+   2. POST /api/github/evaluate   → por repo, 3 a la vez: snapshot + ≤ 12 archivos repartidos entre
+                                    lenguajes → motor determinístico (20 lenguajes)
+                                    → github_evidence/{uid}/repos/{owner__repo}  (caché por commit; sin IA)
+   3. POST /api/github/aggregate  → aggregateRepoEvidence + 1 lectura de Mistral (nullable)
+                                    + identidad (providerData github.com) → github_evidence/{uid}
+```
+
+Antes se analizaba un solo repositorio (el último con push) y ese era todo el perfil. El análisis se
+trocea por repositorio porque una Netlify Function síncrona tiene ~10 s: un usuario con 30 repos no
+cabe en una sola petición. Con `reposWithCode > 0` **y la cuenta verificada** (la misma que el usuario vinculó
+con GitHub), The LINE pasa de 20 a 10 preguntas; sin verificar no compensa, porque cualquiera podría escribir el
+usuario de otra persona. Límites por usuario (`api_rate_limits`) y tope de 100 repos protegen el token compartido.
 
 ### 3.3 La capa de IA completa
 
@@ -288,6 +319,9 @@ Firestore, proyecto `studio-4462619429-470d8`.
 | `line_question_pools` | `{especialidad}_{nivel}` | ❌ `false` | ❌ `false` | `/api/line/start` (Admin) — repertorio de la simulación general |
 | `jobs` | auto | **público** (`read: true`) | owner `createdBy` (no delete) | cliente + `/api/*` |
 | `candidate_matches` | `{uid}_{jobId}` | candidato **o** reclutador | ❌ `false` | `/api/line/submit` (Admin) |
+| `github_evidence` | `{uid}` | owner | ❌ `false` | `/api/github/aggregate` (Admin) — perfil agregado |
+| `github_evidence/{uid}/repos` | `{owner__repo}` | owner | ❌ `false` | `/api/github/evaluate` (Admin) — evidencia por repo |
+| `api_rate_limits` | `{scope}:{uid}` | ❌ `false` | ❌ `false` | endpoints de GitHub (Admin) — límites por usuario |
 | `user_roadmaps` | `{uid}` | owner | owner | cliente |
 | `questions` | — | auth | ❌ `false` | **nadie — regla huérfana, §6.7** |
 
@@ -295,7 +329,8 @@ Las tres colecciones `false/false` (`line_sessions`, `job_answer_keys`, `line_qu
 **el corazón de la integridad**: contienen `correctIndex`. Si alguna vez alguien las abre a lectura,
 el producto muere.
 
-**Invariante transversal:** las skills se guardan y comparan **siempre en minúsculas**. Se rompe en tres
+**Invariante transversal:** las skills se guardan y comparan **siempre en minúsculas y con su id canónico**
+(`canonicalSkillKey`: "Next.js" → `nextjs`, "Node" → `node.js`). Se rompe en tres
 sitios distintos si se olvida: `normalizeTag`, `gradeAnswers`, `calculateMatch`.
 
 ---

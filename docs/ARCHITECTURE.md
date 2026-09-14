@@ -99,7 +99,8 @@ fueron eliminados. **No reintroducir** `src/features` sin una decisión de equip
 ## 5. Mapa de rutas
 
 **Públicas:** `/`, `/auth`
-**API (route handlers, server-trust):** `/api/line/start`, `/api/line/submit`, `/api/jobs/assessment`
+**API (route handlers, server-trust):** `/api/line/start`, `/api/line/submit`, `/api/line/catalog`, `/api/jobs/assessment`,
+`/api/github/repos`, `/api/github/evaluate`, `/api/github/aggregate`
 **Dashboard (protegidas por `AuthGuard`):**
 `/dashboard`, `/dashboard/line`, `/dashboard/core`, `/dashboard/roadmap`, `/dashboard/jobs`,
 `/dashboard/compatibility`, `/dashboard/profile`, `/dashboard/candidates`,
@@ -115,16 +116,16 @@ fueron eliminados. **No reintroducir** `src/features` sin una decisión de equip
 ### Developer
 1. Landing → `AuthModal` (registro con role=developer).
 2. `/dashboard` → resumen del DNA.
-3. `/dashboard/line` → elige especialidad+nivel → `/api/line/start` (IA genera 5 preguntas, sin la
-   respuesta) → responde → `/api/line/submit` (**score calculado y escrito EN SERVIDOR** con Admin SDK) → CORE.
+3. `/dashboard/line` → elige tecnología+nivel → `/api/line/start` (sortea de un banco precargado 10 preguntas si
+   tiene GitHub analizado o 20 si no, sin la respuesta) → responde → `/api/line/submit` (**score calculado y escrito EN SERVIDOR** con Admin SDK) → CORE.
 4. `/dashboard/core` → visualiza DNA técnico.
 5. `/dashboard/roadmap` → IA genera plan según skills/gaps.
 6. `/dashboard/jobs` → match% = `calculateMatch(job.requiredSkills, user.scores)`.
 
 ### Recruiter
 1. Registro con role=recruiter (auto-asignado).
-2. `/dashboard/vacancies/new` → crea vacante (`jobs`) + IA genera "The LINE" de la vacante.
-   ⚠️ **Bloqueado por reglas** (`jobs write: if false`).
+2. `/dashboard/vacancies/new` → crea vacante (`jobs`, skills elegidas del catálogo con banco) y
+   `/api/jobs/assessment` compone su "The LINE" desde el banco, sin IA.
 3. `/dashboard/vacancies` → listado.
 4. `/dashboard/candidates` → candidatos rankeados por DNA → **implementado (A4)**: cuando un developer
    postula tomando The LINE de una vacante, `/api/line/submit` escribe `candidate_matches` (server-trust);
