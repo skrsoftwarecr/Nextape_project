@@ -63,9 +63,13 @@ service cloud.firestore {
       allow read: if true;
       allow list: if true;
       allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      // El estado del repertorio y el contador de candidatos los escribe SOLO el servidor: el dueño
+      // edita la vacante, pero no puede marcar su prueba como lista ni inflar sus candidatos.
       allow update: if isAuthenticated()
                     && resource.data.createdBy == request.auth.uid
-                    && request.resource.data.createdBy == resource.data.createdBy;
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                          .hasAny(['assessmentReady', 'assessmentPoolSize', 'assessmentMissingSkills', 'applicantsCount']);
       allow delete: if false;
     }
 
@@ -90,6 +94,20 @@ service cloud.firestore {
     match /github_evidence/{userId} {
       allow read: if isOwner(userId);
       allow write: if false;
+    }
+
+    // Evidencia POR REPOSITORIO del análisis multi-repo (github_evidence/{uid}/repos/{repoId}).
+    // Una regla de documento no cubre sus subcolecciones: sin este bloque el dueño no podría leer
+    // el detalle de sus propios repositorios. Escritura server-only, igual que el perfil agregado.
+    match /github_evidence/{userId}/repos/{repoId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    // Contadores de límite de peticiones por usuario (src/lib/server/rate-limit.ts). SERVER-ONLY:
+    // si el cliente pudiera escribirlos, reiniciaría su propio límite.
+    match /api_rate_limits/{limitId} {
+      allow read, write: if false;
     }
 
     // Catálogo curado de skills del Roadmap Determinístico.

@@ -1,30 +1,73 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Github, Loader2, RefreshCw, AlertTriangle, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Github,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  ShieldQuestion,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { apiPost } from "@/lib/api";
+import { linkGithubAccount } from "@/lib/firebase/auth";
 import { GithubEvidenceService } from "@/services/github-evidence.service";
-import type { GithubEvaluateResponse, GithubSkillScores, GithubAIFeedback } from "@/types/github.types";
+import type {
+  GithubAggregateResponse,
+  GithubAIFeedback,
+  GithubEvidence,
+  GithubIdentity,
+  GithubRepoListResponse,
+  GithubRepoSummary,
+  GithubSkillScores,
+} from "@/types/github.types";
 
 /**
- * Evidencia técnica de GitHub: dispara la evaluación y muestra el último resultado.
+ * Evidencia técnica de GitHub a partir de TODOS los repositorios de la cuenta.
  *
- * La evaluación es **siempre manual**. Al montarse solo LEE `github_evidence/{uid}` para enseñar
- * el resultado anterior; nunca llama al endpoint por su cuenta. Evaluar consume cuota de la API de
- * GitHub y una llamada a Mistral, así que dispararlo automáticamente al abrir el perfil
- * multiplicaría el coste sin que nadie lo pidiera.
+ * El análisis va repositorio a repositorio desde aquí (cada petición cabe en el tiempo de una
+ * Netlify Function) y al final se combina en un perfil. Los repositorios sin cambios desde el último
+ * análisis se saltan, así que repetirlo es rápido.
+ *
+ * Disparo SIEMPRE manual: al montarse solo se lee el último perfil guardado. Analizar consume cuota
+ * de la API de GitHub y una llamada a Mistral.
+ *
+ * La evidencia solo acorta The LINE si la cuenta está verificada (vinculada por OAuth a la sesión):
+ * el usuario se escribe a mano y podría ser el de otra persona. De ahí el botón «Verificar con GitHub».
  */
 
-interface EvidenceView {
-  analyzedRepo: string;
+/** Repositorios analizados a la vez. */
+const REPO_CONCURRENCY = 3;
+/** Lenguajes y repositorios mostrados antes de resumir el resto. */
+const MAX_LANGUAGES_SHOWN = 8;
+const MAX_REPOS_SHOWN = 12;
+
+interface ProfileView {
+  githubUsername: string;
+  /** null = perfil antiguo, de un solo repositorio. */
+  reposAnalyzed: number | null;
+  reposWithCode: number | null;
+  filesAnalyzed: number | null;
+  legacyRepo: string | null;
   skillScores: GithubSkillScores;
   aiFeedback: GithubAIFeedback | null;
+  languagesBytes: Record<string, number>;
+  repos: GithubRepoSummary[];
+  identity: GithubIdentity | null;
   analyzedAt: string | null;
-  cached: boolean;
+}
+
+interface RunState {
+  total: number;
+  done: number;
+  current: string | null;
+  failed: string[];
 }
 
 /** Extrae el usuario de una URL de GitHub (`https://github.com/foo` → `foo`). */
@@ -50,90 +93,196 @@ function formatAnalyzedAt(value: unknown): string | null {
   return new Date(ms).toLocaleString("es", { dateStyle: "medium", timeStyle: "short" });
 }
 
-export function GithubEvidenceCard({
-  uid,
-  githubUrl,
-}: {
-  uid: string;
-  githubUrl?: string;
-}) {
-  const [username, setUsername] = useState("");
-  const [repoName, setRepoName] = useState("");
-  const [evidence, setEvidence] = useState<EvidenceView | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [evaluating, setEvaluating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+function fromEvidence(e: GithubEvidence): ProfileView {
+  const multi = typeof e.reposAnalyzed === "number";
+  return {
+    githubUsername: e.githubUsername ?? "",
+    reposAnalyzed: multi ? (e.reposAnalyzed ?? 0) : null,
+    reposWithCode: multi ? (e.reposWithCode ?? 0) : null,
+    filesAnalyzed: multi ? (e.filesAnalyzed ?? 0) : null,
+    legacyRepo: multi ? null : e.analyzedRepo,
+    skillScores: e.skillScores,
+    aiFeedback: e.aiFeedback,
+    languagesBytes: e.languagesBytes ?? e.repoSignals?.languages ?? {},
+    repos: e.repos ?? [],
+    identity: e.identity ?? null,
+    analyzedAt: formatAnalyzedAt(e.analyzedAt),
+  };
+}
 
-  // Solo lectura del último resultado. No evalúa.
+function fromAggregate(r: GithubAggregateResponse, githubUsername: string): ProfileView {
+  return {
+    githubUsername,
+    reposAnalyzed: r.reposAnalyzed,
+    reposWithCode: r.reposWithCode,
+    filesAnalyzed: r.filesAnalyzed,
+    legacyRepo: null,
+    skillScores: r.skillScores,
+    aiFeedback: r.aiFeedback,
+    languagesBytes: r.languagesBytes,
+    repos: r.repos,
+    identity: r.identity,
+    analyzedAt: formatAnalyzedAt(r.analyzedAt),
+  };
+}
+
+async function runWithConcurrency<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+}
+
+const ERROR_MESSAGES: Record<string, (user: string) => string> = {
+  github_user_not_found: (u) => `No existe la cuenta de GitHub "${u}".`,
+  no_repos_found: (u) => `"${u}" no tiene repositorios propios con código (se excluyen forks y archivados).`,
+  invalid_github_username: () => "Ese nombre de usuario de GitHub no es válido.",
+  no_repos_analyzed: () => "No se pudo analizar ningún repositorio. Inténtalo de nuevo en unos minutos.",
+  rate_limited: () => "Has lanzado demasiados análisis en poco tiempo. Espera unos minutos y vuelve a intentarlo.",
+};
+
+export function GithubEvidenceCard({ uid, githubUrl }: { uid: string; githubUrl?: string }) {
+  const [username, setUsername] = useState("");
+  const [profile, setProfile] = useState<ProfileView | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [run, setRun] = useState<RunState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  // Solo lectura del último perfil. No analiza.
   useEffect(() => {
     let cancelled = false;
-    const load = async () => {
-      try {
-        const stored = await GithubEvidenceService.getEvidence(uid);
-        if (cancelled) return;
-        if (stored) {
-          setEvidence({
-            analyzedRepo: stored.analyzedRepo,
-            skillScores: stored.skillScores,
-            aiFeedback: stored.aiFeedback,
-            analyzedAt: formatAnalyzedAt(stored.analyzedAt),
-            cached: false,
-          });
-          setUsername(stored.githubUsername ?? "");
-        }
-      } catch (err) {
-        console.error("[GithubEvidenceCard] no se pudo leer la evidencia previa:", err);
-      } finally {
+    GithubEvidenceService.getEvidence(uid)
+      .then((stored) => {
+        if (cancelled || !stored) return;
+        setProfile(fromEvidence(stored));
+        setUsername((prev) => prev || stored.githubUsername || "");
+      })
+      .catch((err) => console.error("[GithubEvidenceCard] no se pudo leer la evidencia previa:", err))
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    };
-    load();
+      });
     return () => {
       cancelled = true;
     };
   }, [uid]);
 
-  // Prefill desde el perfil, sin pisar lo que el usuario haya escrito.
   useEffect(() => {
     setUsername((prev) => prev || parseGithubUsername(githubUrl));
   }, [githubUrl]);
 
-  const evaluate = async () => {
-    const user = username.trim();
+  const analyzeAll = async (override?: string) => {
+    const user = (override ?? username).trim();
     if (!user) {
       setError("Escribe tu usuario de GitHub.");
       return;
     }
-    setEvaluating(true);
     setError(null);
+    setNotice(null);
+    setRun({ total: 0, done: 0, current: "Buscando tus repositorios", failed: [] });
+
     try {
-      const res = await apiPost<GithubEvaluateResponse>("/api/github/evaluate", {
+      const { repos, totalRepos } = await apiPost<GithubRepoListResponse>("/api/github/repos", {
         githubUsername: user,
-        ...(repoName.trim() ? { repoName: repoName.trim() } : {}),
       });
-      setEvidence({
-        analyzedRepo: res.analyzedRepo,
-        skillScores: res.skillScores,
-        aiFeedback: res.aiFeedback,
-        analyzedAt: formatAnalyzedAt(res.analyzedAt),
-        cached: res.cached,
+
+      const pending = repos.filter((r) => !r.analyzed);
+      const failed: string[] = [];
+      let done = repos.length - pending.length;
+      // Con el límite por usuario agotado, cada llamada restante fallaría igual: se para.
+      let rateLimited = false;
+      setRun({ total: repos.length, done, current: null, failed });
+
+      await runWithConcurrency(pending, REPO_CONCURRENCY, async (repo) => {
+        if (rateLimited) return;
+        setRun((prev) => (prev ? { ...prev, current: repo.fullName } : prev));
+        try {
+          await apiPost("/api/github/evaluate", { githubUsername: user, repoName: repo.fullName });
+        } catch (err) {
+          if (err instanceof Error && err.message === "rate_limited") rateLimited = true;
+          failed.push(repo.fullName);
+        }
+        done += 1;
+        setRun((prev) => (prev ? { ...prev, done, failed: [...failed] } : prev));
       });
+
+      // Sin combinar: un perfil a medias sustituiría al último completo.
+      if (rateLimited) throw new Error("rate_limited");
+
+      setRun((prev) => (prev ? { ...prev, current: "Combinando resultados" } : prev));
+      const aggregate = await apiPost<GithubAggregateResponse>("/api/github/aggregate", {
+        githubUsername: user,
+      });
+      setProfile(fromAggregate(aggregate, user));
+
+      if (totalRepos > repos.length) {
+        setNotice(`Se analizaron tus ${repos.length} repositorios con actividad más reciente (de ${totalRepos}).`);
+      }
+      if (failed.length > 0) {
+        const shown = failed.slice(0, 4).join(", ");
+        setError(
+          `No se pudieron analizar ${failed.length} repositorios (${shown}${failed.length > 4 ? "…" : ""}). ` +
+            "El perfil se calculó con el resto."
+        );
+      }
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       setError(
-        code === "no_repos_found"
-          ? `No se encontraron repositorios públicos para "${user}".`
-          : code === "repo_not_found"
-            ? "No se encontró ese repositorio en la cuenta indicada."
-            : "No se pudo evaluar el repositorio. Inténtalo de nuevo en unos segundos."
+        ERROR_MESSAGES[code]?.(user) ?? "No se pudo completar el análisis. Inténtalo de nuevo en unos minutos."
       );
     } finally {
-      setEvaluating(false);
+      setRun(null);
     }
   };
 
+  /**
+   * Vincula GitHub a la cuenta y recalcula la identidad. Los repositorios ya analizados no se repiten
+   * y, si los scores no cambian, tampoco la llamada a Mistral.
+   */
+  const verifyWithGithub = async () => {
+    if (!profile) return;
+    setVerifying(true);
+    setError(null);
+    try {
+      const { username: linked } = await linkGithubAccount();
+      // Firebase informa del usuario vinculado: si no es el analizado, se analiza el propio.
+      if (linked && linked.toLowerCase() !== profile.githubUsername.toLowerCase()) {
+        setUsername(linked);
+        await analyzeAll(linked);
+        return;
+      }
+      const aggregate = await apiPost<GithubAggregateResponse>("/api/github/aggregate", {
+        githubUsername: profile.githubUsername,
+      });
+      setProfile(fromAggregate(aggregate, profile.githubUsername));
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String((err as { code: unknown }).code)
+          : err instanceof Error
+            ? err.message
+            : "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+      setError(
+        code === "auth/credential-already-in-use"
+          ? "Ese GitHub ya está vinculado a otra cuenta de NEXTAPE."
+          : ERROR_MESSAGES[code]?.(profile.githubUsername) ??
+              "No se pudo verificar tu cuenta de GitHub. Inténtalo de nuevo."
+      );
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const running = run !== null;
+
   return (
-    <div className="bg-white p-10 rounded-[2.5rem] shadow-apple border border-gray-50 space-y-8">
+    <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-apple border border-gray-50 space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
@@ -141,63 +290,70 @@ export function GithubEvidenceCard({
           </div>
           <h2 className="text-2xl font-bold italic">Evidencia de GitHub.</h2>
           <p className="text-sm text-gray-400 font-medium leading-relaxed max-w-md">
-            Análisis determinístico de tu código real. Se ejecuta solo cuando tú lo pides.
+            Analizamos todos tus repositorios propios, en cualquiera de los 20 lenguajes que lee el motor.
           </p>
         </div>
-        {evidence?.analyzedAt && (
+        {profile?.analyzedAt && (
           <div className="text-right">
             <span className="block text-[9px] font-bold uppercase tracking-widest text-gray-300">
               Último análisis
             </span>
-            <span className="text-xs font-medium text-gray-500">{evidence.analyzedAt}</span>
+            <span className="text-xs font-medium text-gray-500">{profile.analyzedAt}</span>
           </div>
         )}
       </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">
-            Usuario de GitHub
-          </Label>
-          <Input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="tu-usuario"
-            className="h-12 bg-gray-50 border-none rounded-xl px-5 font-bold"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">
-            Repositorio (opcional)
-          </Label>
-          <Input
-            value={repoName}
-            onChange={(e) => setRepoName(e.target.value)}
-            placeholder="El más reciente si lo dejas vacío"
-            className="h-12 bg-gray-50 border-none rounded-xl px-5 font-medium"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-300 ml-1">
+          Usuario de GitHub
+        </Label>
+        <Input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="tu-usuario"
+          disabled={running}
+          className="h-12 bg-gray-50 border-none rounded-xl px-5 font-bold"
+        />
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 bg-brand-red/5 text-brand-red rounded-2xl p-4 text-xs font-bold">
-          <AlertTriangle className="h-4 w-4 shrink-0" /> {error}
+        <div className="flex items-start gap-3 bg-brand-red/5 text-brand-red rounded-2xl p-4 text-xs font-bold">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" /> <span>{error}</span>
+        </div>
+      )}
+
+      {notice && <p className="text-[11px] text-gray-400 font-medium">{notice}</p>}
+
+      {run && (
+        <div className="space-y-2" aria-live="polite">
+          <div className="flex justify-between gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+            <span className="shrink-0">
+              {run.total > 0 ? `Analizando ${run.done} de ${run.total}` : "Preparando"}
+            </span>
+            <span className="truncate normal-case tracking-normal font-medium">{run.current}</span>
+          </div>
+          <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className="h-full bg-black rounded-full transition-all duration-500"
+              style={{ width: `${run.total > 0 ? Math.round((run.done / run.total) * 100) : 4}%` }}
+            />
+          </div>
         </div>
       )}
 
       <Button
-        onClick={evaluate}
-        disabled={evaluating || loading}
+        onClick={() => analyzeAll()}
+        disabled={running || loading || verifying}
         className="w-full h-14 bg-black text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-apple disabled:opacity-40"
       >
-        {evaluating ? (
+        {running ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analizando repositorio...
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analizando repositorios
           </>
         ) : (
           <>
             <RefreshCw className="mr-2 h-4 w-4" />
-            {evidence ? "Recalificar GitHub" : "Calificar mi GitHub"}
+            {profile ? "Volver a analizar mi GitHub" : "Analizar todos mis repositorios"}
           </>
         )}
       </Button>
@@ -206,36 +362,79 @@ export function GithubEvidenceCard({
         <div className="flex justify-center py-6">
           <Loader2 className="h-5 w-5 animate-spin text-gray-300" />
         </div>
-      ) : evidence ? (
-        <EvidenceResult evidence={evidence} />
+      ) : profile ? (
+        <ProfileResult
+          profile={profile}
+          busy={running || verifying}
+          onVerify={verifyWithGithub}
+          onAnalyzeLinked={(login) => {
+            setUsername(login);
+            void analyzeAll(login);
+          }}
+        />
       ) : (
-        <p className="text-xs text-gray-400 text-center font-medium pt-2">
-          Aún no has analizado ningún repositorio.
-        </p>
+        <p className="text-xs text-gray-400 text-center font-medium">Aún no has analizado tu GitHub.</p>
       )}
     </div>
   );
 }
 
-function EvidenceResult({ evidence }: { evidence: EvidenceView }) {
-  const s = evidence.skillScores;
+function ProfileResult({
+  profile,
+  busy,
+  onVerify,
+  onAnalyzeLinked,
+}: {
+  profile: ProfileView;
+  busy: boolean;
+  onVerify: () => void;
+  onAnalyzeLinked: (login: string) => void;
+}) {
+  const s = profile.skillScores;
+  const totalBytes = Object.values(profile.languagesBytes).reduce((n, v) => n + v, 0);
+  const languages = Object.entries(profile.languagesBytes)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_LANGUAGES_SHOWN);
+
   return (
     <div className="space-y-8 pt-4 border-t border-gray-50">
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge className="bg-gray-900 text-white border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
-          {evidence.analyzedRepo}
-        </Badge>
-        {evidence.cached && (
-          <Badge className="bg-brand-green/10 text-brand-green border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
-            <CheckCircle2 className="h-3 w-3 mr-1.5" /> Sin cambios desde el último commit
+      <div className="flex flex-wrap items-center gap-2">
+        {profile.reposAnalyzed !== null ? (
+          <>
+            <Badge className="bg-gray-900 text-white border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
+              {profile.reposAnalyzed} repositorios
+            </Badge>
+            <Badge className="bg-gray-100 text-gray-600 border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
+              {profile.reposWithCode} con código analizable · {profile.filesAnalyzed} archivos
+            </Badge>
+          </>
+        ) : (
+          <Badge className="bg-brand-orange/10 text-brand-orange border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
+            <AlertTriangle className="h-3 w-3 mr-1.5" /> Análisis anterior: solo {profile.legacyRepo}
           </Badge>
         )}
+        {profile.identity?.verified ? (
+          <Badge className="bg-brand-green/10 text-brand-green border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
+            <ShieldCheck className="h-3 w-3 mr-1.5" /> Cuenta verificada con GitHub
+          </Badge>
+        ) : profile.identity ? (
+          <Badge
+            title="Inicia sesión con GitHub para vincular esta cuenta a tu perfil"
+            className="bg-gray-100 text-gray-500 border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest"
+          >
+            <ShieldQuestion className="h-3 w-3 mr-1.5" /> Cuenta sin verificar
+          </Badge>
+        ) : null}
         {!s.hasASTData && (
           <Badge className="bg-brand-orange/10 text-brand-orange border-none rounded-full py-1.5 px-4 text-[9px] font-bold uppercase tracking-widest">
-            <AlertTriangle className="h-3 w-3 mr-1.5" /> Sin archivos analizables
+            <AlertTriangle className="h-3 w-3 mr-1.5" /> Sin código analizable
           </Badge>
         )}
       </div>
+
+      {profile.identity && !profile.identity.verified && (
+        <IdentityCallout profile={profile} busy={busy} onVerify={onVerify} onAnalyzeLinked={onAnalyzeLinked} />
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <ScoreTile label="Global" value={s.overall} highlight />
@@ -246,7 +445,55 @@ function EvidenceResult({ evidence }: { evidence: EvidenceView }) {
         <ScoreTile label="Documentación" value={s.documentation} />
       </div>
 
-      {evidence.aiFeedback && (
+      {languages.length > 0 && totalBytes > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Lenguajes en tus repositorios</h3>
+          <ul className="space-y-2">
+            {languages.map(([name, bytes]) => {
+              const pct = Math.max(1, Math.round((bytes / totalBytes) * 100));
+              return (
+                <li key={name} className="grid grid-cols-[7rem_1fr_2.5rem] items-center gap-3 text-xs font-medium">
+                  <span className="truncate text-gray-600">{name}</span>
+                  <span className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <span className="block h-full bg-brand-blue rounded-full" style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="text-right text-gray-400">{pct}%</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {profile.repos.length > 0 && (
+        <section className="space-y-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Repositorios analizados</h3>
+          <ul className="divide-y divide-gray-50">
+            {profile.repos.slice(0, MAX_REPOS_SHOWN).map((repo) => (
+              <li key={repo.fullName} className="flex items-center justify-between gap-4 py-2.5 text-xs">
+                <div className="min-w-0">
+                  <p className="font-bold truncate">{repo.fullName}</p>
+                  <p className="text-gray-400">
+                    {repo.mainLanguage ?? "Lenguaje desconocido"} · {repo.filesAnalyzed} archivos
+                  </p>
+                </div>
+                {repo.overall !== null ? (
+                  <span className="shrink-0 font-black italic text-lg">{repo.overall}</span>
+                ) : (
+                  <span className="shrink-0 text-[10px] font-bold text-gray-400">Sin código analizable</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {profile.repos.length > MAX_REPOS_SHOWN && (
+            <p className="text-[11px] text-gray-400 font-medium">
+              y {profile.repos.length - MAX_REPOS_SHOWN} repositorios más.
+            </p>
+          )}
+        </section>
+      )}
+
+      {profile.aiFeedback ? (
         <div className="bg-gray-50 rounded-[2rem] p-8 space-y-6">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-brand-purple" />
@@ -254,24 +501,80 @@ function EvidenceResult({ evidence }: { evidence: EvidenceView }) {
               Lectura del evaluador
             </span>
           </div>
-          <p className="text-sm font-medium leading-relaxed text-gray-700">
-            {evidence.aiFeedback.feedback}
-          </p>
+          <p className="text-sm font-medium leading-relaxed text-gray-700">{profile.aiFeedback.feedback}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FeedbackList title="Fortalezas" items={evidence.aiFeedback.strengths} tone="green" />
-            <FeedbackList title="A mejorar" items={evidence.aiFeedback.improvements} tone="orange" />
+            <FeedbackList title="Fortalezas" items={profile.aiFeedback.strengths} tone="green" />
+            <FeedbackList title="A mejorar" items={profile.aiFeedback.improvements} tone="orange" />
           </div>
         </div>
+      ) : (
+        <p className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          La lectura escrita del evaluador no está disponible ahora; los scores son el resultado del
+          análisis de tu código.
+        </p>
       )}
     </div>
   );
 }
 
 /**
- * `null` significa "no analizable", NO cero.
- *
- * Distinguirlo importa: el motor devuelve `null` cuando no pudo parsear archivos del repositorio,
- * y pintar un 0 (o peor, un 100) convertiría un "no lo sé" en un juicio sobre el candidato.
+ * Por qué la cuenta no está verificada y qué hacer. Tres casos: la sesión no tiene GitHub vinculado
+ * (se ofrece vincularlo), está vinculada a OTRA cuenta conocida (se ofrece analizar esa) o a otra que
+ * no se pudo identificar.
+ */
+function IdentityCallout({
+  profile,
+  busy,
+  onVerify,
+  onAnalyzeLinked,
+}: {
+  profile: ProfileView;
+  busy: boolean;
+  onVerify: () => void;
+  onAnalyzeLinked: (login: string) => void;
+}) {
+  const identity = profile.identity;
+  if (!identity) return null;
+  const linkedLogin = identity.method === "github_oauth" ? (identity.linkedLogin ?? null) : null;
+  const notLinked = identity.method === null;
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl bg-brand-blue/5 p-5">
+      <p className="text-xs font-medium leading-relaxed text-gray-600">
+        {notLinked ? (
+          <>
+            Vincula tu GitHub para confirmar que esta cuenta es tuya. Con la cuenta verificada, The LINE te hace{" "}
+            <span className="font-bold text-black">10 preguntas en vez de 20</span>.
+          </>
+        ) : linkedLogin ? (
+          <>
+            Tu sesión está vinculada a <span className="font-bold text-black">@{linkedLogin}</span>, no a{" "}
+            <span className="font-bold text-black">@{profile.githubUsername}</span>. Solo tu propia cuenta reduce
+            The LINE a 10 preguntas.
+          </>
+        ) : (
+          <>La cuenta analizada no es la que vinculaste a tu sesión. Analiza tu propia cuenta de GitHub.</>
+        )}
+      </p>
+      {(notLinked || linkedLogin) && (
+        <Button
+          type="button"
+          onClick={notLinked ? onVerify : () => onAnalyzeLinked(linkedLogin!)}
+          disabled={busy}
+          className="shrink-0 h-10 rounded-xl bg-black text-white text-[10px] font-bold uppercase tracking-widest disabled:opacity-40"
+        >
+          {busy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="mr-2 h-3.5 w-3.5" />}
+          {notLinked ? "Verificar con GitHub" : `Analizar @${linkedLogin}`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * `null` significa "no analizable", NO cero: pintar un número convertiría un "no lo sé" en un
+ * juicio sobre el candidato.
  */
 function ScoreTile({
   label,
@@ -282,7 +585,6 @@ function ScoreTile({
   value: number | null;
   highlight?: boolean;
 }) {
-  const analyzable = value !== null;
   return (
     <div className={`rounded-2xl p-5 ${highlight ? "bg-brand-blue text-white" : "bg-gray-50"}`}>
       <span
@@ -292,12 +594,12 @@ function ScoreTile({
       >
         {label}
       </span>
-      {analyzable ? (
+      {value !== null ? (
         <span className="text-3xl font-black italic tracking-tighter">{value}</span>
       ) : (
         <span
           className={`text-xs font-bold ${highlight ? "text-white/70" : "text-gray-400"}`}
-          title="El lenguaje del repositorio no pudo analizarse con el parser actual"
+          title="No hay código analizable para esta dimensión"
         >
           No analizable
         </span>
@@ -306,15 +608,7 @@ function ScoreTile({
   );
 }
 
-function FeedbackList({
-  title,
-  items,
-  tone,
-}: {
-  title: string;
-  items: string[];
-  tone: "green" | "orange";
-}) {
+function FeedbackList({ title, items, tone }: { title: string; items: string[]; tone: "green" | "orange" }) {
   if (items.length === 0) return null;
   const dot = tone === "green" ? "bg-brand-green" : "bg-brand-orange";
   return (

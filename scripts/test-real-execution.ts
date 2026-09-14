@@ -44,7 +44,8 @@ async function main() {
         overall: skillScores.overall,
         topWeaknesses: skillScores.topWeaknesses,
       });
-      console.log(`AI Feedback obtenido: ${aiFeedback.feedback.slice(0, 80)}...`);
+      // El flow devuelve null si el proveedor falla (ya no inventa un texto de relleno).
+      console.log(`AI Feedback obtenido: ${aiFeedback ? `${aiFeedback.feedback.slice(0, 80)}...` : "no disponible"}`);
 
       console.log(`\n=== PASO 3: Guardando en Firestore github_evidence/${TEST_UID} ===`);
       const evidenceData: GithubEvidence = {

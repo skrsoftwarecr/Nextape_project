@@ -194,7 +194,12 @@ class UniversalParserImpl implements LanguageParser {
       throw new Error(`Gramática no disponible para ${langKey} (archivo: ${filename})`);
     }
 
-    const tree: Parser.Tree = parser.parse(source);
+    // tree-sitter usa por defecto un búfer de ~32 KiB y, con un texto mayor, lanza "Invalid argument".
+    // El motor descartaba el archivo en silencio y, como la selección prioriza los archivos con más
+    // código, se perdían justo los centrales (en rust-lang/mdBook, todos los .rs). El búfer se ajusta
+    // al tamaño del archivo.
+    const bufferSize = Math.max(32 * 1024, source.length * 4 + 1024);
+    const tree: Parser.Tree = parser.parse(source, undefined, { bufferSize });
     const rootNode: Parser.SyntaxNode = tree.rootNode;
 
     return {

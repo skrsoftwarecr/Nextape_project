@@ -30,7 +30,7 @@ export type GenerateGithubFeedbackOutput = z.infer<typeof GenerateGithubFeedback
 
 export async function generateGithubFeedback(
   input: GenerateGithubFeedbackInput,
-): Promise<GenerateGithubFeedbackOutput> {
+): Promise<GenerateGithubFeedbackOutput | null> {
   const prompt = `Eres un Senior Tech Lead evaluador en NEXTAPE.
 Interpreta las siguientes métricas técnicas numéricas ya evaluadas para un desarrollador (NO recibes ni analizas código fuente).
 
@@ -76,12 +76,14 @@ REGLAS STRICTAS:
 
     throw new Error('No se pudo extraer JSON de la respuesta de Mistral.');
   } catch (err) {
-    console.warn('[generateGithubFeedback] Fallo al invocar Mistral AI:', err);
-    // Fallback humano determinístico en caso de error de red o API key faltante
-    return {
-      feedback: `Evaluación de ingeniería completada con un score global de ${input.overall}/100. Destacan áreas de oportunidad en testing e infraestructura de arquitectura.`,
-      strengths: input.overall > 70 ? ['Buena estructura general de código'] : ['Base de código funcional'],
-      improvements: input.topWeaknesses.slice(0, 2),
-    };
+    // Sin lectura de IA se devuelve null. Antes se devolvía un texto fijo ("Destacan áreas de
+    // oportunidad en testing...") que la UI mostraba como si fuera la interpretación del
+    // evaluador: un dato inventado presentado como análisis. Mistral con la cuota agotada (429)
+    // bastaba para que TODO perfil recibiera ese mismo texto.
+    console.warn(
+      '[generateGithubFeedback] Mistral no disponible, se omite la lectura:',
+      err instanceof Error ? err.message : err,
+    );
+    return null;
   }
 }

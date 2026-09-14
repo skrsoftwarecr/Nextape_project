@@ -18,6 +18,8 @@ export interface GithubRepo {
   stargazersCount: number;
   sizeKB: number;
   language: string | null;
+  /** Repositorio archivado: se excluye del análisis. */
+  archived?: boolean;
 }
 
 /** Señales brutas extraídas de la GitHub API para un repositorio concreto */
@@ -106,13 +108,104 @@ export interface GithubEvidence {
   analyzedAt: FirebaseFirestore.Timestamp | { _seconds: number; _nanoseconds: number };
   /** Versión del motor, para invalidar cache si el algoritmo cambia */
   engineVersion: string;
+
+  // ── Agregado multi-repositorio (presentes desde engine 2.0.0) ──
+  /** Repositorios analizados que componen este perfil. */
+  reposAnalyzed?: number;
+  /** Repositorios con código analizable por el motor. */
+  reposWithCode?: number;
+  /** Archivos parseados en total. */
+  filesAnalyzed?: number;
+  /** Bytes por lenguaje sumados en todos los repositorios (fuente: GitHub). */
+  languagesBytes?: Record<string, number>;
+  /** Archivos parseados por lenguaje del motor. */
+  parsedLanguages?: Record<string, number>;
+  /** Resumen por repositorio para la UI. */
+  repos?: GithubRepoSummary[];
+  /** Si la cuenta de GitHub analizada está vinculada al usuario por OAuth. */
+  identity?: GithubIdentity;
 }
 
-/** Respuesta pública del route handler POST /api/github/evaluate */
-export interface GithubEvaluateResponse {
+/** Resumen de un repositorio dentro del perfil agregado. */
+export interface GithubRepoSummary {
+  fullName: string;
+  overall: number | null;
+  hasASTData: boolean;
+  filesAnalyzed: number;
+  mainLanguage: string | null;
+}
+
+/**
+ * Vínculo entre la cuenta de NEXTAPE y la cuenta de GitHub analizada.
+ * `verified` solo es true cuando el usuario inició sesión con GitHub y el id numérico coincide.
+ */
+export interface GithubIdentity {
+  verified: boolean;
+  method: "github_oauth" | null;
+  /** Usuario de GitHub vinculado a la sesión cuando NO coincide con el analizado (para ofrecer analizarlo). */
+  linkedLogin?: string | null;
+}
+
+/**
+ * Evidencia de UN repositorio: `github_evidence/{uid}/repos/{repoId}` (server-only, Admin SDK).
+ * Es la unidad de caché: si `pushedAt` y `lastCommitSHA` no cambian, no se vuelve a analizar.
+ */
+export interface GithubRepoEvidence {
+  uid: string;
+  githubUsername: string;
+  fullName: string;
+  pushedAt: string | null;
+  lastCommitSHA: string;
+  repoSignals: RepoSignals;
+  metrics: EngineMetrics;
+  skillScores: GithubSkillScores;
+  filesAnalyzed: number;
+  parsedLanguages: Record<string, number>;
+  analyzedAt: FirebaseFirestore.Timestamp | { _seconds: number; _nanoseconds: number };
+  engineVersion: string;
+}
+
+/** Elemento del listado de POST /api/github/repos. */
+export interface GithubRepoListItem {
+  name: string;
+  fullName: string;
+  language: string | null;
+  pushedAt: string | null;
+  sizeKB: number;
+  stargazersCount: number;
+  /** Ya analizado y sin cambios desde entonces. */
+  analyzed: boolean;
+}
+
+/** Respuesta de POST /api/github/repos. */
+export interface GithubRepoListResponse {
+  githubUsername: string;
+  /** Como mucho `MAX_REPOS_PER_ANALYSIS`, los de push más reciente. */
+  repos: GithubRepoListItem[];
+  /** Repositorios analizables de la cuenta antes del tope. */
+  totalRepos: number;
+}
+
+/** Respuesta de POST /api/github/evaluate (un repositorio). */
+export interface GithubRepoEvaluateResponse {
   cached: boolean;
-  analyzedRepo: string;
+  fullName: string;
+  skillScores: GithubSkillScores;
+  filesAnalyzed: number;
+  parsedLanguages: Record<string, number>;
+}
+
+/** Respuesta de POST /api/github/aggregate. */
+export interface GithubAggregateResponse {
+  reposAnalyzed: number;
+  reposWithCode: number;
+  filesAnalyzed: number;
   skillScores: GithubSkillScores;
   aiFeedback: GithubAIFeedback | null;
-  analyzedAt: string; // ISO 8601
+  languagesBytes: Record<string, number>;
+  parsedLanguages: Record<string, number>;
+  repos: GithubRepoSummary[];
+  identity: GithubIdentity;
+  analyzedAt: string;
 }
+

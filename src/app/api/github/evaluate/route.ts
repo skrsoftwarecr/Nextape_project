@@ -1,150 +1,142 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { FieldValue } from 'firebase-admin/firestore';
-import { adminDb, verifyRequestUid } from '@/lib/firebase/admin';
-import { GithubSignalsService } from '@/services/github-signals.service';
-import { analyzeRepositorySources } from '@/services/github-engine';
-import { generateGithubFeedback } from '@/ai/flows/generate-github-feedback-flow';
-import type { GithubEvidence, GithubEvaluateResponse } from '@/types/github.types';
+import { NextRequest, NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
+import { GithubSignalsService } from "@/services/github-signals.service";
+import { analyzeRepositorySources } from "@/services/github-engine";
+import {
+  GITHUB_ENGINE_VERSION,
+  GITHUB_REPO_NAME_PATTERN,
+  GITHUB_USERNAME_PATTERN,
+  repoDocId,
+} from "@/services/github-engine/evidence-keys";
+import { consumeRateLimit, GITHUB_RATE_LIMITS, rateLimitedResponse } from "@/lib/server/rate-limit";
+import type { GithubRepoEvaluateResponse, GithubRepoEvidence } from "@/types/github.types";
 
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 /**
  * POST /api/github/evaluate
- * Route Handler autenficado (Admin SDK) para evaluar un repositorio de GitHub.
+ * Analiza UN repositorio de la cuenta y guarda el resultado en `github_evidence/{uid}/repos/{repoId}`.
  *
- * Flujo:
- *  1. Repositorio -> GitHub Signals (Capa 1)
- *  2. Parser (AST) -> IR Universal -> Motor Matemático (Capa 2) -> Scores
- *  3. IA Mistral interpreta métricas finales (Capa 3) (nunca ve código fuente)
- *  4. Persiste resultado en `github_evidence/{uid}`
- *  5. Cache por SHA: si el commit SHA no cambió, se devuelve el resultado cacheado.
+ * Antes este endpoint analizaba un único repositorio —el más reciente— y ese resultado era todo el
+ * perfil. Ahora es una pieza del análisis completo: el cliente lo llama una vez por repositorio
+ * (cada llamada cabe en el tiempo de una Netlify Function) y al final `/api/github/aggregate`
+ * combina todos. No llama a Mistral: la lectura de IA se hace una sola vez sobre el agregado.
  *
- * Body: { githubUsername: string, repoName?: string }
- * Auth: Authorization: Bearer <Firebase ID token>
+ * Caché: si el último commit no cambió desde el último análisis con esta versión del motor, se
+ * devuelve lo guardado sin descargar ni parsear de nuevo.
+ *
+ * Body: { githubUsername: string, repoName: string }   // "repo" u "owner/repo"
  */
 export async function POST(req: NextRequest) {
-  const uid = await verifyRequestUid(req.headers.get('authorization'));
-  if (!uid) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const uid = await verifyRequestUid(req.headers.get("authorization"));
+  if (!uid) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+
+  const githubUsername = typeof body.githubUsername === "string" ? body.githubUsername.trim() : "";
+  const repoName = typeof body.repoName === "string" ? body.repoName.trim() : "";
+  if (!GITHUB_USERNAME_PATTERN.test(githubUsername)) {
+    return NextResponse.json({ error: "invalid_github_username" }, { status: 400 });
+  }
+  if (!repoName) return NextResponse.json({ error: "missing_repo" }, { status: 400 });
+
+  const [ownerPart, namePart] = repoName.includes("/")
+    ? repoName.split("/", 2)
+    : [githubUsername, repoName];
+
+  // Solo repositorios de la propia cuenta analizada. Sin esto se podría meter en el perfil de una
+  // cuenta el código de cualquier repositorio público ajeno.
+  if (repoName.split("/").length > 2 || !GITHUB_REPO_NAME_PATTERN.test(namePart ?? "")) {
+    return NextResponse.json({ error: "invalid_repo_name" }, { status: 400 });
+  }
+  if (ownerPart.toLowerCase() !== githubUsername.toLowerCase()) {
+    return NextResponse.json({ error: "repo_not_owned" }, { status: 400 });
   }
 
-  let body: Record<string, unknown> | null = null;
+  const owner = ownerPart;
+  const repo = namePart;
+  const fullName = `${owner}/${repo}`;
+
   try {
-    body = await req.json();
-  } catch (jsonErr) {
-    console.warn('[github/evaluate] Error parseando JSON del cuerpo de la petición:', jsonErr);
-    return NextResponse.json({ error: 'invalid_json', message: 'El cuerpo de la petición no es un JSON válido' }, { status: 400 });
-  }
+    // Cada análisis gasta ~5 peticiones del GITHUB_TOKEN compartido por toda la plataforma.
+    const limit = await consumeRateLimit(adminDb(), "github_evaluate", uid, GITHUB_RATE_LIMITS.evaluate);
+    if (!limit.allowed) return rateLimitedResponse(limit);
 
-  const githubUsername: string | undefined = typeof body?.githubUsername === 'string' ? body.githubUsername : undefined;
-  const repoName: string | undefined = typeof body?.repoName === 'string' ? body.repoName : undefined;
+    const docRef = adminDb()
+      .collection("github_evidence")
+      .doc(uid)
+      .collection("repos")
+      .doc(repoDocId(fullName));
 
-  if (!githubUsername) {
-    return NextResponse.json({ error: 'missing_github_username' }, { status: 400 });
-  }
+    const [{ signals, tree, pushedAt }, existingSnap] = await Promise.all([
+      GithubSignalsService.getRepoSnapshot(owner, repo),
+      docRef.get(),
+    ]);
 
-  try {
-    // 1. Capa 1: Repositorios del usuario
-    const userRepos = await GithubSignalsService.getUserRepos(githubUsername);
-    if (userRepos.length === 0) {
-      return NextResponse.json(
-        { error: 'no_repos_found', message: `No se encontraron repositorios públicos para ${githubUsername}` },
-        { status: 404 },
-      );
+    const existing = existingSnap.data() as GithubRepoEvidence | undefined;
+    if (
+      existing &&
+      existing.engineVersion === GITHUB_ENGINE_VERSION &&
+      signals.lastCommitSHA !== "" &&
+      existing.lastCommitSHA === signals.lastCommitSHA
+    ) {
+      // Mantiene alineada la clave con la que el listado decide qué falta por analizar.
+      if (existing.pushedAt !== pushedAt) await docRef.update({ pushedAt });
+      const cached: GithubRepoEvaluateResponse = {
+        cached: true,
+        fullName,
+        skillScores: existing.skillScores,
+        filesAnalyzed: existing.filesAnalyzed ?? 0,
+        parsedLanguages: existing.parsedLanguages ?? {},
+      };
+      return NextResponse.json(cached);
     }
 
-    // Seleccionar repo objetivo (especificado por el usuario o el más recientemente actualizado)
-    const targetRepoInfo = repoName
-      ? userRepos.find((r) => r.name.toLowerCase() === repoName.toLowerCase() || r.fullName.toLowerCase() === repoName.toLowerCase())
-      : userRepos[0];
-
-    if (!targetRepoInfo) {
-      return NextResponse.json(
-        { error: 'repo_not_found', message: `Repositorio '${repoName}' no encontrado para ${githubUsername}` },
-        { status: 404 },
-      );
-    }
-
-    const { owner, name: repo } = targetRepoInfo;
-    const fullRepoName = `${owner}/${repo}`;
-
-    // Obtener señales del repositorio (incluye lastCommitSHA)
-    const repoSignals = await GithubSignalsService.getRepoSignals(owner, repo);
-
-    // 2. Cache por SHA: consultar en `github_evidence/{uid}`
-    const docRef = adminDb().collection('github_evidence').doc(uid);
-    const docSnap = await docRef.get();
-
-    if (docSnap.exists) {
-      const cachedData = docSnap.data() as GithubEvidence;
-      if (
-        cachedData.analyzedRepo === fullRepoName &&
-        cachedData.lastCommitSHA === repoSignals.lastCommitSHA &&
-        repoSignals.lastCommitSHA !== ''
-      ) {
-        console.log(`[github/evaluate] Cache HIT para ${fullRepoName} (SHA: ${repoSignals.lastCommitSHA})`);
-        const response: GithubEvaluateResponse = {
-          cached: true,
-          analyzedRepo: cachedData.analyzedRepo,
-          skillScores: cachedData.skillScores,
-          aiFeedback: cachedData.aiFeedback,
-          analyzedAt: new Date().toISOString(),
-        };
-        return NextResponse.json(response);
-      }
-    }
-
-    console.log(`[github/evaluate] Cache MISS para ${fullRepoName}. Ejecutando motor determinístico...`);
-
-    // 3. Descargar archivos centrales para el parser AST
-    const centralFiles = await GithubSignalsService.fetchCentralSourceFiles(
+    const files = await GithubSignalsService.fetchCentralSourceFiles(
       owner,
       repo,
-      repoSignals.lastCommitSHA,
+      signals.lastCommitSHA,
+      tree,
     );
+    const { ir, metrics, skillScores } = analyzeRepositorySources(files, signals);
 
-    // 4. Capa 2: Motor Determinístico (AST -> IR -> Analyzers -> Skill Mapper)
-    const { metrics, skillScores } = analyzeRepositorySources(centralFiles, repoSignals);
+    const parsedLanguages: Record<string, number> = {};
+    for (const file of ir.files) {
+      parsedLanguages[file.language] = (parsedLanguages[file.language] ?? 0) + 1;
+    }
 
-    // 5. Capa 3: Interpretación con IA (Mistral) — solo recibe objeto de scores numéricos
-    const aiFeedback = await generateGithubFeedback({
-      architecture: skillScores.architecture,
-      testing: skillScores.testing,
-      security: skillScores.security,
-      maintainability: skillScores.maintainability,
-      documentation: skillScores.documentation,
-      overall: skillScores.overall,
-      topWeaknesses: skillScores.topWeaknesses,
-    });
-
-    // 6. Guardar en `github_evidence/{uid}` con Admin SDK
-    const evidenceData: GithubEvidence = {
+    const evidence: GithubRepoEvidence = {
       uid,
       githubUsername,
-      analyzedRepo: fullRepoName,
-      lastCommitSHA: repoSignals.lastCommitSHA,
-      repoSignals,
+      fullName,
+      pushedAt,
+      lastCommitSHA: signals.lastCommitSHA,
+      repoSignals: signals,
       metrics,
       skillScores,
-      aiFeedback,
+      filesAnalyzed: ir.files.length,
+      parsedLanguages,
       analyzedAt: FieldValue.serverTimestamp() as unknown as FirebaseFirestore.Timestamp,
-      engineVersion: '1.0.0',
+      engineVersion: GITHUB_ENGINE_VERSION,
     };
+    await docRef.set(evidence);
 
-    await docRef.set(evidenceData, { merge: true });
-
-    const response: GithubEvaluateResponse = {
+    const response: GithubRepoEvaluateResponse = {
       cached: false,
-      analyzedRepo: fullRepoName,
+      fullName,
       skillScores,
-      aiFeedback,
-      analyzedAt: new Date().toISOString(),
+      filesAnalyzed: ir.files.length,
+      parsedLanguages,
     };
-
     return NextResponse.json(response);
   } catch (err) {
-    console.error('[github/evaluate] Error:', err);
-    const message = err instanceof Error ? err.message : 'Internal Server Error';
-    return NextResponse.json({ error: 'server_error', message }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("No se pudo obtener información del repositorio")) {
+      return NextResponse.json({ error: "repo_not_found" }, { status: 404 });
+    }
+    console.error("[github/evaluate] error:", err);
+    return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 }

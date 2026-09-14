@@ -6,7 +6,8 @@ export const GithubEvidenceService = {
    * Última evidencia de GitHub del usuario (`github_evidence/{uid}`).
    *
    * Solo LECTURA, y solo del dueño: la regla de Firestore es `read: isOwner(userId)` con
-   * `write: false`. La escritura ocurre en `POST /api/github/evaluate` con Admin SDK, porque
+   * `write: false`. La escribe `POST /api/github/aggregate` con Admin SDK (combinando lo que
+   * `POST /api/github/evaluate` analizó repositorio a repositorio), porque
    * los scores son datos "verificados" y no pueden originarse en el navegador.
    *
    * Leer esto NO dispara ninguna evaluación: solo muestra el último resultado guardado. La

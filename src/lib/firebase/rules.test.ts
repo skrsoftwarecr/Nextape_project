@@ -16,7 +16,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const hasEmulator = !!process.env.FIRESTORE_EMULATOR_HOST;
 
@@ -77,5 +77,39 @@ describe.skipIf(!hasEmulator)("firestore.rules — integridad del DNA y ownershi
     await assertFails(
       setDoc(doc(bob, "jobs/j2"), { createdBy: "alice", title: "Fake" })
     );
+  });
+
+  it("el dueño lee la evidencia de sus repositorios, nadie más, y nadie la escribe", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "github_evidence/alice/repos/alice__app"), { uid: "alice" });
+    });
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    const bob = testEnv.authenticatedContext("bob").firestore();
+    await assertSucceeds(getDoc(doc(alice, "github_evidence/alice/repos/alice__app")));
+    await assertFails(getDoc(doc(bob, "github_evidence/alice/repos/alice__app")));
+    await assertFails(
+      setDoc(doc(alice, "github_evidence/alice/repos/alice__app"), { uid: "alice", skillScores: {} })
+    );
+  });
+
+  it("los contadores de límite de peticiones son server-only", async () => {
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    await assertFails(getDoc(doc(alice, "api_rate_limits/evaluate:alice")));
+    await assertFails(setDoc(doc(alice, "api_rate_limits/evaluate:alice"), { count: 0, windowStart: 0 }));
+  });
+
+  it("el dueño edita su vacante pero no los campos que escribe el servidor", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), "jobs/j3"), {
+        createdBy: "alice",
+        title: "Backend",
+        applicantsCount: 2,
+        assessmentReady: false,
+      });
+    });
+    const alice = testEnv.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(alice, "jobs/j3"), { title: "Backend Senior", examQuestionCount: null }));
+    await assertFails(updateDoc(doc(alice, "jobs/j3"), { applicantsCount: 500 }));
+    await assertFails(updateDoc(doc(alice, "jobs/j3"), { assessmentReady: true, assessmentPoolSize: 999 }));
   });
 });
