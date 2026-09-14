@@ -10,6 +10,7 @@
  *   npm run seed:questions -- --dry-run                    # plan y coste estimado, no escribe
  *   npm run seed:questions -- --category=frontend --yes    # genera una tanda
  *   npm run seed:questions -- --yes                        # todo el catálogo (tarda MUCHO)
+ *   npm run seed:questions -- --top-up --target=50 --yes   # AMPLÍA lo existente hasta ~50 por combinación
  *
  * Requiere en `.env.local` (o el entorno):
  *   GROQ_API_KEY                              clave del proveedor de IA
@@ -21,6 +22,10 @@
  *
  * Es **reanudable**: salta las combinaciones ya generadas, así que se puede cortar con Ctrl+C y
  * relanzar sin perder trabajo ni pagar dos veces.
+ *
+ * `--top-up`: con exámenes de 20 preguntas, un repertorio de ~25 hace que casi todos los candidatos
+ * vean las mismas. En este modo las preguntas nuevas se AÑADEN a las existentes (deduplicadas) en
+ * rondas hasta llegar a `--target` (50 por defecto). Nunca reemplaza lo que ya hay.
  */
 
 // ⚠️ PRIMER import, sin excepción: carga `.env.local` antes de que se evalúe cualquier módulo que
@@ -34,7 +39,7 @@ import type { Firestore } from "firebase-admin/firestore";
 
 import { TECHNOLOGIES, TECH_CATEGORIES, findTechnology } from "@/lib/technologies";
 import type { TechCategory } from "@/lib/technologies";
-import { LEVELS, SPECIALTY_STACKS, countByType } from "@/lib/server/assessment";
+import { LEVELS, SPECIALTY_STACKS, countByType, dedupeQuestions } from "@/lib/server/assessment";
 import {
   buildTechnologyPool,
   buildQuestionPool,
@@ -58,6 +63,8 @@ interface Options {
   limit: number;
   delayMs: number;
   includeSpecialties: boolean;
+  topUp: boolean;
+  target: number;
 }
 
 function parseArgs(argv: string[]): Options {
@@ -86,6 +93,8 @@ function parseArgs(argv: string[]): Options {
     limit: Number(get("limit") ?? "0") || 0,
     delayMs: Number(get("delay") ?? "1000") || 0,
     includeSpecialties: !has("no-specialties"),
+    topUp: has("top-up"),
+    target: Math.max(Number(get("target") ?? "50") || 50, 20),
   };
 }
 
@@ -157,11 +166,14 @@ function initFirestore(): Firestore {
   return getFirestore();
 }
 
-async function existingCount(db: Firestore, docId: string): Promise<number> {
+async function existingQuestions(db: Firestore, docId: string): Promise<Question[]> {
   const snap = await db.collection(COLLECTION).doc(docId).get();
   const questions = snap.data()?.questions;
-  return Array.isArray(questions) ? questions.length : 0;
+  return Array.isArray(questions) ? (questions as Question[]) : [];
 }
+
+/** Rondas máximas de generación por combinación en `--top-up` (cada ronda aporta ~25). */
+const TOP_UP_MAX_ROUNDS = 3;
 
 /* ────────────────────────────────── Ejecución ────────────────────────────────── */
 
@@ -184,6 +196,7 @@ function printPlan(targets: Target[], opts: Options) {
     `Tiempo aproximado                  : ~${Math.round((calls * (3000 + opts.delayMs)) / 60000)} min`
   );
   console.log(`Regenerar existentes               : ${opts.force ? "SÍ (--force)" : "no"}`);
+  console.log(`Ampliar existentes (--top-up)      : ${opts.topUp ? `sí, hasta ${opts.target}` : "no"}`);
   console.log("─".repeat(60));
 
   const byCategory = new Map<string, number>();
@@ -245,31 +258,39 @@ async function main() {
     const progress = `[${i + 1}/${targets.length}]`;
 
     try {
-      if (!opts.force) {
-        const already = await existingCount(db, target.docId);
-        if (already >= 20) {
-          console.log(`${progress} ⏭️  ${target.docId} — ya existe completo (${already} preguntas)`);
-          skipped++;
-          continue;
-        } else if (already > 0) {
-          console.log(
-            `${progress} 🔄 ${target.docId} — incompleto previo (${already} preguntas < 20), completando con IA...`
-          );
-        }
+      // En --top-up se parte de lo existente; con --force se descarta; si no, solo se completa lo que falta.
+      const existing = opts.force ? [] : await existingQuestions(db, target.docId);
+      const goal = opts.topUp ? opts.target : 20;
+      if (existing.length >= goal) {
+        console.log(`${progress} ⏭️  ${target.docId} — ya tiene ${existing.length} preguntas (objetivo ${goal})`);
+        skipped++;
+        continue;
+      } else if (existing.length > 0) {
+        console.log(
+          `${progress} 🔄 ${target.docId} — ${existing.length} preguntas < ${goal}, ` +
+            (opts.topUp ? "ampliando con IA..." : "completando con IA...")
+        );
       }
 
       console.log(`${progress} 🤖 ${target.docId} — generando (${target.label}, ${target.level})...`);
 
-      const questions: Question[] =
+      const generate = (): Promise<Question[]> =>
         target.kind === "technology"
-          ? await buildTechnologyPool({ technology: target.key, level: target.level })
-          : await buildQuestionPool({
-              stack: SPECIALTY_STACKS[target.key],
-              level: target.level,
-            });
+          ? buildTechnologyPool({ technology: target.key, level: target.level })
+          : buildQuestionPool({ stack: SPECIALTY_STACKS[target.key], level: target.level });
 
-      if (questions.length === 0) {
-        console.error(`${progress} ❌ ${target.docId} — la IA no devolvió preguntas`);
+      let questions: Question[] = opts.topUp ? existing : [];
+      const rounds = opts.topUp ? TOP_UP_MAX_ROUNDS : 1;
+      for (let round = 0; round < rounds && questions.length < goal; round++) {
+        const before = questions.length;
+        questions = dedupeQuestions([...questions, ...(await generate())]);
+        if (questions.length === before) break; // el proveedor no aporta nada nuevo
+      }
+      // Ids consecutivos: cada lote generado numera desde 0.
+      questions = questions.map((q, idx) => ({ ...q, id: String(idx) }));
+
+      if (questions.length === 0 || (opts.topUp && questions.length <= existing.length)) {
+        console.error(`${progress} ❌ ${target.docId} — la IA no devolvió preguntas nuevas`);
         failed++;
         continue;
       }

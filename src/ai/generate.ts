@@ -63,7 +63,28 @@ export function isRateLimitError(err: unknown): boolean {
   return false;
 }
 
-let isGroqRateLimited = false;
+let isGroqUnavailable = false;
+
+/**
+ * Errores que no se arreglan reintentando: clave inválida/revocada (401/403) o modelo inexistente
+ * o retirado (404/410). Ante ellos tiene sentido pasar al proveedor de respaldo, igual que ante un
+ * rate limit, y no tiene sentido repetir la misma llamada.
+ */
+export function isProviderUnavailableError(err: unknown): boolean {
+  const e = err as { status?: number; statusCode?: number; message?: string } | null;
+  const status = e?.status ?? e?.statusCode;
+  if (status === 401 || status === 403 || status === 404 || status === 410) return true;
+  const msg = String(e?.message ?? err ?? '').toLowerCase();
+  return (
+    /\b(401|403|404|410)\b/.test(msg) ||
+    msg.includes('invalid api key') ||
+    msg.includes('invalid_api_key') ||
+    msg.includes('end of life') ||
+    msg.includes('decommissioned') ||
+    msg.includes('model_not_found') ||
+    msg.includes('not found for account')
+  );
+}
 
 /**
  * Genera JSON con Groq (primario) y, si falla con rate limit, reintenta con NVIDIA NIM (backup).
@@ -77,7 +98,7 @@ export async function generateJsonWithFallback<T>(
   prompt: string,
   schema: z.ZodType<T>,
 ): Promise<{ data: T; provider: 'groq' | 'nvidia' }> {
-  if (isGroqRateLimited) {
+  if (isGroqUnavailable) {
     const data = await generateJsonNvidia(prompt, schema);
     return { data, provider: 'nvidia' };
   }
@@ -86,11 +107,14 @@ export async function generateJsonWithFallback<T>(
     const data = await generateJson(prompt, schema);
     return { data, provider: 'groq' };
   } catch (err) {
-    if (!isRateLimitError(err)) throw err;
+    const rateLimited = isRateLimitError(err);
+    if (!rateLimited && !isProviderUnavailableError(err)) throw err;
 
-    isGroqRateLimited = true;
+    isGroqUnavailable = true;
     console.warn(
-      '[ai/generate] ⚠️ Groq rate limit alcanzado — cambiando permanentemente a NVIDIA NIM para esta sesión...',
+      rateLimited
+        ? '[ai/generate] ⚠️ Groq rate limit alcanzado — cambiando a NVIDIA NIM para esta sesión...'
+        : `[ai/generate] ⚠️ Groq no disponible (${err instanceof Error ? err.message.slice(0, 120) : err}) — cambiando a NVIDIA NIM para esta sesión...`,
     );
 
     const data = await generateJsonNvidia(prompt, schema);
@@ -166,6 +190,7 @@ async function generateJsonNvidia<T>(prompt: string, schema: z.ZodType<T>): Prom
         err instanceof Error ? err.message : err,
       );
       lastError = err;
+      if (isProviderUnavailableError(err)) break; // clave o modelo inválidos: reintentar no ayuda
     }
   }
 
