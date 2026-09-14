@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, verifyRequestUid } from "@/lib/firebase/admin";
+import { examSizeFor } from "@/lib/server/assessment";
+import { hasGithubEvidence } from "@/lib/server/github-evidence";
 
 export const runtime = "nodejs";
 
@@ -21,7 +23,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const snap = await adminDb().collection("line_question_pools").get();
+    const [snap, githubSnap] = await Promise.all([
+      adminDb().collection("line_question_pools").get(),
+      adminDb().collection("github_evidence").doc(uid).get(),
+    ]);
+    // La UI explica el tamaño del examen ANTES de empezar: 10 con GitHub analizado, 20 sin él.
+    const hasGithub = hasGithubEvidence(githubSnap.data());
 
     /** subject → niveles disponibles */
     const available: Record<string, string[]> = {};
@@ -37,7 +44,11 @@ export async function GET(req: NextRequest) {
       available[subject] = [...(available[subject] ?? []), level];
     });
 
-    return NextResponse.json({ available });
+    return NextResponse.json({
+      available,
+      hasGithub,
+      examSize: examSizeFor({ hasGithubEvidence: hasGithub }),
+    });
   } catch (err) {
     console.error("[line/catalog] error:", err);
     return NextResponse.json({ error: "server_error" }, { status: 500 });

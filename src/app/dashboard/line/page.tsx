@@ -2,11 +2,12 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { technologiesByCategory, CATEGORY_LABELS } from "@/lib/technologies";
 import { LEVELS, LEVEL_LABELS } from "@/lib/levels";
-import { Terminal, Cpu, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Terminal, Cpu, Loader2, CheckCircle2, AlertCircle, Github } from "lucide-react";
 import { apiPost, apiGet } from "@/lib/api";
 import { QuestionCard, QuestionTypeBadge } from "@/components/line/QuestionCard";
 import type { Answer, PublicQuestion } from "@/types/question.types";
@@ -23,8 +24,9 @@ function LineContent() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [score, setScore] = useState(0);
   // En el modo práctica el usuario elige una tecnología concreta del catálogo (o un stack amplio).
-  const [technology, setTechnology] = useState("react");
-  const [difficulty, setLevel] = useState("senior");
+  // Preselección desde enlaces (p. ej. "Practicar en The LINE" del roadmap: ?technology=&level=).
+  const [technology, setTechnology] = useState(searchParams.get("technology") ?? "react");
+  const [difficulty, setLevel] = useState(searchParams.get("level") ?? "senior");
   const [error, setError] = useState<string | null>(null);
 
   /**
@@ -36,10 +38,19 @@ function LineContent() {
    */
   const [available, setAvailable] = useState<Record<string, string[]> | null>(null);
 
+  /** Tamaño del examen antes de empezar: 10 con GitHub analizado, 20 sin él (lo decide el servidor). */
+  const [examInfo, setExamInfo] = useState<{ examSize: number; hasGithub: boolean } | null>(null);
+  const [loadingLabel, setLoadingLabel] = useState("Preparando tu prueba");
+
   useEffect(() => {
     if (jobId) return; // la prueba de una vacante usa su propio repertorio
-    apiGet<{ available: Record<string, string[]> }>("/api/line/catalog")
-      .then((res) => setAvailable(res.available))
+    apiGet<{ available: Record<string, string[]>; examSize: number; hasGithub: boolean }>(
+      "/api/line/catalog"
+    )
+      .then((res) => {
+        setAvailable(res.available);
+        setExamInfo({ examSize: res.examSize, hasGithub: res.hasGithub });
+      })
       .catch((err) => {
         // Sin catálogo se muestra el listado completo: es preferible a dejar el selector vacío.
         console.error("[line] no se pudo cargar el catálogo disponible:", err);
@@ -80,6 +91,7 @@ function LineContent() {
   }, [status]);
 
   const startSimulation = async () => {
+    setLoadingLabel("Preparando tu prueba");
     setStatus("loading");
     setError(null);
     setScore(0);
@@ -108,16 +120,22 @@ function LineContent() {
       // `pool_not_seeded` = esa tecnología/nivel aún no está en el banco precargado. Es un caso
       // esperado y accionable, no un fallo genérico: lo resuelve `npm run seed:questions`.
       const code = err instanceof Error ? err.message : "";
-      setError(
-        code === "pool_not_seeded"
-          ? "Todavía no hay preguntas para esa tecnología y nivel. Prueba con otra combinación."
-          : "Error al iniciar la simulación. Revisa tu conexión e inténtalo de nuevo."
-      );
+      // Cada motivo tiene su mensaje: antes todo lo que no fuera "sin banco" se mostraba como un
+      // error de conexión, también cuando el problema era la vacante.
+      const messages: Record<string, string> = {
+        pool_not_seeded: "Todavía no hay preguntas para esa tecnología y nivel. Prueba con otra combinación.",
+        job_incomplete: "Esta vacante no tiene skills o empresa asignadas, así que no se puede evaluar.",
+        job_without_bank: "Las skills de esta vacante aún no tienen preguntas. La empresa debe ajustarlas.",
+        job_closed: "Esta vacante está cerrada y ya no admite candidaturas.",
+        job_not_found: "Esta vacante ya no existe.",
+      };
+      setError(messages[code] ?? "No se pudo iniciar la prueba. Revisa tu conexión e inténtalo de nuevo.");
       setStatus("idle");
     }
   };
 
   const finishSimulation = async (finalAnswers: Answer[]) => {
+    setLoadingLabel("Calculando tu resultado");
     setStatus("loading");
     try {
       // La corrección y la escritura del DNA ocurren EN SERVIDOR (no falsificable en cliente).
@@ -152,8 +170,8 @@ function LineContent() {
           <Loader2 className="h-10 w-10 animate-spin text-brand-blue" />
         </div>
         <div className="text-center space-y-2">
-          <p className="text-xl font-bold italic">Sincronizando Entorno Neural...</p>
-          <p className="text-sm text-gray-400 uppercase tracking-widest font-bold">Generando escenarios técnicos reales</p>
+          <p className="text-xl font-bold italic">{loadingLabel}.</p>
+          <p className="text-sm text-gray-400 uppercase tracking-widest font-bold">Un momento</p>
         </div>
       </div>
     );
@@ -263,6 +281,25 @@ function LineContent() {
                     </Select>
                   </div>
                 </>
+              )}
+
+              {!jobId && examInfo && (
+                <div className="flex items-start gap-3 bg-gray-50 p-4 rounded-2xl text-xs font-medium text-gray-500">
+                  <Github className="h-4 w-4 shrink-0 mt-0.5 text-gray-400" />
+                  <p className="leading-relaxed">
+                    Tu prueba tendrá <span className="font-bold text-black">{examInfo.examSize} preguntas</span>.{" "}
+                    {examInfo.hasGithub ? (
+                      "Tu GitHub analizado aporta el resto de la evidencia."
+                    ) : (
+                      <>
+                        Con tu GitHub analizado y verificado serían 10.{" "}
+                        <Link href="/dashboard/github" className="font-bold text-brand-blue">
+                          Analizar GitHub
+                        </Link>
+                      </>
+                    )}
+                  </p>
+                </div>
               )}
 
               {error && (

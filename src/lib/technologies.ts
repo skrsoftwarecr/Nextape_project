@@ -143,3 +143,77 @@ export function technologiesByCategory(): { category: TechCategory; items: Techn
     items: TECHNOLOGIES.filter((t) => t.category === category),
   })).filter((group) => group.items.length > 0);
 }
+
+/**
+ * Alias habituales con los que se escribe una tecnología → id canónico del catálogo.
+ *
+ * El id canónico es la clave bajo la que The LINE acredita el score en el DNA. Si una vacante pide
+ * "Next.js" y la práctica guarda "nextjs", el match nunca los casaba: el candidato tenía el score
+ * pero la vacante no lo veía. Resolver aquí mantiene una sola clave en todo el sistema.
+ */
+const TECHNOLOGY_ALIASES: Record<string, string> = {
+  "react.js": "react",
+  reactjs: "react",
+  "next.js": "nextjs",
+  next: "nextjs",
+  "vue.js": "vue",
+  vuejs: "vue",
+  js: "javascript",
+  ecmascript: "javascript",
+  ts: "typescript",
+  node: "node.js",
+  nodejs: "node.js",
+  "express.js": "express",
+  expressjs: "express",
+  "nest.js": "nestjs",
+  "c#": "dotnet",
+  csharp: "dotnet",
+  ".net": "dotnet",
+  "asp.net core": "asp.net",
+  golang: "go",
+  cpp: "c++",
+  postgres: "postgresql",
+  mongo: "mongodb",
+  k8s: "kubernetes",
+  "google cloud": "gcp",
+  "amazon web services": "aws",
+  cicd: "ci-cd",
+  "ci/cd": "ci-cd",
+  reactnative: "react native",
+  "react-native": "react native",
+  "tailwind css": "tailwind",
+  tailwindcss: "tailwind",
+  openapi: "rest",
+  "rest api": "rest",
+  "sql server": "sqlserver",
+  mssql: "sqlserver",
+  owasp: "security",
+  seguridad: "security",
+  microservicios: "microservices",
+  "system design": "architecture",
+  arquitectura: "architecture",
+};
+
+/** Id canónico de una tecnología escrita libremente, o `null` si no está en el catálogo. */
+export function resolveTechnologyId(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const key = String(raw).trim().toLowerCase();
+  if (!key) return null;
+  if (BY_ID.has(key)) return key;
+  const alias = TECHNOLOGY_ALIASES[key];
+  return alias && BY_ID.has(alias) ? alias : null;
+}
+
+/**
+ * Clave con la que se guarda/lee una skill en el DNA: el id canónico si la tecnología está en el
+ * catálogo; si no, el texto en minúsculas (invariante del match).
+ */
+/**
+ * Skills máximas por vacante. La comparten el formulario (cliente) y la composición del repertorio
+ * (servidor): si divergieran, el reclutador podría elegir skills que la prueba ignora.
+ */
+export const MAX_SKILLS_PER_JOB = 8;
+
+export function canonicalSkillKey(raw: string): string {
+  return resolveTechnologyId(raw) ?? String(raw).trim().toLowerCase();
+}

@@ -13,6 +13,7 @@ import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { apiPost } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthUser } from "@/hooks/use-auth-user";
+import { SkillPicker } from "@/components/vacancies/SkillPicker";
 
 export default function NewVacancyPage() {
   const router = useRouter();
@@ -27,8 +28,9 @@ export default function NewVacancyPage() {
     location: "Remote",
     type: "Full-time",
     level: "senior",
-    skills: "",
-    examQuestionCount: "5"
+    skills: [] as string[],
+    // Vacío = automático (10 con GitHub analizado, 20 sin él).
+    examQuestionCount: ""
   });
 
   // El nombre de la empresa se prefija con el del perfil, pero es editable: un reclutador puede
@@ -46,7 +48,12 @@ export default function NewVacancyPage() {
     if (!auth.currentUser) return;
     setLoading(true);
 
-    const skillsArray = formData.skills.split(",").map(s => s.trim().toLowerCase()).filter(s => s);
+    const skillsArray = formData.skills;
+    if (skillsArray.length === 0) {
+      toast({ title: "Elige al menos una habilidad", description: "La prueba de la vacante se compone a partir de ellas.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     const jobData = {
       title: formData.title,
@@ -58,7 +65,9 @@ export default function NewVacancyPage() {
       requiredSkills: skillsArray,
       createdBy: auth.currentUser.uid,
       company: formData.company.trim() || "Empresa",
-      examQuestionCount: Math.min(Math.max(Number(formData.examQuestionCount) || 5, 3), 20),
+      ...(formData.examQuestionCount
+        ? { examQuestionCount: Math.min(Math.max(Math.round(Number(formData.examQuestionCount)), 10), 30) }
+        : {}),
       active: true,
       postedAt: Timestamp.now(),
       applicantsCount: 0,
@@ -90,10 +99,13 @@ export default function NewVacancyPage() {
         title: "¡Vacante publicada!",
         description: `The LINE lista con un repertorio de ${res.poolSize} preguntas.`
       });
-    } catch {
+    } catch (err) {
+      const code = err instanceof Error ? err.message : "";
       toast({
         title: "Vacante creada, prueba pendiente",
-        description: "La vacante se publicó; su repertorio se generará al iniciarse la primera simulación.",
+        description: code === "no_bank_for_skills"
+          ? "Sus habilidades aún no tienen preguntas suficientes. Ajústalas desde Gestionar vacante."
+          : "No se pudo crear la prueba ahora. Puedes crearla desde Gestionar vacante.",
         variant: "destructive"
       });
     }
@@ -216,29 +228,24 @@ export default function NewVacancyPage() {
                     </div>
 
                     <div className="space-y-2">
-                       <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Habilidades (separadas por coma)</Label>
-                       <Input 
-                         required
-                         value={formData.skills}
-                         onChange={e => setFormData({...formData, skills: e.target.value})}
-                         placeholder="react, nextjs, docker..."
-                         className="bg-white/5 border-none h-12 rounded-xl text-white px-4"
-                       />
+                       <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Habilidades</Label>
+                       <SkillPicker tone="dark" value={formData.skills} onChange={(skills) => setFormData({ ...formData, skills })} />
                     </div>
 
                     <div className="space-y-2">
                        <Label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Preguntas por examen</Label>
                        <Input
                          type="number"
-                         min={3}
-                         max={20}
+                         min={10}
+                         max={30}
+                         placeholder="Automático"
                          value={formData.examQuestionCount}
                          onChange={e => setFormData({...formData, examQuestionCount: e.target.value})}
                          className="bg-white/5 border-none h-12 rounded-xl text-white px-4"
                        />
                        <p className="text-[9px] text-gray-500 leading-relaxed">
-                         Se sortean de un repertorio mayor con varios tipos de prueba: cada candidato
-                         recibe un examen distinto pero equivalente.
+                         Déjalo vacío para usar el tamaño automático: 10 preguntas si el candidato tiene su
+                         GitHub analizado, 20 si no. Si lo fijas, entre 10 y 30.
                        </p>
                     </div>
                  </div>

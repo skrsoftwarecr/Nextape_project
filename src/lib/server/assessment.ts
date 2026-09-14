@@ -29,6 +29,38 @@ export const SPECIALTY_STACKS: Record<string, string[]> = {
 export const LEVELS = ["junior", "mid", "senior"] as const;
 
 /**
+ * Preguntas por examen cuando el candidato YA tiene su GitHub analizado: la evidencia de su código
+ * real aporta señal, así que el examen puede ser más corto.
+ */
+export const EXAM_SIZE_WITH_GITHUB = 10;
+
+/** Preguntas por examen sin evidencia de GitHub: se compensa con más preguntas. */
+export const EXAM_SIZE_WITHOUT_GITHUB = 20;
+
+/** Rango admitido cuando un reclutador fija el tamaño a mano. */
+export const EXAM_SIZE_MIN = 10;
+export const EXAM_SIZE_MAX = 30;
+
+/**
+ * Tamaño del examen de un candidato.
+ *
+ * Por defecto depende de si tiene GitHub analizado (10 con, 20 sin). Un reclutador puede fijarlo
+ * para su vacante; el valor se acota a [10, 30] para que ninguna prueba vuelva a ser de 5.
+ */
+export function examSizeFor({
+  hasGithubEvidence,
+  override,
+}: {
+  hasGithubEvidence: boolean;
+  override?: unknown;
+}): number {
+  if (typeof override === "number" && Number.isInteger(override)) {
+    return Math.min(Math.max(override, EXAM_SIZE_MIN), EXAM_SIZE_MAX);
+  }
+  return hasGithubEvidence ? EXAM_SIZE_WITH_GITHUB : EXAM_SIZE_WITHOUT_GITHUB;
+}
+
+/**
  * Normaliza los parámetros de una simulación general (The LINE libre, sin vacante).
  *
  * `subject` puede ser una **tecnología** del catálogo (`react`, `postgresql`, …) o una de las tres

@@ -7,6 +7,7 @@ import {
   normalizeStoredQuestions,
 } from "@/lib/server/assessment";
 import { calculateMatch } from "@/lib/match";
+import { canonicalSkillKey } from "@/lib/technologies";
 import type { Answer, Question } from "@/types/question.types";
 
 export const runtime = "nodejs";
@@ -119,13 +120,15 @@ export async function POST(req: NextRequest) {
         } else {
           const requiredSkills: string[] = Array.isArray(job.requiredSkills) ? job.requiredSkills : [];
           const userSnap = await adminDb().collection("users").doc(uid).get();
-          const candidateName: string = userSnap.data()?.name || userSnap.data()?.displayName || "Candidato";
+          const candidateName: string = userSnap.data()?.displayName || "Candidato";
 
           // Snapshot de los scores del candidato en las skills que pide la vacante.
           const skillsSnapshot: Record<string, number> = {};
           for (const skill of requiredSkills) {
-            const key = skill.toLowerCase();
-            skillsSnapshot[key] = merged[key] ?? 0;
+            // Clave canónica ("Next.js" → "nextjs"): es bajo la que se acredita el DNA. Con el texto
+            // tal cual, el reclutador veía 0 en una skill que el candidato sí había demostrado.
+            const key = canonicalSkillKey(skill);
+            skillsSnapshot[key] = merged[key] ?? merged[skill.trim().toLowerCase()] ?? 0;
           }
           const matchPercent = calculateMatch(requiredSkills, merged);
 

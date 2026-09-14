@@ -27,8 +27,16 @@ export interface JobOpportunity {
   assessmentReady?: boolean;
   /** Tamaño del repertorio. Cada candidato responde un sorteo de este banco. */
   assessmentPoolSize?: number;
-  /** Preguntas que responde cada candidato. Si falta, se usa el valor por defecto del servidor. */
-  examQuestionCount?: number;
+  /**
+   * Skills de la vacante sin preguntas en el banco en ningún nivel: no se evalúan hasta que se
+   * precarguen. Se muestran al reclutador para que sepa qué cubre de verdad su prueba.
+   */
+  assessmentMissingSkills?: string[];
+  /**
+   * Preguntas que responde cada candidato, fijadas por el reclutador (10–30). Si falta, el tamaño es
+   * automático: 10 si el candidato tiene su GitHub analizado, 20 si no.
+   */
+  examQuestionCount?: number | null;
   /**
    * Vacante abierta a candidaturas. `false` = archivada: deja de listarse para developers y no
    * admite nuevas pruebas, pero se conserva junto con sus candidatos.

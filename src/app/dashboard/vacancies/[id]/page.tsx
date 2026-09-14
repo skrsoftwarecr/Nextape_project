@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { JobService } from "@/services/jobs.service";
 import { apiPost } from "@/lib/api";
 import type { JobOpportunity } from "@/types/job.types";
+import { SkillPicker, normalizeJobSkills } from "@/components/vacancies/SkillPicker";
 
 /**
  * Gestión de una vacante publicada: editar sus datos, archivarla y regenerar su repertorio
@@ -56,8 +57,8 @@ export default function ManageVacancyPage() {
     location: "",
     type: "Full-time",
     level: "senior",
-    skills: "",
-    examQuestionCount: "5",
+    skills: [] as string[],
+    examQuestionCount: "",
   });
 
   useEffect(() => {
@@ -89,8 +90,8 @@ export default function ManageVacancyPage() {
           location: data.location ?? "",
           type: data.type || "Full-time",
           level: data.level || "senior",
-          skills: (data.requiredSkills ?? []).join(", "),
-          examQuestionCount: String(data.examQuestionCount ?? 5),
+          skills: normalizeJobSkills(data.requiredSkills),
+          examQuestionCount: data.examQuestionCount ? String(data.examQuestionCount) : "",
         });
       } catch (err) {
         console.error("Error loading vacancy:", err);
@@ -107,10 +108,13 @@ export default function ManageVacancyPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      const skills = form.skills
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean);
+      const skills = form.skills;
+      if (skills.length === 0) {
+        toast({ title: "Elige al menos una habilidad", variant: "destructive" });
+        return;
+      }
+      const skillsChanged =
+        JSON.stringify([...skills].sort()) !== JSON.stringify(normalizeJobSkills(job?.requiredSkills).sort());
 
       await JobService.updateJob(jobId, {
         title: form.title,
@@ -121,10 +125,26 @@ export default function ManageVacancyPage() {
         type: form.type,
         level: form.level,
         requiredSkills: skills,
-        examQuestionCount: Math.min(Math.max(Number(form.examQuestionCount) || 5, 3), 20),
+        examQuestionCount: form.examQuestionCount
+          ? Math.min(Math.max(Math.round(Number(form.examQuestionCount)), 10), 30)
+          : null,
         updatedAt: Timestamp.now(),
       });
-      toast({ title: "Cambios guardados" });
+      // Si cambiaron las skills, la prueba anterior ya no evalúa el puesto: se recompone al momento
+      // (desde el banco, sin IA). Antes había que acordarse de pulsar "Regenerar" aparte.
+      if (skillsChanged) {
+        try {
+          const res = await apiPost<{ poolSize: number }>("/api/jobs/assessment", { jobId, force: true });
+          setJob((prev) => (prev ? { ...prev, requiredSkills: skills, assessmentReady: true, assessmentPoolSize: res.poolSize } : prev));
+          toast({ title: "Cambios guardados", description: `Prueba actualizada: ${res.poolSize} preguntas.` });
+        } catch {
+          // Las skills ya se guardaron; el servidor marcó la prueba como no lista. La pantalla lo refleja.
+          setJob((prev) => (prev ? { ...prev, requiredSkills: skills, assessmentReady: false } : prev));
+          toast({ title: "Cambios guardados", description: "Pero la prueba no se pudo actualizar: revisa las habilidades.", variant: "destructive" });
+        }
+      } else {
+        toast({ title: "Cambios guardados" });
+      }
     } catch (err) {
       toast({
         title: "No se pudo guardar",
@@ -232,9 +252,9 @@ export default function ManageVacancyPage() {
             <p className="text-[11px] text-gray-400 font-medium">
               {job.assessmentReady
                 ? `Repertorio de ${job.assessmentPoolSize ?? "?"} preguntas. Cada candidato responde ${
-                    job.examQuestionCount ?? 5
+                    job.examQuestionCount ? `${job.examQuestionCount}` : "10 si tiene GitHub analizado o 20 si no,"
                   } sorteadas al azar.`
-                : "Sin repertorio. Se generará en la primera simulación, o puedes crearlo ahora."}
+                : "Sin prueba todavía. Se compone con preguntas del banco para las habilidades de la vacante."}
             </p>
           </div>
           <Button
@@ -331,24 +351,19 @@ export default function ManageVacancyPage() {
             </Field>
           </div>
 
-          <Field label="Habilidades (separadas por coma)">
-            <Input
-              required
-              value={form.skills}
-              onChange={(e) => setForm({ ...form, skills: e.target.value })}
-              placeholder="react, nextjs, docker..."
-              className="h-12 bg-gray-50 border-none rounded-xl"
-            />
+          <Field label="Habilidades">
+            <SkillPicker value={form.skills} onChange={(skills) => setForm({ ...form, skills })} />
             <p className="text-[10px] text-gray-400 mt-2 ml-1">
-              Si las cambias, regenera el repertorio para que la prueba evalúe las nuevas skills.
+              Al guardar un cambio de habilidades, la prueba se actualiza sola.
             </p>
           </Field>
 
           <Field label="Preguntas por examen">
             <Input
               type="number"
-              min={3}
-              max={20}
+              min={10}
+              max={30}
+              placeholder="Automático"
               value={form.examQuestionCount}
               onChange={(e) => setForm({ ...form, examQuestionCount: e.target.value })}
               className="h-12 bg-gray-50 border-none rounded-xl w-32"

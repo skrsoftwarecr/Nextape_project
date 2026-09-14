@@ -1,9 +1,15 @@
+import { canonicalSkillKey } from "./technologies";
+
 /**
  * Cálculo del match candidato ↔ vacante. Función PURA (sin dependencias de Firebase),
  * por eso vive aquí y es testeable de forma aislada. La usa `JobService.calculateMatch`.
  *
  * Suma los scores del usuario para las skills requeridas presentes y divide entre el total
- * de skills requeridas (penaliza las faltantes). Normaliza a minúsculas. Devuelve 0–100.
+ * de skills requeridas (penaliza las faltantes). Devuelve 0–100.
+ *
+ * Cada skill se busca por su id canónico ("Next.js" → "nextjs") y, si no aparece, por su texto en
+ * minúsculas. Sin lo primero, una vacante escrita con un alias nunca veía el score que el
+ * candidato había ganado en The LINE bajo la clave canónica.
  */
 export function calculateMatch(
   jobSkills: string[],
@@ -15,13 +21,15 @@ export function calculateMatch(
   let totalScore = 0;
   let foundSkills = 0;
 
-  const normalizedJobSkills = jobSkills.map((s) => s.toLowerCase());
-  normalizedJobSkills.forEach((skill) => {
-    if (userScores[skill] !== undefined) {
-      totalScore += userScores[skill];
+  for (const skill of jobSkills) {
+    const canonical = canonicalSkillKey(skill);
+    const lower = skill.trim().toLowerCase();
+    const score = userScores[canonical] ?? userScores[lower];
+    if (score !== undefined) {
+      totalScore += score;
       foundSkills++;
     }
-  });
+  }
 
   if (foundSkills === 0) return 0;
   return Math.round(totalScore / jobSkills.length);
