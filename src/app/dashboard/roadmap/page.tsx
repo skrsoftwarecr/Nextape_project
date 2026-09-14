@@ -10,6 +10,9 @@ import {
   AlertCircle,
   Sparkles,
   ArrowRight,
+  Check,
+  Flag,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -18,12 +21,13 @@ import { cn } from "@/lib/utils";
 import { auth } from "@/lib/firebase/client";
 import { RoadmapService } from "@/services/roadmap.service";
 import { computeRoadmap } from "@/lib/roadmap-engine";
+import { LEVELS, LEVEL_LABELS } from "@/lib/levels";
 import {
   TARGET_ROLES,
   type TargetRole,
   type SeniorityLevel,
 } from "@/services/github-engine/role-mapping/role-weights";
-import type { RoadmapItem, RoadmapRoute, Skill } from "@/types/roadmap.types";
+import type { RoadmapItem, RoadmapRoute, Skill, ScoreSource } from "@/types/roadmap.types";
 import { onAuthStateChanged, User } from "firebase/auth";
 
 const ROLE_OPTIONS: { id: TargetRole; label: string }[] = [
@@ -46,6 +50,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   observability: "Observabilidad",
 };
 
+/** De dónde sale el score de una skill, en palabras que reconoce el usuario. */
+const SCORE_SOURCE_LABELS: Record<ScoreSource, string> = {
+  line: "The LINE",
+  github: "tu actividad en GitHub",
+  "category-inferred": "el promedio de pruebas parecidas",
+  none: "sin datos todavía",
+};
+
 export default function RoadmapPage() {
   const [items, setItems] = useState<RoadmapItem[]>([]);
   const [targetRole, setTargetRole] = useState<TargetRole>("backend");
@@ -54,6 +66,13 @@ export default function RoadmapPage() {
   const [computing, setComputing] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  /**
+   * Niveles reales de la ruta que se cargó (puede no coincidir con el nivel inferido cuando el
+   * MVP usa el fallback a "backend_junior_to_mid"). Es la fuente de verdad para la escalera de
+   * niveles: nunca inventa un nivel que la ruta cargada no respalde.
+   */
+  const [routeLevels, setRouteLevels] = useState<{ from: SeniorityLevel; to: SeniorityLevel } | null>(null);
 
   /**
    * Skills que además se pueden practicar en The LINE (tienen repertorio precargado).
@@ -96,11 +115,16 @@ export default function RoadmapPage() {
 
       if (!route) {
         setItems([]);
+        setRouteLevels(null);
         setErrorMsg(
           `La ruta ${role.toUpperCase()} (${currentLevel} → ${targetLevel}) aún no está disponible en el catálogo MVP. Ruta activa disponible: Backend Junior → Mid.`
         );
         return;
       }
+
+      // Nivel real de la ruta cargada (puede diferir del `targetLevel` calculado arriba si se usó
+      // el fallback de MVP): es lo que se muestra en la escalera de niveles.
+      setRouteLevels({ from: route.fromLevel, to: route.toLevel });
 
       // 4. Cargar las skills requeridas por la ruta desde skill_catalog
       const skillIds = Object.keys(route.skillWeights);
@@ -129,6 +153,7 @@ export default function RoadmapPage() {
       setItems(computedResult.items);
     } catch (error) {
       console.error("Error computing roadmap:", error);
+      setRouteLevels(null);
       setErrorMsg("Ocurrió un error al procesar el roadmap determinístico.");
     } finally {
       setComputing(false);
@@ -166,11 +191,48 @@ export default function RoadmapPage() {
   const completed = items.filter((i) => i.status === "completed");
   const available = items.filter((i) => i.status === "gap");
   const blocked = items.filter((i) => i.status === "blocked");
+  const unmeasured = items.filter((i) => i.status === "unknown");
 
   // El motor ya ordena topológicamente y prioriza: el primer hueco disponible ES el siguiente paso.
   const [nextStep, ...restAvailable] = available;
   const evaluated = completed.length + available.length + blocked.length;
   const progress = evaluated > 0 ? Math.round((completed.length / evaluated) * 100) : 0;
+
+  // Todos los items de una misma ruta comparten el mismo umbral: SENIORITY_THRESHOLDS[route.toLevel].
+  const masteryThreshold = items[0]?.targetScore ?? null;
+  const currentLevelLabel = LEVEL_LABELS[inferredLevel];
+  // El nivel objetivo "real" es el de la ruta cargada; si aún no llegó, se cae al mismo cálculo
+  // que usa calculateUserRoadmap para no mostrar nada antes de tener datos.
+  const targetLevel: SeniorityLevel = routeLevels?.to ?? (inferredLevel === "junior" ? "mid" : "senior");
+  const targetLevelLabel = LEVEL_LABELS[targetLevel];
+  const nextLevelAfterTarget = LEVELS[LEVELS.indexOf(targetLevel) + 1] as SeniorityLevel | undefined;
+  const routeIsComplete =
+    items.length > 0 && completed.length > 0 && available.length === 0 && blocked.length === 0;
+
+  // Nombres legibles para los IDs de skills que aparecen en `blockedBy` (el motor solo da IDs).
+  // Objeto plano, no Map: el icono `Map` de lucide-react ya ocupa ese nombre en este archivo.
+  const skillNameById: Record<string, string> = {};
+  for (const item of items) skillNameById[item.skillId] = item.skillName;
+
+  /**
+   * Única acción real que el usuario puede tomar para mover una skill: practicarla en The LINE si
+   * hay repertorio cargado, o reforzar su evidencia en GitHub si el score de hoy viene de ahí.
+   * Nunca ofrece un enlace a algo que no puede resolver ninguna de las dos cosas.
+   */
+  function getSkillAction(item: RoadmapItem): { label: string; href: string } | null {
+    if (practicable[item.skillId]) {
+      return {
+        label: "Practicar en The LINE",
+        href: `/dashboard/line?technology=${encodeURIComponent(item.skillId)}`,
+      };
+    }
+    if (item.scoreSource === "github") {
+      return { label: "Reforzar en GitHub", href: "/dashboard/github" };
+    }
+    return null;
+  }
+
+  const nextStepAction = nextStep ? getSkillAction(nextStep) : null;
 
   return (
     <div className="space-y-10 max-w-5xl mx-auto pb-20">
@@ -238,12 +300,17 @@ export default function RoadmapPage() {
         </div>
       ) : (
         <>
+          {/* Escalera de niveles — dónde estás y a qué escalón apunta esta ruta */}
+          {routeLevels && (
+            <LevelLadder current={inferredLevel} target={targetLevel} masteryThreshold={masteryThreshold} />
+          )}
+
           {/* Progreso hacia el nivel objetivo */}
           <section className="bg-white rounded-[2.5rem] p-8 shadow-apple border border-gray-50 space-y-5">
             <div className="flex justify-between items-end">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-300 block mb-1">
-                  Progreso hacia {inferredLevel === "junior" ? "mid" : "senior"}
+                  Progreso de {currentLevelLabel} a {targetLevelLabel}
                 </span>
                 <span className="text-3xl font-black italic tracking-tighter">
                   {completed.length}
@@ -275,7 +342,7 @@ export default function RoadmapPage() {
                   <p className="text-sm text-gray-400 font-medium">
                     {CATEGORY_LABELS[nextStep.category] ?? nextStep.category}
                     {nextStep.scoreSource !== "none" && (
-                      <> · medido con {nextStep.scoreSource === "line" ? "The LINE" : "tu código de GitHub"}</>
+                      <> · medido con {SCORE_SOURCE_LABELS[nextStep.scoreSource]}</>
                     )}
                   </p>
                 </div>
@@ -296,17 +363,44 @@ export default function RoadmapPage() {
                     />
                   </div>
                   <p className="text-xs text-gray-400 font-medium">
-                    Te faltan {nextStep.deficit} puntos para alcanzar el nivel objetivo.
+                    Te faltan {nextStep.deficit} puntos para dominarla.
                   </p>
                 </div>
 
-                {practicable[nextStep.skillId] && (
-                  <Link href={`/dashboard/line?technology=${encodeURIComponent(nextStep.skillId)}`}>
+                {nextStepAction && (
+                  <Link href={nextStepAction.href}>
                     <Button className="h-14 px-8 bg-brand-blue hover:bg-brand-blue/90 text-white rounded-2xl font-bold uppercase tracking-widest text-[10px]">
-                      Practicar en The LINE <ArrowRight className="ml-2 h-3 w-3" />
+                      {nextStepAction.label} <ArrowRight className="ml-2 h-3 w-3" />
                     </Button>
                   </Link>
                 )}
+              </div>
+              <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-brand-blue/10 rounded-full blur-3xl" />
+            </section>
+          )}
+
+          {/* Ruta completa — sin gaps ni bloqueadas: hay que decir qué sigue, no dejarlo en el aire */}
+          {routeIsComplete && (
+            <section className="bg-gray-950 text-white rounded-[2.5rem] p-10 shadow-apple-lg space-y-4 relative overflow-hidden">
+              <div className="relative z-10 space-y-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-brand-blue">
+                  Ruta completa
+                </span>
+                <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter leading-none">
+                  Dominas todas las habilidades medidas de esta ruta.
+                </h2>
+                {unmeasured.length > 0 && (
+                  <p className="text-sm text-gray-400 font-medium leading-relaxed max-w-xl">
+                    Aún te quedan {unmeasured.length}{" "}
+                    {unmeasured.length === 1 ? "habilidad sin medir" : "habilidades sin medir"}. Complétalas
+                    en The LINE para que cuenten en tu progreso.
+                  </p>
+                )}
+                <p className="text-sm text-gray-400 font-medium leading-relaxed max-w-xl">
+                  {nextLevelAfterTarget
+                    ? `El siguiente escalón es la ruta de ${targetLevelLabel} a ${LEVEL_LABELS[nextLevelAfterTarget]}. Vuelve a recalcular más adelante para verla.`
+                    : `${targetLevelLabel} es el nivel más alto que NEXTAPE evalúa hoy.`}
+                </p>
               </div>
               <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-brand-blue/10 rounded-full blur-3xl" />
             </section>
@@ -326,16 +420,20 @@ export default function RoadmapPage() {
                       <p className="font-bold truncate">{item.skillName}</p>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300">
                         {CATEGORY_LABELS[item.category] ?? item.category}
+                        {item.scoreSource !== "none" && <> · {SCORE_SOURCE_LABELS[item.scoreSource]}</>}
                       </p>
                     </div>
                     <ScoreGap item={item} />
-                    {practicable[item.skillId] && (
-                      <Link href={`/dashboard/line?technology=${encodeURIComponent(item.skillId)}`}>
-                        <Button variant="ghost" className="rounded-xl text-brand-blue font-bold uppercase tracking-widest text-[9px]">
-                          Practicar
-                        </Button>
-                      </Link>
-                    )}
+                    {(() => {
+                      const action = getSkillAction(item);
+                      return action ? (
+                        <Link href={action.href}>
+                          <Button variant="ghost" className="rounded-xl text-brand-blue font-bold uppercase tracking-widest text-[9px]">
+                            {action.label}
+                          </Button>
+                        </Link>
+                      ) : null;
+                    })()}
                   </div>
                 ))}
               </div>
@@ -357,13 +455,51 @@ export default function RoadmapPage() {
                       {item.blockedBy.length > 0 && (
                         <p className="text-[11px] text-gray-400 font-medium">
                           Domina primero{" "}
-                          <span className="text-gray-600 font-bold">{item.blockedBy.join(", ")}</span>
+                          <span className="text-gray-600 font-bold">
+                            {item.blockedBy.map((id) => skillNameById[id] ?? id).join(", ")}
+                          </span>
                         </p>
                       )}
                     </div>
                     <Lock className="h-4 w-4 text-gray-300 shrink-0" />
                   </div>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* Sin medir todavía — desaparecían de la UI; sin verlas, el usuario no sabe que existen */}
+          {unmeasured.length > 0 && (
+            <section className="space-y-4">
+              <SectionTitle icon={HelpCircle} label="Sin medir todavía" count={unmeasured.length} />
+              <div className="space-y-3">
+                {unmeasured.map((item) => {
+                  const action = getSkillAction(item);
+                  return (
+                    <div
+                      key={item.skillId}
+                      className="bg-white rounded-2xl p-5 border border-dashed border-gray-200 flex flex-wrap items-center gap-4"
+                    >
+                      <div className="flex-grow min-w-0 space-y-1">
+                        <p className="font-bold truncate">{item.skillName}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300">
+                          {CATEGORY_LABELS[item.category] ?? item.category} · Sin datos
+                        </p>
+                      </div>
+                      {action ? (
+                        <Link href={action.href}>
+                          <Button variant="ghost" className="rounded-xl text-brand-blue font-bold uppercase tracking-widest text-[9px]">
+                            {action.label}
+                          </Button>
+                        </Link>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-300">
+                          Aún no medible
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
@@ -406,6 +542,85 @@ function SectionTitle({
       <h2 className="text-[11px] font-black uppercase tracking-widest text-gray-400">{label}</h2>
       <span className="text-[11px] font-bold text-gray-300">{count}</span>
     </div>
+  );
+}
+
+/**
+ * Escalera Junior → Mid → Senior: dónde está el usuario hoy y a qué escalón apunta la ruta
+ * cargada. Deja explícito que dominar la ruta actual es lo que empuja al siguiente nivel, y
+ * explica con qué umbral real se mide "dominar" una habilidad.
+ */
+function LevelLadder({
+  current,
+  target,
+  masteryThreshold,
+}: {
+  current: SeniorityLevel;
+  target: SeniorityLevel;
+  masteryThreshold: number | null;
+}) {
+  const currentIdx = LEVELS.indexOf(current);
+  const targetIdx = LEVELS.indexOf(target);
+
+  return (
+    <section className="bg-white rounded-[2.5rem] p-8 shadow-apple border border-gray-50 space-y-8">
+      <div className="flex items-center">
+        {LEVELS.map((level, idx) => {
+          const isCurrent = idx === currentIdx;
+          const isPassed = idx < currentIdx;
+          // Solo se marca "Meta" cuando de verdad está por delante de donde está el usuario hoy.
+          const isTarget = !isCurrent && idx === targetIdx && targetIdx > currentIdx;
+
+          return (
+            <div key={level} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div
+                  className={cn(
+                    "h-11 w-11 rounded-full flex items-center justify-center border-2 shrink-0",
+                    isCurrent && "bg-black border-black text-white",
+                    isTarget && "bg-white border-brand-blue text-brand-blue",
+                    !isCurrent && !isTarget && "bg-gray-50 border-gray-100 text-gray-300"
+                  )}
+                >
+                  {isPassed ? (
+                    <Check className="h-4 w-4" />
+                  ) : isTarget ? (
+                    <Flag className="h-4 w-4" />
+                  ) : (
+                    <span className="text-xs font-black">{idx + 1}</span>
+                  )}
+                </div>
+                <div className="text-center space-y-0.5">
+                  <p
+                    className={cn(
+                      "text-xs font-bold",
+                      isCurrent ? "text-black" : isTarget ? "text-brand-blue" : "text-gray-400"
+                    )}
+                  >
+                    {LEVEL_LABELS[level]}
+                  </p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-300 h-3">
+                    {isCurrent ? "Estás aquí" : isTarget ? "Meta" : ""}
+                  </p>
+                </div>
+              </div>
+              {idx < LEVELS.length - 1 && <div className="h-0.5 flex-1 mx-3 rounded-full bg-gray-100" />}
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-sm text-gray-500 font-medium leading-relaxed">
+        {masteryThreshold !== null ? (
+          <>
+            Dominas una habilidad cuando tu puntuación llega a{" "}
+            <span className="font-bold text-black">{masteryThreshold}%</span>. Ese número sale de The
+            LINE cuando la practicaste ahí, o de tu actividad en GitHub cuando todavía no.
+          </>
+        ) : (
+          "Completa una prueba para conocer el umbral que necesitas en cada habilidad."
+        )}
+      </p>
+    </section>
   );
 }
 
